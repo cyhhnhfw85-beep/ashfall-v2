@@ -555,7 +555,7 @@ function roomWalls(room){
 // Camera only affects rendering. World coordinates and collision data stay untransformed.
 let roomCamera={x:0,y:0,zoom:1,id:-1};
 function cameraFor(room){
- const g=roomGeom(room),zoom=g.type==='single'?1:.84;
+ const g=roomGeom(room),zoom=(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=400/zoom;
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
  const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
@@ -1554,14 +1554,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.2-p01-v3-polish-test1';
+const ASHFALL_RUNTIME_VERSION='0.9.2-p01-v3-1-iphone-test1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-p01-v3-polish-test1, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-p01-v3-1-iphone-test1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();

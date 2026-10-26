@@ -5,7 +5,7 @@
  let pending=files.length;
  files.forEach(name=>{const im=new Image();images[name]=im;
   im.onload=im.onerror=()=>{if(--pending===0){ready=true;root.dispatchEvent(new Event('ash-p01-assets-ready'));}};
-  im.src='assets/p01v2/'+name+'.png?v=0902p01v3';
+  im.src='assets/p01v2/'+name+'.png?v=0902p01v31';
  });
  const usable=name=>images[name]&&images[name].complete&&images[name].naturalWidth>0;
  const draw=(c,name,x,y,w,h)=>{if(!usable(name))return false;c.drawImage(images[name],x,y,w,h);return true;};
@@ -29,9 +29,7 @@
  }
  function floorDecals(c){
   c.save();
-  // central worn lane for readability and room identity
-  c.fillStyle='rgba(56,92,94,.16)';c.fillRect(120,62,120,276);
-  c.fillStyle='rgba(131,209,208,.10)';c.fillRect(144,78,72,244);
+  // V3.1: no opaque/tinted central rectangles; preserve fine floor markings.
   // dashed guidance markings
   c.strokeStyle='rgba(208,188,118,.35)';c.lineWidth=4;c.setLineDash([12,10]);c.beginPath();c.moveTo(180,88);c.lineTo(180,312);c.stroke();c.setLineDash([]);
   // hazard and tech panels near doors
@@ -65,8 +63,7 @@
   c.fillStyle='rgba(6,14,18,.18)';rect(c,x-2,y-2,w+4,h+4,4);c.fill();
   c.fillStyle='rgba(8,18,22,.38)';c.beginPath();c.ellipse(x+w/2,y+h/2+3,Math.max(9,w*.7),Math.max(7,h*.5),0,0,Math.PI*2);c.fill();
   draw(c,name,dx,dy,dw,dh);
-  // crisp outline for iPhone readability
-  c.strokeStyle='rgba(3,8,10,.45)';c.lineWidth=1;rect(c,dx+.5,dy+.5,dw-1,dh-1,4);c.stroke();
+  // V3.1: no artificial rectangular outline around props.
   // object-specific accenting
   if(name==='prop_console'||name==='prop_generator'){
    c.fillStyle='rgba(114,232,219,.55)';c.fillRect(x+w*.2,y+h*.2,Math.max(6,w*.16),Math.max(3,h*.10));
