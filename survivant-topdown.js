@@ -2,7 +2,7 @@
 (function(root){'use strict';
  const image=new Image();let loaded=false;
  image.onload=()=>{loaded=true;}; image.onerror=()=>{loaded=false;};
- image.src='assets/survivant-topdown.png?v=0902p01v32';
+ image.src='assets/survivant-topdown.png?v=0902f1p01';
  root.AshTopDownSurvivor=Object.freeze({
   draw(ctx,o){
    if(!loaded||!image.naturalWidth)return false;

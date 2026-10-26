@@ -554,11 +554,25 @@ function roomWalls(room){
 }
 // Camera only affects rendering. World coordinates and collision data stay untransformed.
 let roomCamera={x:0,y:0,zoom:1,id:-1};
+function ashF1Pilot(room){return !!room&&window.AshP01Graphics?.applies(room,sectorOf(room))===true;}
+function ashF1Canvas(room){
+ const active=ashF1Pilot(room);
+ document.body.classList.toggle('ash-f1-pilot',active);
+ const stage=$('stage');
+ let height=400;
+ if(active&&stage){
+  const r=stage.getBoundingClientRect();
+  if(r.width>0&&r.height>0){height=Math.max(400,Math.min(1000,Math.round(360*r.height/r.width)));}
+ }
+ if(cv.width!==360)cv.width=360;
+ if(cv.height!==height)cv.height=height;
+}
 function cameraFor(room){
  const g=roomGeom(room),zoom=(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
- const sightW=360/zoom,sightH=400/zoom;
+ const sightW=360/zoom,sightH=(ashF1Pilot(room)?cv.height:400)/zoom;
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
  const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
+ if(ashF1Pilot(room)){roomCamera={x:targetX,y:targetY,zoom,id:room.id};return roomCamera;}
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
  else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.22;roomCamera.zoom=zoom}
  return roomCamera;
@@ -1554,14 +1568,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.2-p01-v3-2-props-test1';
+const ASHFALL_RUNTIME_VERSION='0.9.2-f1-fullscreen-p01-test1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-p01-v3-2-props-test1, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-f1-fullscreen-p01-test1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -2097,7 +2111,7 @@ function ashRenderMiniMap(run){
  const signature=[run.current,discovered,scanned,(run.intelRooms||[]).join(',')].join('|');
  if(signature!==ashLastMiniSignature){target.innerHTML=ashMapMarkup(run,true);ashLastMiniSignature=signature;}
 }
-function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);document.body.classList.toggle('ash-f1-pilot',!!(r&&ashF1Pilot(r.rooms[r.current])));$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';
  if($('dmgUpgradeFill'))$('dmgUpgradeFill').style.width=(data.dmgLv/8*100)+'%';
@@ -3199,15 +3213,16 @@ function combatFxPaintHurt(){
  if(combatFx.hurt<=0||!combatCanAnimate())return;
  const q=combatFx.hurt/.23;
  cx.save();cx.setTransform(1,0,0,1,0,0);
- const g=cx.createRadialGradient(180,200,85,180,200,270);
+ const g=cx.createRadialGradient(cv.width/2,cv.height/2,85,cv.width/2,cv.height/2,Math.max(270,cv.height*.55));
  g.addColorStop(0,'rgba(255,80,67,0)');g.addColorStop(1,`rgba(224,62,57,${Math.min(.23,q*.22)})`);
- cx.fillStyle=g;cx.fillRect(0,0,360,400);cx.restore();
+ cx.fillStyle=g;cx.fillRect(0,0,cv.width,cv.height);cx.restore();
 }
 
 function draw(){let r=data.run;if(!r)return;let room=r.rooms[r.current];combatFxReset(room);let sec=sectorOf(room),theme=SECTORS[sec];
- cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,360,400);cx.save();
+ ashF1Canvas(room);cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,cv.width,cv.height);cx.save();
  const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom,-camera.x*camera.zoom,-camera.y*camera.zoom);
- cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,400/camera.zoom);
+ cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/camera.zoom);
+ if(ashF1Pilot(room))window.AshP01Graphics?.surroundings(cx,camera,360,cv.height);
  // V44: la couche statique couvre toutes les cellules ; aucun effet anime n'entre dans le cache.
  drawCachedSurface(room,sec,theme);
  drawDynamicHazard(room,sec);
@@ -3320,6 +3335,7 @@ function joystickPaint(){const dx=joy.cx-joystickZone.clientWidth/2,dy=joy.cy-jo
    tout recouvrement sur Safari, même avec les encoches et les barres du navigateur. */
 function ashFitPlayfield(){
   if(!document.body.classList.contains('ashfall-expedition'))return;
+  if(data.run&&ashF1Pilot(data.run.rooms[data.run.current]))return;
   const stage=$('stage'),hud=document.querySelector('#game .gamebar');
   if(!stage||!hud||!joystickZone)return;
   const bar=hud.getBoundingClientRect(),control=joystickZone.getBoundingClientRect();

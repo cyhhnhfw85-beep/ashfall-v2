@@ -5,7 +5,7 @@
  let pending=files.length;
  files.forEach(name=>{const im=new Image();images[name]=im;
   im.onload=im.onerror=()=>{if(--pending===0){ready=true;root.dispatchEvent(new Event('ash-p01-assets-ready'));}};
-  im.src='assets/p01v2/'+name+'.png?v=0902p01v32';
+  im.src='assets/p01v2/'+name+'.png?v=0902f1p01';
  });
  const usable=name=>images[name]&&images[name].complete&&images[name].naturalWidth>0;
  const draw=(c,name,x,y,w,h)=>{if(!usable(name))return false;c.drawImage(images[name],x,y,w,h);return true;};
@@ -103,7 +103,20 @@
    c.fillStyle='rgba(4,10,12,.45)';c.fillRect(x+w-3,y,3,h);
   }
  }
+ let exteriorPattern=null;
+ function surroundings(c,cam,screenW,screenH){
+  const minX=cam.x,minY=cam.y,maxW=screenW/cam.zoom,maxH=screenH/cam.zoom;
+  c.save();
+  if(usable('floor_concrete')){
+   if(!exteriorPattern)exteriorPattern=c.createPattern(images.floor_concrete,'repeat');
+   if(exteriorPattern){c.fillStyle=exteriorPattern;c.fillRect(minX,minY,maxW,maxH);}
+  }
+  // Outside the room: atmospheric, non-interactive floor with subdued contrast.
+  c.fillStyle='rgba(5,17,21,.49)';c.fillRect(minX,minY,maxW,maxH);
+  c.restore();
+ }
  const P={
+  surroundings,
   applies(room,sector){return !!room&&sector===0&&room.kind==='start'&&(room.shape||'single')==='single';},
   ready(){return ready;},
   floor(c,obstacles){
