@@ -31,6 +31,3 @@ LIMITES :
 - Aucun déploiement GitHub effectué.
 
 ATTENTION : NE PAS PUBLIER EN REMPLACEMENT DE MAIN SANS TESTS sur PC et iPhone.
-
-
-[ALPHA V3] Finition graphique salles 01 et 02 intégrée localement pour test. Voir CHANGELOG_M1_ALPHA_V3_ROOMS01_02.md

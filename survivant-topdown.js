@@ -1,8 +1,8 @@
-/* ASHFALL Survivant 3.0 — rotation uniforme à 360°, image unique, aucune animation. */
+/* ASHFALL Survivant 4.0 classique — rotation uniforme à 360°, image unique, aucune animation. */
 (function(root){'use strict';
  const image=new Image();let loaded=false;
  image.onload=()=>{loaded=true;}; image.onerror=()=>{loaded=false;};
- image.src='assets/survivant-topdown.png?v=0902p01v32';
+ image.src='assets/survivant-topdown.png?v=093sv4c1';
  root.AshTopDownSurvivor=Object.freeze({
   draw(ctx,o){
    if(!loaded||!image.naturalWidth)return false;
