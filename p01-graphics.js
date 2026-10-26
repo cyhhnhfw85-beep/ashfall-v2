@@ -7,7 +7,7 @@
  let pending=files.length;
  files.forEach(name=>{const im=new Image();images[name]=im;
   im.onload=im.onerror=()=>{if(--pending===0){ready=true;root.dispatchEvent(new Event('ash-p01-assets-ready'));}};
-  im.src='assets/p01v2/'+name+'.png?v=093gfxp1';
+  im.src='assets/p01v2/'+name+'.png?v=093gfx2pilot';
  });
  const usable=name=>images[name]&&images[name].complete&&images[name].naturalWidth>0;
  const draw=(c,name,x,y,w,h)=>{if(!usable(name))return false;c.drawImage(images[name],x,y,w,h);return true;};
@@ -124,10 +124,102 @@
   c.save();c.shadowColor=color;c.shadowBlur=8;c.strokeStyle=color;c.lineWidth=2;c.strokeRect(x+2,y+2,w-4,h-4);c.restore();
   if(w>=h)c.fillStyle='rgba(4,10,12,.45)',c.fillRect(x,y+h-3,w,3); else c.fillStyle='rgba(4,10,12,.45)',c.fillRect(x+w-3,y,3,h);
  }
+
+ // GFX2: restrained orthographic industrial composition, PILOT ROOM ONLY.
+ // The logical geometry and collision rectangles are deliberately untouched.
+ const pilot=room=>!!room&&room.kind==='start'&&room.shape==='1x2';
+ const hash=(x,y)=>{let n=(Math.imul((x|0)+17,73856093)^Math.imul((y|0)+23,19349663))>>>0;return (n%997)/997;};
+ function pilotFloor(c,obstacles){
+  const W=360,H=800;
+  c.save();c.fillStyle='#323d43';c.fillRect(0,0,W,H);
+  // Large, quiet industrial panels. Avoid the old 60-unit microtile grid.
+  const panels=[
+   [22,22,152,172,'#414b50'],[179,22,159,172,'#3c474d'],
+   [22,199,316,192,'#3e484d'],[22,397,155,184,'#39454a'],
+   [183,397,155,184,'#414b50'],[22,587,316,191,'#39434a']
+  ];
+  panels.forEach(([x,y,w,h,color],i)=>{
+   c.fillStyle='#222e34';c.fillRect(x-2,y-2,w+4,h+4);
+   c.fillStyle=color;c.fillRect(x,y,w,h);
+   c.fillStyle='rgba(228,235,229,.038)';c.fillRect(x+3,y+3,w-6,2);
+   c.fillStyle='rgba(4,13,18,.08)';c.fillRect(x+3,y+h-5,w-6,3);
+   // Subtle metallic grain without recurring high-contrast seams.
+   for(let j=0;j<18;j++){
+    const px=x+9+Math.floor(hash(i*41+j,2)*Math.max(1,w-18));
+    const py=y+9+Math.floor(hash(i*27+j,17)*Math.max(1,h-18));
+    c.fillStyle=j%4===0?'rgba(190,202,198,.048)':'rgba(3,15,18,.055)';
+    c.fillRect(px,py,1+(j%3===0?1:0),1);
+   }
+  });
+  // Two isolated service areas; texture used as material, not a repeating tile.
+  c.save();c.globalAlpha=.27;draw(c,'floor_metal',33,43,124,135);draw(c,'floor_concrete',199,415,121,141);c.restore();
+  c.fillStyle='#24363b';c.fillRect(94,310,170,58);
+  c.save();c.globalAlpha=.28;draw(c,'floor_grate',99,315,160,48);c.restore();
+  c.strokeStyle='rgba(131,152,155,.21)';c.lineWidth=2;c.strokeRect(94,310,170,58);
+  // Wear only near structural points; never a regular repeating pattern.
+  c.strokeStyle='rgba(7,19,23,.16)';c.lineWidth=1.2;
+  for(const [x,y] of [[60,111],[285,264],[76,650]]){
+    c.beginPath();c.moveTo(x,y);c.lineTo(x+11,y+4);c.lineTo(x+17,y+1);c.stroke();
+  }
+  // Rare navigation mark, desaturated and out of the central movement lane.
+  c.fillStyle='rgba(189,161,105,.14)';c.fillRect(36,562,38,5);c.fillRect(36,570,26,3);
+  // Gentle boundary darkening to bind the architecture to the floor.
+  let shadow=c.createLinearGradient(0,0,36,0);
+  shadow.addColorStop(0,'rgba(7,15,18,.19)');shadow.addColorStop(1,'rgba(7,15,18,0)');
+  c.fillStyle=shadow;c.fillRect(0,0,36,H);
+  shadow=c.createLinearGradient(W,0,W-36,0);
+  shadow.addColorStop(0,'rgba(7,15,18,.19)');shadow.addColorStop(1,'rgba(7,15,18,0)');
+  c.fillStyle=shadow;c.fillRect(W-36,0,36,H);
+  // Smaller, softer grounded props: no false black hitbox rectangles.
+  obstacles.forEach((o,i)=>{
+   const [x,y,w,h]=o;
+   const name=pickProp(o,i),factor=1.24;
+   const dw=Math.max(w+8,Math.round(w*factor)),dh=Math.max(h+8,Math.round(h*factor));
+   const dx=x+(w-dw)/2,dy=y+(h-dh)/2;
+   c.save();
+   c.fillStyle='rgba(8,17,20,.23)';c.beginPath();c.ellipse(x+w/2,y+h/2+4,dw*.48,dh*.42,0,0,Math.PI*2);c.fill();
+   c.fillStyle='rgba(198,217,207,.045)';c.fillRect(x+2,y+3,Math.max(0,w-4),2);
+   if(!draw(c,name,dx,dy,dw,dh)){
+    c.fillStyle='#65716a';c.fillRect(dx,dy,dw,dh);
+   }
+   c.restore();
+  });
+  c.restore();
+ }
+ function pilotWalls(c,walls,doors){
+  c.save();
+  // Quiet load-bearing beams with much larger structural rhythm.
+  walls.forEach(([x,y,w,h])=>{
+   const horizontal=w>=h;
+   c.fillStyle='#182b31';c.fillRect(x,y,w,h);
+   c.fillStyle='#38494e';c.fillRect(x+2,y+2,Math.max(0,w-4),Math.max(0,h-4));
+   c.fillStyle='rgba(181,196,192,.12)';
+   if(horizontal)c.fillRect(x+4,y+3,Math.max(0,w-8),3);
+   else c.fillRect(x+3,y+4,3,Math.max(0,h-8));
+   c.fillStyle='rgba(4,15,19,.29)';
+   if(horizontal)c.fillRect(x,y+h-5,w,5);else c.fillRect(x+w-5,y,5,h);
+   // Restrained anchoring plates every ~180 world units, not every 58.
+   for(let pos=horizontal?x+90:y+90;pos<(horizontal?x+w:y+h)-50;pos+=180){
+    c.fillStyle='#58666a';
+    if(horizontal)c.fillRect(pos,y+3,13,Math.max(4,h-6));
+    else c.fillRect(x+3,pos,Math.max(4,w-6),13);
+    c.fillStyle='rgba(216,173,99,.20)';
+    if(horizontal)c.fillRect(pos+4,y+7,5,3);else c.fillRect(x+7,pos+4,3,5);
+   }
+  });
+  // The door visual maintains exactly the legacy rectangles and state colors.
+  doors.forEach(({x,y,w,h,locked,arena})=>{
+   const name=locked?'door_locked':arena?'door_arena':'door_open';
+   const color=locked?'#e16c63':arena?'#edb364':'#58ddc5';
+   drawDoor(c,name,x,y,w,h,color);
+  });
+  c.restore();
+ }
  const P={
   applies(room,sector){return !!room&&sector===0;},
   ready(){return ready;},
   floor(c,room,obstacles){
+   if(pilot(room)){pilotFloor(c,obstacles||[]);return;}
    // Backward compatibility if called with the former signature floor(c, obstacles).
    if(Array.isArray(room)&&obstacles===undefined){obstacles=room;room={kind:'standard'};}
    obstacles=Array.isArray(obstacles)?obstacles:[];
@@ -139,6 +231,7 @@
    c.restore();
   },
   walls(c,room,walls,doorInfo){
+   if(pilot(room)){pilotWalls(c,walls||[],doorInfo||[]);return;}
    // Backward compatibility if called with former signature walls(c, walls, doorInfo).
    if(Array.isArray(room) && Array.isArray(walls) && doorInfo===undefined){doorInfo=walls;walls=room;room={kind:'standard'};}
    room=room&&typeof room==='object'?room:{kind:'standard'};walls=Array.isArray(walls)?walls:[];doorInfo=Array.isArray(doorInfo)?doorInfo:[];
