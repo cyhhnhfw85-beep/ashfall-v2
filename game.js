@@ -565,6 +565,16 @@ function cameraFor(room){
 }
 function drawRoomWalls(room,r){
  const g=roomGeom(room),sec=sectorOf(room);
+ if(window.AshP01Graphics?.applies(room,sec)){
+  const doorInfo=doors(room.id).map(d=>{
+   const a=roomDoor(room,d.side),vertical=d.side==='left'||d.side==='right';
+   const x=vertical?a.x-(d.side==='right'?20:0):a.x-35;
+   const y=vertical?a.y-38:a.y-(d.side==='bottom'?20:0);
+   return {x,y,w:vertical?20:70,h:vertical?76:20,
+    locked:!canPassDoor(d.to),arena:(isArena(d.to,r)||isBoss(d.to,r))&&!r.rooms[d.to].cleared};
+  });
+  window.AshP01Graphics.walls(cx,roomWalls(room),doorInfo);return;
+ }
  const dark=['#263c3d','#243e4b','#49392f','#383349'][sec],edge=['#84947e','#6892a6','#ad795a','#987da6'][sec];
  for(const [x,y,w,h] of roomWalls(room)){
   const vertical=h>w;
@@ -1544,14 +1554,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.2-topdown-survivant3-test2';
+const ASHFALL_RUNTIME_VERSION='0.9.2-p01-graphics-test1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-topdown-survivant3-test2, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-p01-graphics-test1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -2874,6 +2884,9 @@ const staticSurfaces=new Map();
 const STATIC_MAX_PIXELS=2400000; // env. 9.6 Mio en RGBA, sans compter les overheads navigateur.
 let staticSurfacePixels=0,staticPaintCount=0;
 function paintStaticSurface(room,sec,theme){
+ if(window.AshP01Graphics?.applies(room,sec)){
+  window.AshP01Graphics.floor(cx,roomObstacles(room));return;
+ }
  drawScenicFloor(room,sec,theme);
  drawSectorSurface(room,sec,theme);
  drawPixelFloor(room,sec,theme);
