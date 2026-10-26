@@ -5,7 +5,7 @@
  let pending=files.length;
  files.forEach(name=>{const im=new Image();images[name]=im;
   im.onload=im.onerror=()=>{if(--pending===0){ready=true;root.dispatchEvent(new Event('ash-p01-assets-ready'));}};
-  im.src='assets/p01v2/'+name+'.png?v=0902p01v31';
+  im.src='assets/p01v2/'+name+'.png?v=0902p01v32';
  });
  const usable=name=>images[name]&&images[name].complete&&images[name].naturalWidth>0;
  const draw=(c,name,x,y,w,h)=>{if(!usable(name))return false;c.drawImage(images[name],x,y,w,h);return true;};
@@ -13,12 +13,12 @@
  const floorChoices=['floor_concrete','floor_metal','floor_concrete','floor_cracked','floor_metal','floor_wear'];
  const propChoices=['prop_crate','prop_military','prop_generator','prop_console','prop_container','prop_machine'];
  const propScales={
-  prop_crate:{sx:1.65,sy:1.75,minW:56,minH:34},
-  prop_military:{sx:1.7,sy:1.7,minW:62,minH:42},
-  prop_generator:{sx:1.65,sy:1.6,minW:34,minH:44},
-  prop_console:{sx:1.7,sy:1.8,minW:34,minH:48},
-  prop_container:{sx:1.38,sy:1.35,minW:90,minH:42},
-  prop_machine:{sx:1.45,sy:1.45,minW:82,minH:46}
+  prop_crate:{sx:1.82,sy:1.93,minW:62,minH:39},
+  prop_military:{sx:1.88,sy:1.88,minW:69,minH:47},
+  prop_generator:{sx:1.83,sy:1.78,minW:39,minH:49},
+  prop_console:{sx:1.88,sy:1.98,minW:39,minH:53},
+  prop_container:{sx:1.52,sy:1.49,minW:99,minH:47},
+  prop_machine:{sx:1.6,sy:1.6,minW:90,minH:52}
  };
  function floorTile(c,name,x,y,w,h){
   if(!draw(c,name,x,y,w,h)){c.fillStyle='#353d40';c.fillRect(x,y,w,h);}
@@ -65,10 +65,13 @@
   draw(c,name,dx,dy,dw,dh);
   // V3.1: no artificial rectangular outline around props.
   // object-specific accenting
+  // Fine functional indicator lights; no outer rectangular border.
   if(name==='prop_console'||name==='prop_generator'){
-   c.fillStyle='rgba(114,232,219,.55)';c.fillRect(x+w*.2,y+h*.2,Math.max(6,w*.16),Math.max(3,h*.10));
+   const px=dx+dw*.24,py=dy+dh*.2;
+   c.fillStyle='rgba(17,32,34,.85)';c.beginPath();c.arc(px,py,3.5,0,Math.PI*2);c.fill();
+   c.fillStyle='rgba(117,232,221,.78)';c.beginPath();c.arc(px,py,1.8,0,Math.PI*2);c.fill();
   }else if(name==='prop_military'||name==='prop_crate'){
-   c.fillStyle='rgba(205,176,106,.45)';c.fillRect(x+w*.18,y+h*.1,Math.max(8,w*.22),3);
+   c.fillStyle='rgba(207,176,105,.35)';c.fillRect(dx+dw*.22,dy+dh*.18,Math.max(4,dw*.14),2);
   }
   c.restore();
  }
