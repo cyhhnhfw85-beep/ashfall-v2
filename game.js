@@ -357,7 +357,7 @@ function ashRenderLongProgress(){
  const home=$('ashLongHomeBadge');if(home)home.innerHTML=`${icon(badge.icon)}<span>${badge.name}</span><small>GRADE ${rank}</small>`;
 }
 
-function isLarge(r=data.run){return !!(r&&r.rooms&&r.rooms.length===50)}
+function isLarge(r=data.run){return !!(r&&r.rooms&&(r.rooms.length===50||r.rooms.length===25&&r.geometryVersion===25))}
 function isArena(id,r=data.run){return isLarge(r)?r.arenaIds.includes(id):id===4}
 function isExit(id,r=data.run){return isLarge(r)?r.exitIds.includes(id):id===8}
 function isBoss(id,r=data.run){return isLarge(r)?id===r.bossId:false}
@@ -479,6 +479,9 @@ const damage=()=>data.run.equipped.dmg+data.dmgLv*3+(data.run?.eq2?Math.round((d
 // V41: une salle logique peut occuper plusieurs cellules locales de 360x400.
 // La carte regionale conserve 50 noeuds : aucune modification du graphe ni des sauvegardes existantes.
 const CELL_W=360,CELL_H=400,SHAPES={
+ '1x2':[[0,0],[0,1]],'2x2':[[0,0],[1,0],[0,1],[1,1]],
+ '2x3':[[0,0],[1,0],[0,1],[1,1],[0,2],[1,2]],
+ '3x3':[[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]],
  single:[[0,0]], wide:[[0,0],[1,0]], tall:[[0,0],[0,1]],
  ell:[[0,0],[1,0],[0,1]]
 };
@@ -510,7 +513,12 @@ function wallDoorAnchor(room,side){
  if(side==='right')return {side,x:g.w,y:195};
  return {side,x:180,y:g.h};
 }
-function roomDoor(room,side){
+function roomDoor(room,doorOrSide){
+ if(doorOrSide&&typeof doorOrSide==='object'){
+  const d=doorOrSide;
+  if(Number.isFinite(d.x)&&Number.isFinite(d.y))return {side:d.side,x:d.x,y:d.y,half:d.side==='left'||d.side==='right'?38:35};
+ }
+ const side=typeof doorOrSide==='string'?doorOrSide:doorOrSide.side;
  const a=wallDoorAnchor(room,side),half=side==='left'||side==='right'?38:35;
  return {side,...a,half};
 }
@@ -536,7 +544,8 @@ function roomWalls(room){
    if(set.has((cx+dx)+','+(cy+dy)))continue;
    const x=cx*CELL_W,y=cy*CELL_H;
    let rect=side==='top'?[x,y,CELL_W,thick]:side==='bottom'?[x,y+CELL_H-thick,CELL_W,thick]:side==='left'?[x,y,thick,CELL_H]:[x+CELL_W-thick,y,thick,CELL_H];
-   const door=doorsHere.some(d=>d.side===side)?roomDoor(room,side):null;
+   const matching=doorsHere.filter(d=>d.side===side).map(d=>roomDoor(room,d));
+   const door=matching.find(a=>side==='top'||side==='bottom'?a.x>=x&&a.x<x+CELL_W:a.y>=y&&a.y<y+CELL_H)||null;
    const onTile=door&&(side==='top'||side==='bottom'?door.x>=x&&door.x<x+CELL_W:door.y>=y&&door.y<y+CELL_H);
    if(!onTile){walls.push(rect);continue}
    if(side==='top'||side==='bottom'){
@@ -554,25 +563,12 @@ function roomWalls(room){
 }
 // Camera only affects rendering. World coordinates and collision data stay untransformed.
 let roomCamera={x:0,y:0,zoom:1,id:-1};
-function ashF1Pilot(room){return !!room&&window.AshP01Graphics?.applies(room,sectorOf(room))===true;}
-function ashF1Canvas(room){
- const active=ashF1Pilot(room);
- document.body.classList.toggle('ash-f1-pilot',active);
- const stage=$('stage');
- let height=400;
- if(active&&stage){
-  const r=stage.getBoundingClientRect();
-  if(r.width>0&&r.height>0){height=Math.max(400,Math.min(1000,Math.round(360*r.height/r.width)));}
- }
- if(cv.width!==360)cv.width=360;
- if(cv.height!==height)cv.height=height;
-}
 function cameraFor(room){
- const g=roomGeom(room),zoom=(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
- const sightW=360/zoom,sightH=(ashF1Pilot(room)?cv.height:400)/zoom;
+ const modern=data.run?.geometryVersion===25;
+ const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
+ const sightW=360/zoom,sightH=(modern?cv.height:400)/zoom;
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
  const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
- if(ashF1Pilot(room)){roomCamera={x:targetX,y:targetY,zoom,id:room.id};return roomCamera;}
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
  else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.22;roomCamera.zoom=zoom}
  return roomCamera;
@@ -581,7 +577,7 @@ function drawRoomWalls(room,r){
  const g=roomGeom(room),sec=sectorOf(room);
  if(window.AshP01Graphics?.applies(room,sec)){
   const doorInfo=doors(room.id).map(d=>{
-   const a=roomDoor(room,d.side),vertical=d.side==='left'||d.side==='right';
+   const a=roomDoor(room,d),vertical=d.side==='left'||d.side==='right';
    const x=vertical?a.x-(d.side==='right'?20:0):a.x-35;
    const y=vertical?a.y-38:a.y-(d.side==='bottom'?20:0);
    return {x,y,w:vertical?20:70,h:vertical?76:20,
@@ -610,7 +606,7 @@ function drawRoomWalls(room,r){
   }
  }
  for(const d of doors(room.id)){
-  const anchor=roomDoor(room,d.side),side=d.side;
+  const anchor=roomDoor(room,d),side=d.side;
   const vertical=side==='left'||side==='right';
   const x=vertical?anchor.x-(side==='right'?20:0):anchor.x-35;
   const y=vertical?anchor.y-38:anchor.y-(side==='bottom'?20:0);
@@ -632,7 +628,41 @@ function drawRoomWalls(room,r){
 function pos(i){let room=data.run?.rooms?.[i];return room&&Number.isFinite(room.gx)?[room.gx,room.gy]:[i%3,Math.floor(i/3)]}
 function adjacent(i){let [x,y]=pos(i),r=data.run;if(isLarge(r))return r.rooms.filter(z=>Math.abs(z.gx-x)+Math.abs(z.gy-y)===1).map(z=>z.id);let out=[];if(x>0)out.push(i-1);if(x<2)out.push(i+1);if(y>0)out.push(i-3);if(y<2)out.push(i+3);return out}
 
-function doors(i){let [x,y]=pos(i);return adjacent(i).filter(n=>data.run.edges.some(e=>e.includes(i)&&e.includes(n))).map(n=>{let[a,b]=pos(n);return{to:n,side:a>x?'right':a<x?'left':b>y?'bottom':'top'}})}
+function doors(i){
+ const r=data.run;
+ if(r?.geometryVersion===25){
+  const room=r.rooms[i];
+  return r.edges.filter(e=>e[0]===i||e[1]===i).map(e=>{
+    const d=e[2];if(!d)return null;
+    const forward=e[0]===i,grid=forward?d.a:d.b;
+    const side=forward?d.side:d.back;
+    const x=(grid[0]-room.gx)*CELL_W+(side==='top'||side==='bottom'?CELL_W/2:(side==='right'?CELL_W:0));
+    const y=(grid[1]-room.gy)*CELL_H+(side==='left'||side==='right'?CELL_H/2:(side==='bottom'?CELL_H:0));
+    return {to:forward?e[1]:e[0],side,x,y};
+  }).filter(Boolean);
+ }
+ let [x,y]=pos(i);return adjacent(i).filter(n=>data.run.edges.some(e=>e.includes(i)&&e.includes(n))).map(n=>{let[a,b]=pos(n);return{to:n,side:a>x?'right':a<x?'left':b>y?'bottom':'top'}})
+}
+function makeMap25(){
+ const seed=(Date.now()^Math.floor(Math.random()*2147483647))|0;
+ const m=window.AshGenerator25.generate(seed,25);window.AshGenerator25.validate(m);
+ const rooms=m.rooms.map(n=>({id:n.id,gx:n.x,gy:n.y,shape:n.shape,depth:n.depth,sector:n.sector,kind:n.kind,
+  seen:n.id===0,spawned:false,enemies:[],chest:n.kind==='start'||n.kind==='exit'||n.kind==='boss'?'none':Math.random()<.63?'closed':'none',
+  activated:false,cleared:false,arenaWave:0,arenaReward:false,solidDecorV42:true}));
+ const arenaIds=[],exitIds=m.exitIds.slice(),outpostIds=[];
+ // Rebalance encounter density for fewer, bigger rooms.
+ for(const r of rooms){if(r.kind==='boss'||r.kind==='exit'||r.kind==='start')continue;
+  if(r.depth>2&&arenaIds.length<2&&r.id%7===0){r.kind='arena';r.chest='none';arenaIds.push(r.id)}
+  else if(r.depth>2&&r.id%6===0)r.kind='guarded';
+  else if(r.depth>2&&r.id%9===0)r.kind='secret';
+ }
+ for(let sec=1;sec<=3;sec++){
+  const op=rooms.filter(r=>r.sector===sec&&r.kind==='standard').sort((a,b)=>a.depth-b.depth)[0];
+  if(op){op.kind='outpost';op.chest='none';outpostIds.push(op.id)}
+ }
+ const edges=m.edges.map(e=>[e.from,e.to,e.door]);
+ return {rooms,edges,arenaIds,exitIds,bossId:m.bossId,outpostIds,geometryVersion:25};
+}
 function makeLargeMap(){
  let nodes=[{id:0,gx:0,gy:0}],occupied=new Set(['0,0']),edges=[];
  // Randomized growing tree with branching, nonrectangular footprint.
@@ -822,7 +852,7 @@ function spawnReinforcement(room,count){for(let k=0;k<count;k++){
 
 function createRun(){
  const newLoadout=ashGearSnapshot(),initialHp=maxHp()+ashGearProfile(newLoadout).maxHp;
- let m=makeLargeMap();region().expeditions++;
+ let m=makeMap25();region().expeditions++;
  // Phase 3B/3C - equilibrage 0.8.9.55 : uniquement pour les nouvelles expeditions.
  // Les terminaux sont places en fonction de leur utilite : cartographie tot,
  // regulateurs pres des dangers, soins plutot dans les secteurs difficiles.
@@ -1133,7 +1163,7 @@ function prepareRoomInteractables(room){
    const y=cell[1]*CELL_H+70+((room.id*43+i*89+k*71)%245);
    const radius=17;
    const collides=roomWalls(room).some(rect=>rectTouches(x,y,radius+6,rect))||roomObstacles(room).some(rect=>rectTouches(x,y,radius+8,rect));
-   const nearDoor=doors(room.id).some(d=>{let p=roomDoor(room,d.side);return Math.hypot(x-p.x,y-p.y)<105});
+   const nearDoor=doors(room.id).some(d=>{let p=roomDoor(room,d);return Math.hypot(x-p.x,y-p.y)<105});
    const reserved=Math.hypot(x-180,y-110)<90||Math.hypot(x-180,y-195)<65;
    const crowded=room.interactables.some(o=>Math.hypot(x-o.x,y-o.y)<125);
    if(!collides&&!nearDoor&&!reserved&&!crowded){chosen={x,y};break}
@@ -1246,7 +1276,7 @@ function prepareRoomFieldEvent(room){
   const p=candidates[(start+n)%candidates.length];
   if(collidesSolid(p.x,p.y,16,room))continue;
   if(Math.hypot(p.x-180,p.y-110)<82||Math.hypot(p.x-180,p.y-195)<65)continue;
-  if(doors(room.id).some(d=>{const door=roomDoor(room,d.side);return Math.hypot(p.x-door.x,p.y-door.y)<95}))continue;
+  if(doors(room.id).some(d=>{const door=roomDoor(room,d);return Math.hypot(p.x-door.x,p.y-door.y)<95}))continue;
   if((room.interactables||[]).some(o=>o.state!=='spent'&&Math.hypot(p.x-o.x,p.y-o.y)<58))continue;
   spot=p;break;
  }
@@ -1534,17 +1564,23 @@ if(r.interactiveV51&&(r.hazardShields||0)>0&&(sectorOf(room)===1||sectorOf(room)
 }
 prepareRoomInteractables(room);prepareRoomFieldEvent(room);initializeIncident(room);if(!room.spawned){room.spawned=true;room.enemies=enemiesFor(id);}
 if(from!==null){
-  const [a,b]=pos(from),[x,y]=pos(id),g=roomGeom(room);
-  if(x>a){player.x=47;player.y=195}
-  else if(x<a){player.x=g.w-47;player.y=195}
-  else if(y>b){player.x=180;player.y=47}
-  else{player.x=180;player.y=g.h-47}
+  if(r.geometryVersion===25){
+   const incoming=doors(id).find(d=>d.to===from);
+   if(incoming){const a=roomDoor(room,incoming);player.x=a.x+(a.side==='left'?47:a.side==='right'?-47:0);
+    player.y=a.y+(a.side==='top'?47:a.side==='bottom'?-47:0);}
+  }else{
+   const [a,b]=pos(from),[x,y]=pos(id),g=roomGeom(room);
+   if(x>a){player.x=47;player.y=195}
+   else if(x<a){player.x=g.w-47;player.y=195}
+   else if(y>b){player.x=180;player.y=47}
+   else{player.x=180;player.y=g.h-47}
+  }
   roomCamera.id=-1;
 }
 sanitizeEnemyPositions(room);if(r.interactiveV72&&ASH_DISCOVERY_ROLES.has(room.fieldRole)&&room.fieldEvent?.state==='ready')msg(FIELD_NAMES[room.fieldRole]+' : sécurise la salle, puis approche-toi du terminal.');if(isArena(id,r)&&!room.cleared){enforceArena()}
 else if(autoSecure(room)){persist()}
 if(isBoss(id,r)&&!room.cleared){room.activated=true;msg('⚠ BOSS K-17 : portes scellées !')}
-player.inv=.65;bullets=[];closeOverlay();persist();render();if(room.hazardNeutralizedByTerminal){room.hazardNeutralizedByTerminal=false;msg('⚡ Blindage de zone actif : danger environnemental neutralisé.')}else if(!isArena(id,r)&&!isBoss(id,r))msg(isExit(id,r)?'Terminal d’extraction détecté.':`K-17 · salle ${id+1}/50 · secteur ${room.sector+1}`)}
+player.inv=.65;bullets=[];closeOverlay();persist();render();if(room.hazardNeutralizedByTerminal){room.hazardNeutralizedByTerminal=false;msg('⚡ Blindage de zone actif : danger environnemental neutralisé.')}else if(!isArena(id,r)&&!isBoss(id,r))msg(isExit(id,r)?'Terminal d’extraction détecté.':`K-17 · salle ${id+1}/${r.rooms.length} · secteur ${room.sector+1}`)}
 // 0.8.9.59 — Coffres : tirage et débit dans la même sauvegarde vérifiée.
 const ASH_CHEST_TIERS=[
  {id:'common',name:'COMMUN',price:900,accent:'#9bb7bd',odds:[780,200,19,1]},
@@ -1568,14 +1604,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.2-f1-fullscreen-p01-test1';
+const ASHFALL_RUNTIME_VERSION='0.9.2-p01-v3-2-props-test1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-f1-fullscreen-p01-test1, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-p01-v3-2-props-test1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -2074,12 +2110,12 @@ function ashMapMarkup(run,mini=false){
  const bounds=mini?nodes:mapNodes;
  const minx=Math.min(...bounds.map(z=>z.gx));
  const miny=Math.min(...bounds.map(z=>z.gy));
- const maxx=Math.max(...bounds.map(z=>z.gx));
- const maxy=Math.max(...bounds.map(z=>z.gy));
+ const maxx=Math.max(...bounds.map(z=>z.gx+(run.geometryVersion===25?roomGeom(z).w/CELL_W-1:0)));
+ const maxy=Math.max(...bounds.map(z=>z.gy+(run.geometryVersion===25?roomGeom(z).h/CELL_H-1:0)));
  const pad=mini?8:24,W=(maxx-minx)*sx+2*pad+2*subx,H=(maxy-miny)*sy+2*pad+2*suby;
  const center=z=>({x:(z.gx-minx)*sx+pad+subx/2,y:(z.gy-miny)*sy+pad+suby/2});
  const visibleIds=new Set(nodes.map(z=>z.id));
- const links=(run.edges||[]).filter(e=>e.length===2&&visibleIds.has(e[0])&&visibleIds.has(e[1])).map(e=>{
+ const links=(run.edges||[]).filter(e=>e.length>=2&&visibleIds.has(e[0])&&visibleIds.has(e[1])).map(e=>{
   const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);
   return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#648596" stroke-opacity=".7" stroke-width="${mini?2.8:4}" stroke-linecap="round"/>`;
  }).join('');
@@ -2088,7 +2124,7 @@ function ashMapMarkup(run,mini=false){
   const type=roomGeom(z).type, scanned=!z.seen&&!(run.visited||[]).includes(z.id)&&z.id!==run.current,here=z.id===run.current;
   const sector=Number.isFinite(z.sector)?z.sector:Math.min(3,Math.floor(z.id/13));
   const fill=scanned?'#344752':here?'#eab96e':ASH_MAP_COLORS[sector]||ASH_MAP_COLORS[0];
-  const shape=type==='wide'?`M${px} ${py}h${subx*2}v${suby}h${-subx*2}z`:
+  const shape=run.geometryVersion===25?roomGeom(z).cells.map(([xx,yy])=>`M${px+xx*subx} ${py+yy*suby}h${subx}v${suby}h${-subx}z`).join(' '):type==='wide'?`M${px} ${py}h${subx*2}v${suby}h${-subx*2}z`:
    type==='tall'?`M${px} ${py}h${subx}v${suby*2}h${-subx}z`:
    type==='ell'?`M${px} ${py}h${subx*2}v${suby}h${-subx}v${suby}h${-subx}z`:
    `M${px} ${py}h${subx}v${suby}h${-subx}z`;
@@ -2105,13 +2141,13 @@ function ashRenderMiniMap(run){
  if(!run){target.innerHTML='';ashLastMiniSignature='';return}
  const knownVisited=new Set(run.visited||[]);
  const discovered=(run.rooms||[]).reduce((a,z)=>a+(z.seen||knownVisited.has(z.id)?1:0),0);
- const count=$('ashMiniMapCount');if(count)count.textContent=`${discovered}/50`;
+ const count=$('ashMiniMapCount');if(count)count.textContent=`${discovered}/${run.rooms.length}`;
  const scanned=(run.intelRooms||[]).length;
  // La carte est réactualisée à chaque changement de salle ou découverte.
  const signature=[run.current,discovered,scanned,(run.intelRooms||[]).join(',')].join('|');
  if(signature!==ashLastMiniSignature){target.innerHTML=ashMapMarkup(run,true);ashLastMiniSignature=signature;}
 }
-function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);document.body.classList.toggle('ash-f1-pilot',!!(r&&ashF1Pilot(r.rooms[r.current])));$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';
  if($('dmgUpgradeFill'))$('dmgUpgradeFill').style.width=(data.dmgLv/8*100)+'%';
@@ -2121,10 +2157,10 @@ function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidd
  $('upDmg').textContent=data.dmgLv>=8?'NIVEAU MAX':`Améliorer +3 dégâts · ${4+data.dmgLv*4} recherche`;$('upHp').disabled=data.hpLv>=8||data.research<4+data.hpLv*4;$('upDmg').disabled=data.dmgLv>=8||data.research<4+data.dmgLv*4;$('equipped').textContent=data.equipped?`${data.equipped.name} · ${data.equipped.rar} · ${data.equipped.dmg} dégâts · ${data.equipped.rate} tirs/s`:'Aucune';$('insurance').textContent=data.insured===data.equipped?.id?'ASSURÉE':'Non assurée';$('insure').textContent=`Assurer · ${premium()} ¤`;$('insure').disabled=data.insured===data.equipped.id||data.credits<premium();$('stash').innerHTML='<p class="ui-help">Armes stockées au refuge · appuie sur ÉQUIPER pour changer d’arme.</p>'+(data.stash.length?data.stash.map((g,i)=>itemRow(g,i,'stash')).join(''):'<p class="ui-empty">Réserve vide : extrais des armes pour remplir ton stock.</p>');if($('merchantLaunch'))$('merchantLaunch').innerHTML=afIcon('merchant')+' OUVRIR LE COMPTOIR · '+data.credits+' crédits';$('log').dataset.region=region().maxSector;
  
  if(data.eq2){$('insurance').textContent='Acquis définitivement';$('insure').hidden=true;$('insure').disabled=true;}
- const status=$('regionStatus');if(status)status.textContent='K-17 · secteurs '+(region().maxSector+1)+'/4 · avant-postes '+region().outposts.length+'/3 · Gardien '+(region().bossDefeated?'vaincu':'à découvrir')+' · Helix '+(data.unlockHelix?'débloquée (non jouable)':'verrouillée');if($('homeSectorCount'))$('homeSectorCount').textContent=(region().maxSector+1)+' / 4 secteurs';if($('homeSectorFill'))$('homeSectorFill').style.width=(25*(region().maxSector+1))+'%';if($('homeSectorProgress'))$('homeSectorProgress').setAttribute('aria-valuenow',String(region().maxSector+1));if($('statusChipSector'))$('statusChipSector').textContent='Secteurs '+(region().maxSector+1)+'/4';if($('statusChipOutpost'))$('statusChipOutpost').textContent='Avant-postes '+region().outposts.length+'/3';if($('statusChipBoss'))$('statusChipBoss').textContent='Gardien '+(region().bossDefeated?'vaincu':'à découvrir');renderRefugeCharacter();renderRefugeProgress();ashRenderContractSelection();ashRenderCareer();ashRenderLongProgress();ashRefreshContractHud(null);if(refugeActivePage==='merchant')merchantRender();if(refugeActivePage==='chests')ashChestRender();return}let room=r.rooms[r.current];if($('uiMission'))$('uiMission').textContent=uiMission().replace(/^[⚠⚡✦✓⚔📡◈]\s*/u,'');$('roomTitle').textContent=isBoss(r.current,r)?'BOSS K-17':isArena(r.current,r)?'ARÈNE':isExit(r.current,r)?'EXTRACTION':room.kind==='secret'?'SALLE SECRÈTE':room.kind==='outpost'?'BALISE':`K-17 · ${r.current+1}/50`;$('hpText').textContent=`${Math.ceil(player.hp)} / ${player.max}`;$('hpFill').style.width=`${clamp(player.hp/player.max*100,0,100)}%`;if($('hpFill'))$('hpFill').classList.toggle('ash-critical',player.hp/player.max<.28);runProgress();$('bagCount').textContent=r.eq2?`${r.eq2.loot.length}/8`:`${r.bag.length}/6`;ashRenderMiniMap(r);const xp=$('xpDisplay');if(xp){xp.textContent=`NIV. ${r.runLevel} · ${Math.floor(r.xp)}/${xpThreshold(r.runLevel)}`;xp.style.display='block';$('xpFill').style.width=(100*clamp(r.xp/xpThreshold(r.runLevel),0,1))+'%'}ashRefreshContractHud(r);const statusHint=hudStatus();$('hint').textContent=statusHint;$('hint').hidden=!statusHint}
+ const status=$('regionStatus');if(status)status.textContent='K-17 · secteurs '+(region().maxSector+1)+'/4 · avant-postes '+region().outposts.length+'/3 · Gardien '+(region().bossDefeated?'vaincu':'à découvrir')+' · Helix '+(data.unlockHelix?'débloquée (non jouable)':'verrouillée');if($('homeSectorCount'))$('homeSectorCount').textContent=(region().maxSector+1)+' / 4 secteurs';if($('homeSectorFill'))$('homeSectorFill').style.width=(25*(region().maxSector+1))+'%';if($('homeSectorProgress'))$('homeSectorProgress').setAttribute('aria-valuenow',String(region().maxSector+1));if($('statusChipSector'))$('statusChipSector').textContent='Secteurs '+(region().maxSector+1)+'/4';if($('statusChipOutpost'))$('statusChipOutpost').textContent='Avant-postes '+region().outposts.length+'/3';if($('statusChipBoss'))$('statusChipBoss').textContent='Gardien '+(region().bossDefeated?'vaincu':'à découvrir');renderRefugeCharacter();renderRefugeProgress();ashRenderContractSelection();ashRenderCareer();ashRenderLongProgress();ashRefreshContractHud(null);if(refugeActivePage==='merchant')merchantRender();if(refugeActivePage==='chests')ashChestRender();return}let room=r.rooms[r.current];if($('uiMission'))$('uiMission').textContent=uiMission().replace(/^[⚠⚡✦✓⚔📡◈]\s*/u,'');$('roomTitle').textContent=isBoss(r.current,r)?'BOSS K-17':isArena(r.current,r)?'ARÈNE':isExit(r.current,r)?'EXTRACTION':room.kind==='secret'?'SALLE SECRÈTE':room.kind==='outpost'?'BALISE':`K-17 · ${r.current+1}/${r.rooms.length}`;$('hpText').textContent=`${Math.ceil(player.hp)} / ${player.max}`;$('hpFill').style.width=`${clamp(player.hp/player.max*100,0,100)}%`;if($('hpFill'))$('hpFill').classList.toggle('ash-critical',player.hp/player.max<.28);runProgress();$('bagCount').textContent=r.eq2?`${r.eq2.loot.length}/8`:`${r.bag.length}/6`;ashRenderMiniMap(r);const xp=$('xpDisplay');if(xp){xp.textContent=`NIV. ${r.runLevel} · ${Math.floor(r.xp)}/${xpThreshold(r.runLevel)}`;xp.style.display='block';$('xpFill').style.width=(100*clamp(r.xp/xpThreshold(r.runLevel),0,1))+'%'}ashRefreshContractHud(r);const statusHint=hudStatus();$('hint').textContent=statusHint;$('hint').hidden=!statusHint}
 function closeOverlay(){if(overlay==='level'&&data.run?.pendingLevels>0)return;if(overlayReturn==='pause'&&data.run&&(overlay==='bag'||overlay==='map')){overlayReturn='';openOverlay('pause');return;}overlayReturn='';overlay='';$('overlay').hidden=true;$('overlay').innerHTML='';if(data.run?.pendingLevels>0&&ashSweepChoiceTimer===null)openLevelChoice()}
 function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2OpenBag();return;}overlay=mode;let r=data.run,html='<button class="close" data-op="close">'+afIcon('close')+' Fermer</button>';if(mode==='bag'){html+=`<h3>${afIcon("bag")} SAC D’EXPÉDITION <span class="ui-tag">${r.bag.length}/6 places</span></h3><p class="muted">Arme équipée et objets transportés. La rareté est indiquée par une couleur.</p><div class="ash-run-build"><b>CONFIGURATION</b> · ${ashGearById(r.loadout?.helmet)?.name||'Casque standard'} · ${ashGearById(r.loadout?.module)?.name||'Module vide'}</div><div class="ui-group-label">ARME ÉQUIPÉE</div>${uiWeaponCard(r.equipped,-1,'bag',true)}<div class="ui-group-label">OBJETS TRANSPORTÉS</div>${r.bag.length?r.bag.map((w,i)=>({w,i})).sort((a,b)=>(LOOT_RARITY_RANK[b.w.rar]||0)-(LOOT_RARITY_RANK[a.w.rar]||0)||lootPower(b.w)-lootPower(a.w)||a.i-b.i).map(({w,i})=>uiWeaponCard(w,i,'bag',false)).join(''):'<p class="ui-empty">Ton sac est vide. Ramasse les armes au sol pour les ajouter ici.</p>'}<p class="ui-help">${afIcon("info")} Équiper une autre arme replace l’ancienne dans le sac. L’assurance reste attachée à son objet d’origine.</p>`;
-}else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">Découvertes : '+ashDiscoveryStats(r).complete+'/'+ashDiscoveryStats(r).total+' explorées.</p><p class="muted">La forme de chaque pièce reflète sa géométrie : 1×1, 2×1, 1×2 ou en L. Un ? représente un indice de salle non visitée.</p><div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div><p class="muted">'+r.visited.length+'/50 salles explorées · ● Vous · B Gardien · A Arène · E Extraction · P Balise · D Découverte (d terminée). Glisse pour explorer la carte.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Équipements 2.0 · '+r.eq2.loot.length+'/8 objets nouveaux':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/50 SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/8':r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button><button type="button" data-op="map">${afIcon("map")} CARTE</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
+}else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">Découvertes : '+ashDiscoveryStats(r).complete+'/'+ashDiscoveryStats(r).total+' explorées.</p><p class="muted">La forme des nouvelles pièces varie de 1×2 à 3×3 ; les anciennes expéditions gardent leurs formes historiques. Un ? représente un indice de salle non visitée.</p><div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div><p class="muted">'+r.visited.length+'/'+r.rooms.length+' salles explorées · ● Vous · B Gardien · A Arène · E Extraction · P Balise · D Découverte (d terminée). Glisse pour explorer la carte.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Équipements 2.0 · '+r.eq2.loot.length+'/8 objets nouveaux':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/${r.rooms.length} SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/8':r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button><button type="button" data-op="map">${afIcon("map")} CARTE</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
 function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
@@ -2655,7 +2691,7 @@ function drawScenicLife(room,sec,theme){
  cx.save();
  for(const cell of scene.cells){
   const {x,y,motes,open}=cell;
-  const cam=roomCamera,pad=50,viewW=360/cam.zoom,viewH=400/cam.zoom;
+  const cam=roomCamera,pad=50,viewW=360/cam.zoom,viewH=(data.run?.geometryVersion===25?cv.height:400)/cam.zoom;
   if(x>cam.x+viewW+pad||x+CELL_W<cam.x-pad||y>cam.y+viewH+pad||y+CELL_H<cam.y-pad)continue;
   // Petites étincelles, poussières ou particules ionisées, sans bande lumineuse opaque.
   for(const [i,m] of motes.entries()){
@@ -3213,16 +3249,15 @@ function combatFxPaintHurt(){
  if(combatFx.hurt<=0||!combatCanAnimate())return;
  const q=combatFx.hurt/.23;
  cx.save();cx.setTransform(1,0,0,1,0,0);
- const g=cx.createRadialGradient(cv.width/2,cv.height/2,85,cv.width/2,cv.height/2,Math.max(270,cv.height*.55));
+ const g=cx.createRadialGradient(180,200,85,180,200,270);
  g.addColorStop(0,'rgba(255,80,67,0)');g.addColorStop(1,`rgba(224,62,57,${Math.min(.23,q*.22)})`);
- cx.fillStyle=g;cx.fillRect(0,0,cv.width,cv.height);cx.restore();
+ cx.fillStyle=g;cx.fillRect(0,0,360,400);cx.restore();
 }
 
 function draw(){let r=data.run;if(!r)return;let room=r.rooms[r.current];combatFxReset(room);let sec=sectorOf(room),theme=SECTORS[sec];
- ashF1Canvas(room);cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,cv.width,cv.height);cx.save();
+ cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,360,cv.height);cx.save();
  const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom,-camera.x*camera.zoom,-camera.y*camera.zoom);
  cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/camera.zoom);
- if(ashF1Pilot(room))window.AshP01Graphics?.surroundings(cx,camera,360,cv.height);
  // V44: la couche statique couvre toutes les cellules ; aucun effet anime n'entre dans le cache.
  drawCachedSurface(room,sec,theme);
  drawDynamicHazard(room,sec);
@@ -3257,7 +3292,7 @@ function transition(){
  if(locked())return false;
  const r=data.run,id=r.current,room=r.rooms[id];
  for(const d of doors(id)){
-  if(!nearDoor(player,roomDoor(room,d.side)))continue;
+  if(!nearDoor(player,roomDoor(room,d)))continue;
   if(!canPassDoor(d.to)){msg('🔒 Termine le combat pour franchir cette porte.');return false}
   enter(d.to,id);return true;
  }
@@ -3335,8 +3370,16 @@ function joystickPaint(){const dx=joy.cx-joystickZone.clientWidth/2,dy=joy.cy-jo
    tout recouvrement sur Safari, même avec les encoches et les barres du navigateur. */
 function ashFitPlayfield(){
   if(!document.body.classList.contains('ashfall-expedition'))return;
-  if(data.run&&ashF1Pilot(data.run.rooms[data.run.current]))return;
   const stage=$('stage'),hud=document.querySelector('#game .gamebar');
+  if(data.run?.geometryVersion===25){
+    document.body.classList.add('ash25-fullscreen');
+    const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight),renderH=Math.max(400,Math.round(360*h/w));
+    if(cv.width!==360||cv.height!==renderH){cv.width=360;cv.height=renderH;roomCamera.id=-1;}
+    return;
+  }
+  document.body.classList.remove('ash25-fullscreen');
+  if(cv.width!==360||cv.height!==400){cv.width=360;cv.height=400;roomCamera.id=-1;}
+
   if(!stage||!hud||!joystickZone)return;
   const bar=hud.getBoundingClientRect(),control=joystickZone.getBoundingClientRect();
   const width=window.innerWidth||document.documentElement.clientWidth;
