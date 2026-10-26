@@ -1554,14 +1554,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.2-p01-graphics-test2-clean';
+const ASHFALL_RUNTIME_VERSION='0.9.2-p01-graphics-v2-test1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-p01-graphics-test2-clean, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-p01-graphics-v2-test1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -2881,6 +2881,7 @@ function drawPixelFloor(room,sec,theme){
 // V44 : cache LRU des couches fixes par objet-salle et budget de pixels.
 // Ne contient jamais les ennemis, projectiles, hazards, portes verrouillees ou UI.
 const staticSurfaces=new Map();
+window.addEventListener('ash-p01-assets-ready',()=>{staticSurfaces.clear();staticSurfacePixels=0;});
 const STATIC_MAX_PIXELS=2400000; // env. 9.6 Mio en RGBA, sans compter les overheads navigateur.
 let staticSurfacePixels=0,staticPaintCount=0;
 function paintStaticSurface(room,sec,theme){
