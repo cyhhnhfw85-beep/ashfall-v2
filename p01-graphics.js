@@ -2,18 +2,18 @@
    Generalises the validated P01 visual language to the whole K-17 Periphery sector,
    in strict 90° top-down view, including 1x2 to 3x3 rooms. */
 (function(root){'use strict';
- const files=['floor_concrete','floor_metal','floor_cracked','floor_grate','floor_wear','floor_hazard','wall_horizontal','door_open','door_locked','door_arena','prop_crate','prop_military','prop_container','prop_generator','prop_console','prop_machine'];
+ const files=['floor_concrete','floor_metal','floor_cracked','floor_grate','floor_wear','floor_hazard','wall_horizontal','door_open','door_locked','door_arena','prop_crate','prop_military','prop_container','prop_generator','prop_console','prop_machine','p02_panel_0','p02_panel_1','p02_panel_2','p02_panel_3','p02_panel_4','p02_panel_5','p02_wall_section'];
  const images=Object.create(null);let ready=false;
  let pending=files.length;
  files.forEach(name=>{const im=new Image();images[name]=im;
   im.onload=im.onerror=()=>{if(--pending===0){ready=true;root.dispatchEvent(new Event('ash-p01-assets-ready'));}};
-  im.src='assets/p01v2/'+name+'.png?v=093gfx2pilot';
+  im.src=(name.startsWith('p02_')?'assets/p02/'+name.slice(4):'assets/p01v2/'+name)+'.png?v=093p02test1';
  });
  const usable=name=>images[name]&&images[name].complete&&images[name].naturalWidth>0;
  const draw=(c,name,x,y,w,h)=>{if(!usable(name))return false;c.drawImage(images[name],x,y,w,h);return true;};
  const rect=(c,x,y,w,h,r=4)=>{c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);};
  const floorChoices=['floor_concrete','floor_metal','floor_concrete','floor_cracked','floor_metal','floor_wear'];
- const propChoices=['prop_crate','prop_military','prop_generator','prop_console','prop_container','prop_machine'];
+ const propChoices=['prop_crate','prop_military','prop_generator','prop_console','prop_container','prop_machine','p02_panel_0','p02_panel_1','p02_panel_2','p02_panel_3','p02_panel_4','p02_panel_5','p02_wall_section'];
  const kindAccent={start:'#79e2d2',exit:'#d8c57c',arena:'#de9f58',boss:'#d98787',outpost:'#8ec0d9',standard:'#b9c4c6'};
  const kindLabel={start:'ENTRÉE',exit:'EXTRACTION',arena:'COMBAT',boss:'MENACE',outpost:'RELAIS',standard:'PÉRIPHÉRIE'};
  const propScales={
@@ -129,58 +129,44 @@
  // The logical geometry and collision rectangles are deliberately untouched.
  const pilot=room=>!!room&&room.kind==='start'&&room.shape==='1x2';
  const hash=(x,y)=>{let n=(Math.imul((x|0)+17,73856093)^Math.imul((y|0)+23,19349663))>>>0;return (n%997)/997;};
+ // P02: independent textured plates, independent doors and physical obstacles.
+ // Static panel surfaces are cached by the main rendering pipeline.
  function pilotFloor(c,obstacles){
   const W=360,H=800;
-  c.save();c.fillStyle='#323d43';c.fillRect(0,0,W,H);
-  // Large, quiet industrial panels. Avoid the old 60-unit microtile grid.
+  c.save();c.fillStyle='#29363b';c.fillRect(0,0,W,H);
+  // Each independent 2x resolution material occupies one architectural bay.
   const panels=[
-   [22,22,152,172,'#414b50'],[179,22,159,172,'#3c474d'],
-   [22,199,316,192,'#3e484d'],[22,397,155,184,'#39454a'],
-   [183,397,155,184,'#414b50'],[22,587,316,191,'#39434a']
+   [22,22,152,172],[179,22,159,172],
+   [22,199,316,192],[22,397,155,184],
+   [183,397,155,184],[22,587,316,191]
   ];
-  panels.forEach(([x,y,w,h,color],i)=>{
-   c.fillStyle='#222e34';c.fillRect(x-2,y-2,w+4,h+4);
-   c.fillStyle=color;c.fillRect(x,y,w,h);
-   c.fillStyle='rgba(228,235,229,.038)';c.fillRect(x+3,y+3,w-6,2);
-   c.fillStyle='rgba(4,13,18,.08)';c.fillRect(x+3,y+h-5,w-6,3);
-   // Subtle metallic grain without recurring high-contrast seams.
-   for(let j=0;j<18;j++){
-    const px=x+9+Math.floor(hash(i*41+j,2)*Math.max(1,w-18));
-    const py=y+9+Math.floor(hash(i*27+j,17)*Math.max(1,h-18));
-    c.fillStyle=j%4===0?'rgba(190,202,198,.048)':'rgba(3,15,18,.055)';
-    c.fillRect(px,py,1+(j%3===0?1:0),1);
+  panels.forEach(([x,y,w,h],i)=>{
+   c.fillStyle='#16272d';c.fillRect(x-3,y-3,w+6,h+6);
+   if(!draw(c,'p02_panel_'+i,x,y,w,h)){
+    c.fillStyle=i%2?'#414b50':'#3c464b';c.fillRect(x,y,w,h);
    }
   });
-  // Two isolated service areas; texture used as material, not a repeating tile.
-  c.save();c.globalAlpha=.27;draw(c,'floor_metal',33,43,124,135);draw(c,'floor_concrete',199,415,121,141);c.restore();
-  c.fillStyle='#24363b';c.fillRect(94,310,170,58);
-  c.save();c.globalAlpha=.28;draw(c,'floor_grate',99,315,160,48);c.restore();
-  c.strokeStyle='rgba(131,152,155,.21)';c.lineWidth=2;c.strokeRect(94,310,170,58);
-  // Wear only near structural points; never a regular repeating pattern.
-  c.strokeStyle='rgba(7,19,23,.16)';c.lineWidth=1.2;
-  for(const [x,y] of [[60,111],[285,264],[76,650]]){
-    c.beginPath();c.moveTo(x,y);c.lineTo(x+11,y+4);c.lineTo(x+17,y+1);c.stroke();
-  }
-  // Rare navigation mark, desaturated and out of the central movement lane.
-  c.fillStyle='rgba(189,161,105,.14)';c.fillRect(36,562,38,5);c.fillRect(36,570,26,3);
-  // Gentle boundary darkening to bind the architecture to the floor.
-  let shadow=c.createLinearGradient(0,0,36,0);
-  shadow.addColorStop(0,'rgba(7,15,18,.19)');shadow.addColorStop(1,'rgba(7,15,18,0)');
-  c.fillStyle=shadow;c.fillRect(0,0,36,H);
-  shadow=c.createLinearGradient(W,0,W-36,0);
-  shadow.addColorStop(0,'rgba(7,15,18,.19)');shadow.addColorStop(1,'rgba(7,15,18,0)');
-  c.fillStyle=shadow;c.fillRect(W-36,0,36,H);
-  // Smaller, softer grounded props: no false black hitbox rectangles.
+  // Subtle contact darkening belongs to the room architecture, not the world limits.
+  c.save();c.globalAlpha=.17;
+  let fade=c.createLinearGradient(0,0,28,0);fade.addColorStop(0,'#000');fade.addColorStop(1,'transparent');
+  c.fillStyle=fade;c.fillRect(0,0,28,H);
+  fade=c.createLinearGradient(W,0,W-28,0);fade.addColorStop(0,'#000');fade.addColorStop(1,'transparent');
+  c.fillStyle=fade;c.fillRect(W-28,0,28,H);c.restore();
+  // Rare olive/amber service stencils, away from the survivor movement lane.
+  c.fillStyle='rgba(185,145,74,.38)';c.fillRect(44,760,36,3);
+  c.fillStyle='rgba(169,177,164,.25)';c.font='bold 12px monospace';c.textAlign='left';c.fillText('K-17',261,748);
+  // Physically aligned contact shadows, no drawn black hitbox rectangles.
   obstacles.forEach((o,i)=>{
    const [x,y,w,h]=o;
-   const name=pickProp(o,i),factor=1.24;
-   const dw=Math.max(w+8,Math.round(w*factor)),dh=Math.max(h+8,Math.round(h*factor));
+   const name=pickProp(o,i);
+   const grow=1.16,dw=Math.max(w+6,Math.round(w*grow)),dh=Math.max(h+6,Math.round(h*grow));
    const dx=x+(w-dw)/2,dy=y+(h-dh)/2;
    c.save();
-   c.fillStyle='rgba(8,17,20,.23)';c.beginPath();c.ellipse(x+w/2,y+h/2+4,dw*.48,dh*.42,0,0,Math.PI*2);c.fill();
-   c.fillStyle='rgba(198,217,207,.045)';c.fillRect(x+2,y+3,Math.max(0,w-4),2);
+   const glow=c.createRadialGradient(x+w/2,y+h/2,3,x+w/2,y+h/2,Math.max(dw,dh)*.71);
+   glow.addColorStop(0,'rgba(0,9,12,.39)');glow.addColorStop(.8,'rgba(0,9,12,.15)');glow.addColorStop(1,'rgba(0,9,12,0)');
+   c.fillStyle=glow;c.beginPath();c.ellipse(x+w/2,y+h/2+3,dw*.72,dh*.64,0,0,Math.PI*2);c.fill();
    if(!draw(c,name,dx,dy,dw,dh)){
-    c.fillStyle='#65716a';c.fillRect(dx,dy,dw,dh);
+    c.fillStyle='#59665f';c.fillRect(dx,dy,dw,dh);
    }
    c.restore();
   });
@@ -188,29 +174,36 @@
  }
  function pilotWalls(c,walls,doors){
   c.save();
-  // Quiet load-bearing beams with much larger structural rhythm.
+  // Textured 90-degree overhead girders clipped exactly to collision-wall rectangles.
   walls.forEach(([x,y,w,h])=>{
    const horizontal=w>=h;
-   c.fillStyle='#182b31';c.fillRect(x,y,w,h);
-   c.fillStyle='#38494e';c.fillRect(x+2,y+2,Math.max(0,w-4),Math.max(0,h-4));
-   c.fillStyle='rgba(181,196,192,.12)';
-   if(horizontal)c.fillRect(x+4,y+3,Math.max(0,w-8),3);
-   else c.fillRect(x+3,y+4,3,Math.max(0,h-8));
-   c.fillStyle='rgba(4,15,19,.29)';
-   if(horizontal)c.fillRect(x,y+h-5,w,5);else c.fillRect(x+w-5,y,5,h);
-   // Restrained anchoring plates every ~180 world units, not every 58.
-   for(let pos=horizontal?x+90:y+90;pos<(horizontal?x+w:y+h)-50;pos+=180){
-    c.fillStyle='#58666a';
-    if(horizontal)c.fillRect(pos,y+3,13,Math.max(4,h-6));
-    else c.fillRect(x+3,pos,Math.max(4,w-6),13);
-    c.fillStyle='rgba(216,173,99,.20)';
-    if(horizontal)c.fillRect(pos+4,y+7,5,3);else c.fillRect(x+7,pos+4,3,5);
+   c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
+   c.fillStyle='#172a32';c.fillRect(x,y,w,h);
+   if(horizontal){
+    for(let xx=x;xx<x+w;xx+=128)draw(c,'p02_wall_section',xx,y,128,h);
+   }else{
+    c.translate(x+w,y);c.rotate(Math.PI/2);
+    for(let yy=0;yy<h;yy+=128)draw(c,'p02_wall_section',yy,0,128,w);
+   }
+   c.restore();
+   // Wider-spaced embedded amber luminaires; one-dimensional along the wall only.
+   const length=horizontal?w:h;
+   if(length>140){
+    const n=Math.max(1,Math.floor(length/175));
+    for(let i=0;i<n;i++){
+     const pos=(i+.5)*length/n;
+     const lx=horizontal?x+pos-9:x+5,ly=horizontal?y+5:y+pos-9;
+     c.save();c.fillStyle='#101f25';c.fillRect(lx-3,ly-2,horizontal?24:10,horizontal?10:24);
+     c.shadowColor='#eda94d';c.shadowBlur=7;c.fillStyle='#c18b47';
+     c.fillRect(lx,ly,horizontal?18:4,horizontal?4:18);c.restore();
+    }
    }
   });
-  // The door visual maintains exactly the legacy rectangles and state colors.
   doors.forEach(({x,y,w,h,locked,arena})=>{
    const name=locked?'door_locked':arena?'door_arena':'door_open';
    const color=locked?'#e16c63':arena?'#edb364':'#58ddc5';
+   c.fillStyle='#0d1f26';c.fillRect(x-4,y-4,w+8,h+8);
+   c.strokeStyle='rgba(173,189,190,.34)';c.lineWidth=2;c.strokeRect(x-3,y-3,w+6,h+6);
    drawDoor(c,name,x,y,w,h,color);
   });
   c.restore();
