@@ -1544,14 +1544,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.2-graphics-p2.6-art-polish';
+const ASHFALL_RUNTIME_VERSION='0.9.2-topdown-survivant3-test1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-graphics-p2.6-art-polish, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.2-topdown-survivant3-test1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -3219,7 +3219,7 @@ lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.e
  if(latest){aimX=latest.vx;aimY=latest.vy;}
  else if(room.enemies?.length){const seen=room.enemies.filter(e=>hasLineOfSight(player.x,player.y,e.x,e.y,room));const tactical=tacticalObjectToTarget(room,seen);const target=tactical||(seen.length?seen.reduce((a,b)=>length(player,a)<length(player,b)?a:b):null);if(target){aimX=target.x-player.x;aimY=target.y-player.y;}}
  const mag=Math.hypot(aimX,aimY)||1;aimX/=mag;aimY/=mag;
- const drawn=window.AshPaperDollV1?.draw(cx,{x:player.x,y:player.y,time:performance.now()/1000,dx:player.dx,dy:player.dy,fx:aimX,fy:aimY,weapon:visualWeapon,weaponVisual,...active,shieldReady:!!r.eq2?.fx?.shieldReady})||false;
+ const drawn=window.AshTopDownSurvivor?.draw(cx,{x:player.x,y:player.y,fx:aimX,fy:aimY})||window.AshPaperDollV1?.draw(cx,{x:player.x,y:player.y,time:performance.now()/1000,dx:player.dx,dy:player.dy,fx:aimX,fy:aimY,weapon:visualWeapon,weaponVisual,...active,shieldReady:!!r.eq2?.fx?.shieldReady})||false;
  if(!drawn){ // Cold-start emergency silhouette in NEW skin family, never old visual.
   cx.save();cx.translate(player.x,player.y);cx.fillStyle='#0a1720';cx.beginPath();cx.ellipse(0,19,13,4,0,0,Math.PI*2);cx.fill();
   cx.fillStyle='#354556';cx.fillRect(-8,-20,16,24);cx.fillStyle='#242d40';cx.beginPath();cx.moveTo(-11,-22);cx.lineTo(-8,-35);cx.lineTo(0,-40);cx.lineTo(8,-35);cx.lineTo(11,-22);cx.closePath();cx.fill();

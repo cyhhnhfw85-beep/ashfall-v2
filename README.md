@@ -1,25 +1,14 @@
-# ASHFALL — 0.9.2 Graphics P2.6
+# ASHFALL — Version 0.9.1-graphics-p1.1
 
-Version de test du jeu ASHFALL, comprenant le système modulaire du Nomade (paper doll).
+Version de jeu complète, basée exclusivement sur ASHFALL 0.9.0-beta.1 Équipements 2.0, et sur le correctif d'interface P1.1 pour HUD/joystick. Pas de nouvelle étape 2 engagée.
 
-## Lancer le jeu
+- `index.html` : point d'entrée PWA HTML.
+- `game.js` : moteur original, uniquement version et présentation d'un texte de contrat ajustés.
+- `graphics-p1.css` : nouveau HUD premium et joystick visuellement modernisé.
+- `assets/hud/nomad-badge.png` : portrait extrait de la maquette artistique fournie.
+- `equipment2-core.js` : mécanique Équipements 2.0 historique inchangée.
+- `service-worker.js` : cache PWA 0.9.1 P1.1 avec toutes les ressources nécessaires.
 
-Cette application est destinée à être servie par HTTPS (par exemple GitHub Pages).
-Son point d'entrée est `index.html` à la racine du dépôt.
+Lire `CHANGELOG_GRAPHICS_P1_1.md`, `RAPPORT_GRAPHICS_P1_1.md`, `VALIDATION_GRAPHICS_P1_1.md` et `INSTALLATION_IPHONE_GRAPHICS_P1_1.md` avant déploiement.
 
-## Structure
-
-- `index.html`, `game.js`, `service-worker.js` : application et mode hors ligne.
-- `survivor-paperdoll.js`, `survivor-visual-resolver.js` : rendu modulaire du survivant.
-- `assets/` : illustrations et ressources, avec leurs sous-dossiers d'origine.
-- Fichiers CSS et autres scripts : interfaces et systèmes du jeu.
-
-## Statut
-
-P2.6 est une version alpha à valider sur iPhone. Les tests Safari/PWA réels
-et une partie complète n'ont pas été effectués lors de la livraison DEV.
-
-Les fichiers du moteur et des assets sont conservés octet par octet depuis
-le ZIP DEV P2.6. Seuls les anciens rapports et captures de développement sont
-écartés de cette distribution GitHub ; ce README est actualisé et `.nojekyll`
-est ajouté pour publier directement les fichiers statiques.
+**Sauvegardes** : conserver un export. L'installation remplace les fichiers du site, pas les données de progression. Les tests Safari iPhone doivent encore être réalisés par le propriétaire.
