@@ -10,7 +10,7 @@
    const angle=(ax||ay)?Math.atan2(ay,ax)+Math.PI/2:0;
    ctx.save();ctx.translate(o.x,o.y);ctx.rotate(angle);
    // Image orientée vers le haut au repos; centre de rotation fixé sur la silhouette.
-   ctx.drawImage(image,-22,-43,44,86);
+   ctx.drawImage(image,-20,-39,40,78);
    ctx.restore();return true;
   }
  });

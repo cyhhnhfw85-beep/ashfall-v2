@@ -1,9 +1,15 @@
-# ASHFALL 0.9.2 — Survivant 3.0 top-down test 1
+# ASHFALL 0.9.2 — Survivant 3.0 Topdown
 
-- Remplacement du rendu en expédition par une image unique du survivant, vue exactement du dessus.
-- Rotation continue 360° selon le vecteur de visée déjà calculé par le jeu, sans animation de marche.
-- Image illustrative détourée depuis le modèle choisi ; elle porte une arme de référence fixe (ne représente pas nécessairement l’arme équipée).
-- Le rendu refuge/personnage, les ennemis et les règles économiques n’ont pas été modifiés.
-- Rendu paper doll conservé uniquement en secours pendant le chargement ou en cas d’échec de l’image.
-- Nouveaux identifiants de version et cache PWA, sans modification des sauvegardes.
-- Contrôles automatisés statiques à compléter avec test réel iPhone : apparence, orientation, performance, chargement hors ligne.
+## TEST 2 — Réduction légère de la taille du personnage
+
+- Base : `ASHFALL 0.9.2-topdown-survivant3-test1`
+- Modification unique : réduction de la taille d'affichage du Survivant 3.0 en expédition.
+- Nouveau rendu : `40 x 78` pixels au lieu de `44 x 86`.
+- Rotation 360° conservée.
+- Aucune animation ajoutée.
+- Gameplay, collisions, ennemis, économie, interface et sauvegardes inchangés.
+
+## Point de contrôle iPhone
+
+- Vérifier que le personnage paraît un peu moins imposant à l'écran.
+- Vérifier qu'il reste bien centré sur les collisions et que la rotation est inchangée.
