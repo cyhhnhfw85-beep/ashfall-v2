@@ -598,8 +598,30 @@ function chooseShapes(rooms){
   if(ordinary.length)ordinary[pick(0,ordinary.length-1)].shape=required;
  }
 }
+// Versioned geometry: never rewrite shapes of existing saved expeditions.
+function chooseShapesV931(rooms){
+ const arena=rooms.filter(r=>r.kind==='arena'),boss=rooms.filter(r=>r.kind==='boss');
+ const extract=rooms.filter(r=>r.kind==='exit'),supply=rooms.filter(r=>r.kind==='outpost');
+ const events=rooms.filter(r=>r.kind==='secret');
+ const ordinary=rooms.filter(r=>!['arena','boss','exit','outpost','secret'].includes(r.kind));
+ if(rooms.length!==50||arena.length!==6||boss.length!==1||extract.length!==3||supply.length!==3||events.length!==4||ordinary.length!==33)
+  throw Error('Invalid V9.3.1 room quotas');
+ // Boss and arenas are the only 3x3 and 2x3 rooms.
+ for(const room of arena)room.shape='2x3';
+ boss[0].shape='3x3';
+ // 23 vertical rooms and 10 square rooms among exploration, including the starting room.
+ const other=ordinary.filter(r=>r.kind!=='start');
+ for(let i=other.length-1;i>0;i--){const j=pick(0,i);[other[i],other[j]]=[other[j],other[i]]}
+ const vertical=23;ordinary.find(r=>r.kind==='start').shape='1x2';
+ for(let i=0;i<other.length;i++)other[i].shape=i<vertical-1?'1x2':'2x2';
+ // Extraction, supply and events may only use 1x2 or 2x2.
+ const specials=[...extract,...supply,...events];
+ for(const room of specials)room.shape=Math.random()<.65?'1x2':'2x2';
+}
 function wallDoorAnchor(room,side){
  const g=roomGeom(room);
+ // Door apertures are placed on the first exterior cell of the given side.
+ // This avoids splitting an aperture at a tile seam on larger 2x2/3x3 rooms.
  if(side==='left')return {side,x:0,y:195};
  if(side==='top')return {side,x:180,y:0};
  if(side==='right')return {side,x:g.w,y:195};
@@ -768,19 +790,29 @@ function makeLargeMap(){
  let sorted=nodes.slice(1).sort((a,b)=>distance[b.id]-distance[a.id]);let bossId=sorted[0].id;
  let candidates=nodes.slice(1).filter(z=>z.id!==bossId&&distance[z.id]>=3);
  function take(count,criterion=()=>true){let opts=candidates.filter(z=>criterion(z));let result=[];while(result.length<count&&opts.length){let i=pick(0,opts.length-1),o=opts.splice(i,1)[0];candidates=candidates.filter(v=>v.id!==o.id);result.push(o.id)}return result}
- let exitIds=take(3,z=>distance[z.id]>=4);let arenaIds=take(4,z=>distance[z.id]>=3);let secrets=take(4);let guarded=take(7);
+ let exitIds=take(3,z=>distance[z.id]>=4);let arenaIds=[];
+ // Six tactical arenas, spread across the expedition's depth instead of clustered randomly.
+ const arenaPool=candidates.filter(z=>distance[z.id]>=2).sort((a,b)=>distance[a.id]-distance[b.id]);
+ for(let k=0;k<6;k++){
+  const options=arenaPool.filter(z=>candidates.some(c=>c.id===z.id)&&!arenaIds.includes(z.id));
+  if(!options.length)break;
+  const index=Math.min(options.length-1,Math.floor((k+.5)*options.length/(6-k)));
+  const chosen=options[index];arenaIds.push(chosen.id);candidates=candidates.filter(z=>z.id!==chosen.id);
+ }
+ if(arenaIds.length!==6)throw Error('ASHFALL V9.3.1: incomplete arena allocation');let secrets=take(4);let guarded=take(7);
  let maxDepth=Math.max(...distance.filter(Number.isFinite));let rooms=nodes.map(n=>({...n,depth:distance[n.id],sector:Math.min(3,Math.floor(distance[n.id]/(maxDepth+1)*4)),kind:n.id===0?'start':n.id===bossId?'boss':exitIds.includes(n.id)?'exit':arenaIds.includes(n.id)?'arena':secrets.includes(n.id)?'secret':guarded.includes(n.id)?'guarded':'standard',seen:n.id===0,spawned:false,enemies:[],chest:n.id===0||exitIds.includes(n.id)||n.id===bossId?'none':arenaIds.includes(n.id)?'none':Math.random()<.63?'closed':'none',activated:false,cleared:false,arenaWave:0,arenaReward:false}));
  // One non-combat forward outpost per advanced sector. Generated anew every expedition.
  let outpostIds=[];
  for(let sector=1;sector<=3;sector++){
   let eligible=rooms.filter(z=>z.sector===sector&&z.kind==='standard'&&z.id!==bossId).sort((a,b)=>a.depth-b.depth);
   if(!eligible.length)eligible=rooms.filter(z=>z.sector===sector&&(z.kind==='standard'||z.kind==='guarded'));
-  if(!eligible.length&&sector===3){eligible=rooms.filter(z=>z.sector===2&&z.kind==='standard').sort((a,b)=>b.depth-a.depth);if(eligible.length)eligible[0].sector=3}
-  if(eligible.length){let z=eligible[0];z.kind='outpost';z.chest='none';outpostIds.push(z.id)}
+  if(!eligible.length){eligible=rooms.filter(z=>z.kind==='standard'&&!outpostIds.includes(z.id)).sort((a,b)=>Math.abs(a.sector-sector)-Math.abs(b.sector-sector)||b.depth-a.depth);}
+  if(eligible.length){let z=eligible[0];z.kind='outpost';z.chest='closed';outpostIds.push(z.id)}
  }
- chooseShapes(rooms);
+ // Fixed V9.3.1 room dimensions; 33 ordinary (including entry), 10 designated specials, 7 major encounters.
+ chooseShapesV931(rooms);
  for(const room of rooms)room.solidDecorV42=true;
- return {rooms,edges,arenaIds,exitIds,bossId,outpostIds};
+ return {rooms,edges,arenaIds,exitIds,bossId,outpostIds,geometryVersion:31};
 }
 const SECTORS=[{name:'PÉRIPHÉRIE',bg:'#202f31',grid:'#354846',accent:'#83d9b0',enemy:'mutant',hazard:'Débris et mutants rapides'},{name:'LABORATOIRES',bg:'#152d3c',grid:'#26516a',accent:'#60cef4',enemy:'drone',hazard:'Rayons de sécurité'},{name:'FONDERIE',bg:'#372921',grid:'#65402b',accent:'#ffae62',enemy:'brute',hazard:'Évents thermiques'},{name:'CITADELLE',bg:'#292334',grid:'#50374e',accent:'#e898de',enemy:'sentinel',hazard:'Défenses renforcées'}];
 function sectorOf(room){return clamp(room?.sector||0,0,3)}
@@ -951,7 +983,7 @@ function createRun(){
  // Une salle ne peut recevoir qu'un seul terminal et aucun incident concurrent.
  const available=m.rooms.filter(z=>z.kind==='standard');
  const assigned=new Set();
- const terminalPlan=[
+ const terminalPlan=m.geometryVersion===31?[]:[
   {sector:0,role:'scanner'}, {sector:1,role:'scanner'},
   {sector:1,role:'stabilizer'}, {sector:2,role:'stabilizer'},
   {sector:2,role:'medic'}, {sector:3,role:'medic'}
@@ -972,7 +1004,7 @@ function createRun(){
  // les secteurs et distinctes des terminaux, incidents, boss et caches existants.
  // Une salle gardée compatible sert de secours si un secteur manque de salles ordinaires.
  // Les anciennes expéditions ne reçoivent jamais ces nouveaux événements.
- const discoveryPlan=[
+ const discoveryPlan=m.geometryVersion===31?[]:[
   {sector:0,role:'relay'}, {sector:1,role:'salvage'},
   {sector:1,role:'relay'}, {sector:2,role:'distress'},
   {sector:2,role:'salvage'}, {sector:3,role:'distress'},
@@ -989,7 +1021,7 @@ function createRun(){
  }
  // 6 a 9 incidents selon la structure des secteurs. Distribution aleatoire,
  // moins agressive au debut; zones plus avancees plus mouvementees.
- const incidentPool=m.rooms.filter(z=>z.kind==='standard'&&!z.fieldRole&&z.depth>=2);
+ const incidentPool=m.geometryVersion===31?[]:m.rooms.filter(z=>z.kind==='standard'&&!z.fieldRole&&z.depth>=2);
  const chosenIncidents=[];
  const caps=[2,2,3,3];
  const minimum=[1,1,2,2];
@@ -1027,7 +1059,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1661,7 +1693,7 @@ if(r.interactiveV51&&(r.hazardShields||0)>0&&(sectorOf(room)===1||sectorOf(room)
 }
 prepareRoomInteractables(room);prepareRoomFieldEvent(room);initializeIncident(room);if(!room.spawned){room.spawned=true;room.enemies=enemiesFor(id);}
 if(from!==null){
-  if(r.geometryVersion===25){
+  if(r.geometryVersion===25||r.geometryVersion===31){
    const incoming=doors(id).find(d=>d.to===from);
    if(incoming){const a=roomDoor(room,incoming);player.x=a.x+(a.side==='left'?47:a.side==='right'?-47:0);
     player.y=a.y+(a.side==='top'?47:a.side==='bottom'?-47:0);}
@@ -1701,14 +1733,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3-combat-reborn-v9.3.0';
+const ASHFALL_RUNTIME_VERSION='0.9.3-room-gen-v9.3.1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-combat-reborn-v9.3.0, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-room-gen-v9.3.1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -2221,7 +2253,7 @@ function ashMapMarkup(run,mini=false){
   const type=roomGeom(z).type, scanned=!z.seen&&!(run.visited||[]).includes(z.id)&&z.id!==run.current,here=z.id===run.current;
   const sector=Number.isFinite(z.sector)?z.sector:Math.min(3,Math.floor(z.id/13));
   const fill=scanned?'#344752':here?'#eab96e':ASH_MAP_COLORS[sector]||ASH_MAP_COLORS[0];
-  const shape=run.geometryVersion===25?roomGeom(z).cells.map(([xx,yy])=>`M${px+xx*subx} ${py+yy*suby}h${subx}v${suby}h${-subx}z`).join(' '):type==='wide'?`M${px} ${py}h${subx*2}v${suby}h${-subx*2}z`:
+  const shape=run.geometryVersion===31?roomGeom(z).cells.map(([xx,yy])=>`M${px+xx*subx/3} ${py+yy*suby/3}h${subx/3}v${suby/3}h${-subx/3}z`).join(' '):run.geometryVersion===25?roomGeom(z).cells.map(([xx,yy])=>`M${px+xx*subx} ${py+yy*suby}h${subx}v${suby}h${-subx}z`).join(' '):type==='wide'?`M${px} ${py}h${subx*2}v${suby}h${-subx*2}z`:
    type==='tall'?`M${px} ${py}h${subx}v${suby*2}h${-subx}z`:
    type==='ell'?`M${px} ${py}h${subx*2}v${suby}h${-subx}v${suby}h${-subx}z`:
    `M${px} ${py}h${subx}v${suby}h${-subx}z`;
