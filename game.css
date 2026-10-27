@@ -1031,3 +1031,8 @@ body.ashfall-expedition .ash-minimap-image svg{display:block!important;width:100
 body.ashfall-expedition.ash25-fullscreen #stage #canvas{height:calc(78% - var(--ash25-play-top,100px))!important}
 body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{position:absolute!important;top:auto!important;bottom:env(safe-area-inset-bottom,0px)!important;height:22%!important;min-height:120px!important;opacity:1!important;background:linear-gradient(180deg,rgba(9,19,30,.95),#07121e)!important;z-index:8!important;touch-action:none!important}
 body.ashfall-expedition.ash25-fullscreen #stage #joyBase{opacity:.95!important}
+
+/* V9.3.3: sac réservé au butin non sécurisé */
+.ash933-loot-bag .ash927-inventory-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.ash933-bag-empty{min-height:56px;border:1px dashed #466275;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#527081;background:#101c28}
+.ash933-loot-bag .ash927-compare{text-align:center}

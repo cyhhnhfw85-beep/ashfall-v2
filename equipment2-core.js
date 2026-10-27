@@ -4,6 +4,9 @@
  const SLOTS=['weapon','armor','boots','module','bag','artifact'];
  const WEIGHTS=[['weapon',54],['armor',13],['boots',10],['module',10],['bag',9],['artifact',4]];
  const LEVEL_BONUS=[0,1,2,3];
+ const BAG_CAPACITY=Object.freeze({Commun:6,Inhabituel:8,Rare:10,'Épique':12,'Légendaire':15,Mythique:18});
+ function capacity(run){const s=run?.eq2;if(!s)return 8;if(!s.capacityLocked)return 8; if(Number.isSafeInteger(s.capacity))return s.capacity;const bag=(s.startingOwned||[]).find(w=>w.slot==='bag'&&w.id===s.startingSlots?.bag);return bag?(BAG_CAPACITY[bag.rar]||6):4;}
+
  const CATALOG=[
   {id:'armor-bastion',slot:'armor',name:'Bastion',effect:'resist',base:.055,desc:'Réduit les dégâts subis'},
   {id:'armor-predator',slot:'armor',name:'Prédateur',effect:'killDamage',base:.055,desc:'Dégâts accrus après élimination'},
@@ -16,7 +19,7 @@
   {id:'module-medic',slot:'module',name:'Médic',effect:'medic',base:8,desc:'Soin conditionnel automatique'},
   {id:'bag-prospector',slot:'bag',name:'Prospecteur',effect:'credits',base:.02,desc:'Petit bonus de crédits extraits'},
   {id:'bag-reclaimer',slot:'bag',name:'Récupérateur',effect:'components',base:1,desc:'Composant bonus à l’extraction longue'},
-  {id:'bag-securizer',slot:'bag',name:'Sécurisateur',effect:'secure',base:1,desc:'Sécurise un objet après des salles nettoyées'},
+  {id:'bag-securizer',slot:'bag',name:'Sécurisateur',effect:'secure',base:0,desc:'Capacité de transport : le butin doit être extrait'},
   {id:'artifact-resonance',slot:'artifact',name:'Résonance',effect:'resonance',base:.13,desc:'Renforce les impulsions électriques'},
   {id:'artifact-vitality',slot:'artifact',name:'Vitalité',effect:'healing',base:.10,desc:'Amplifie les soins'},
   {id:'artifact-frenzy',slot:'artifact',name:'Frénésie',effect:'frenzy',base:.045,desc:'Renforce les enchaînements offensifs'}
@@ -84,11 +87,11 @@
  }
  function start(d,run){const s=eq2State(d);if(!s||!validate(d))throw Error('requires valid migrated save');
   const startOwned=SLOTS.map(slot=>owned(d).find(w=>w.id===s.slots[slot]&&w.slot===slot)).filter(Boolean).map(copy);
-  const slots=copy(s.slots);run.eq2={version:1,slots,startingSlots:copy(slots),startingOwned:startOwned,loot:[],clearedIds:[],secure:{itemId:null,transfers:0,abandoned:false,activated:false},fx:{shieldReady:true,shieldCooldown:0,healCooldown:0,teslaCooldown:9,killWindow:0,regenCooldown:0},pendingDrop:null};
+  const slots=copy(s.slots);run.eq2={version:1,slots,startingSlots:copy(slots),startingOwned:startOwned,loot:[],clearedIds:[],secure:{itemId:null,transfers:0,abandoned:false,activated:false},fx:{shieldReady:true,shieldCooldown:0,healCooldown:0,teslaCooldown:9,killWindow:0,regenCooldown:0},pendingDrop:null,capacity:((bag)=>bag?(BAG_CAPACITY[bag.rar]||6):4)(startOwned.find(w=>w.slot==='bag'&&w.id===slots.bag)),capacityLocked:true};
   if(!validateRun(run))throw Error('invalid run at startup');return run;
  }
  function validateRun(run){if(!run?.eq2)return false;const s=run.eq2;
-  if(!Array.isArray(s.loot)||s.loot.length>8||new Set(s.loot.map(x=>x.id)).size!==s.loot.length)return false;
+  if(!Array.isArray(s.loot)||s.loot.length>capacity(run)||new Set(s.loot.map(x=>x.id)).size!==s.loot.length)return false;
   if(s.loot.some(x=>!hasStats(x)))return false;
   const pool=[...s.startingOwned,...s.loot];if(new Set(pool.map(x=>x.id)).size!==pool.length)return false;
   if(SLOTS.some(slot=>s.slots[slot]&&!pool.some(x=>x.id===s.slots[slot]&&x.slot===slot)))return false;
@@ -104,26 +107,24 @@
   for(const k of ['damage','resist','rate','speed','credits'])out[k]=Math.min(out[k],.22);
   return out;
  }
- function canEquip(run,itemId){if(!run?.eq2)return false;const room=run.rooms?.[run.current];return !!(room&&room.cleared&&(!room.enemies||!room.enemies.length)&&runItem(run,itemId));}
- function equip(run,itemId){if(!canEquip(run,itemId))return false;const w=runItem(run,itemId);if(w.slot==='bag'&&run.eq2.secure.itemId&&run.eq2.slots.bag!==w.id)return false;run.eq2.slots[w.slot]=w.id;if(!validateRun(run))throw Error('equip integrity');return true;}
- function canPickup(run,item){return !!(run?.eq2&&hasStats(item)&&!run.eq2.loot.some(x=>x.id===item.id)&&run.eq2.loot.length<8);}
+ function canEquip(run,itemId){return false;} // Equipement interdit pendant une expédition
+ function equip(run,itemId){return false;}
+ function canPickup(run,item){return !!(run?.eq2&&hasStats(item)&&!run.eq2.loot.some(x=>x.id===item.id)&&run.eq2.loot.length<capacity(run));}
  function pickup(run,item){if(!canPickup(run,item))return false;run.eq2.loot.push(item.slot==='weapon'?normalizeWeapon(item):copy(item));if(!validateRun(run)){run.eq2.loot.pop();return false;}return true;}
- function clearRoom(run,id){if(!run?.eq2)return;const s=run.eq2;const bag=active(run,'bag');if(bag?.model!=='bag-securizer')return;if(!s.clearedIds.includes(id))s.clearedIds.push(id);const threshold=bag?.model==='bag-securizer'?({Commun:8,Rare:7,'Épique':6,'Légendaire':5}[bag.rar]||8):Infinity;
-  if(s.clearedIds.length>=threshold&&!s.secure.abandoned)s.secure.activated=true;
- }
- function secure(run,itemId){const s=run?.eq2;if(!s||!s.secure.activated||s.secure.abandoned||s.secure.itemId)return false;if(active(run,'bag')?.model!=='bag-securizer')return false;if(!s.loot.some(x=>x.id===itemId))return false;s.secure.itemId=itemId;return true;}
- function transfer(run,itemId){const s=run?.eq2;if(!s||!s.secure.itemId||s.secure.transfers!==0||s.secure.abandoned||!s.loot.some(x=>x.id===itemId)||s.secure.itemId===itemId)return false;s.secure.itemId=itemId;s.secure.transfers=1;return true;}
- function renounce(run){const s=run?.eq2;if(!s||!s.secure.itemId)return false;s.secure.itemId=null;s.secure.abandoned=true;return true;}
+ function clearRoom(run,id){} // L'assurance de butin est retirée
+ function secure(run,itemId){return false;}
+ function transfer(run,itemId){return false;}
+ function renounce(run){return false;}
  function drop(run,itemId){const s=run?.eq2;if(!s||s.secure.itemId===itemId)return null;const i=s.loot.findIndex(x=>x.id===itemId);if(i<0)return null;const previous=copy(s.slots);const [item]=s.loot.splice(i,1);
   if(s.slots[item.slot]===item.id)s.slots[item.slot]=s.startingSlots[item.slot]||null;
   if(!validateRun(run)){s.loot.splice(i,0,item);s.slots=previous;return null;}return item;
  }
  function finalize(d,run,won){if(!run?.eq2)throw Error('missing equipment 2 run');if(!validateRun(run))throw Error('run integrity before finish');
-  const s=run.eq2,acquired=won?s.loot.slice():s.loot.filter(w=>w.id===s.secure.itemId),lost=s.loot.filter(w=>!acquired.some(a=>a.id===w.id));
+  const s=run.eq2,acquired=won?s.loot.slice():[],lost=won?[]:s.loot.slice();
   const out=copy(d),curr=eq2State(out);if(!curr)throw Error('missing home state');
   if(!out.equipped)out.equipped=copy(s.startingOwned.find(w=>w.slot==='weapon')||null);
   const existingIds=new Set(owned(out).map(w=>w.id));for(const w of acquired){if(existingIds.has(w.id))throw Error('acquired item duplication');existingIds.add(w.id);if(w.slot==='weapon')out.stash.push(copy(w));else curr.gear.push(copy(w));}
-  const selected=won?s.slots:s.startingSlots;
+  const selected=s.startingSlots; // Le matériel porté reste verrouillé du départ au retour
   const desired=copy(selected);
   for(const slot of SLOTS){if(desired[slot]&&!owned(out).some(w=>w.id===desired[slot]&&w.slot===slot))desired[slot]=s.startingSlots[slot]||null;}
   const activeWeapon=owned(out).find(w=>w.id===desired.weapon)||out.equipped;
@@ -161,5 +162,5 @@
   const gain=w.slot==='weapon'?weaponPrice(w):Math.min(220,Math.max(12,15*rarityYield(w)));
   pool.splice(index,1);d.credits+=gain;return gain;
  }
- root.AshEquipment2=Object.freeze({SLOTS,CATALOG,LEGACY,CATALOG_ALL,WEIGHTS,emptySlots,model,buff,owned,gearItems,current,migrate,validate,start,validateRun,runItem,active,profile,generate,rollDrop,canEquip,equip,pickup,canPickup,clearRoom,secure,transfer,renounce,drop,finalize,rarityYield,upgradeCost,optimizeCost,applyUpgrade,applyOptimize,recycle,sell,normalizeWeapon});
+ root.AshEquipment2=Object.freeze({SLOTS,CATALOG,LEGACY,CATALOG_ALL,WEIGHTS,emptySlots,model,buff,owned,gearItems,current,migrate,validate,start,validateRun,runItem,active,profile,generate,rollDrop,canEquip,equip,pickup,canPickup,clearRoom,secure,transfer,renounce,drop,finalize,rarityYield,upgradeCost,optimizeCost,applyUpgrade,applyOptimize,recycle,sell,normalizeWeapon,capacity,BAG_CAPACITY});
 })(typeof window!=='undefined'?window:globalThis);
