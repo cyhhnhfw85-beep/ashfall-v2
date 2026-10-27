@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const RURL='assets/fixedworld/';let collisionDebug=new URLSearchParams(location.search).has('collisionDebug');let heroFacing={x:0,y:-1};let rooms={},backs={},active=false,room='01',hero,foes=[],shots=[],drops=[],chests={},clear={},triggered={},power='idle',bossDead=false,phase2=false,extract=0,extractFill=0,extractCountdown=0,visited={},credits=0,components=0,bags=[],last=0,joystick=null,held=new Set(),ui={};
+const RURL='assets/fixedworld/';let collisionDebug=new URLSearchParams(location.search).has('collisionDebug');let heroFacing={x:0,y:-1};let rooms={},backs={},collisionMasks={},active=false,room='01',hero,foes=[],shots=[],drops=[],chests={},clear={},triggered={},power='idle',bossDead=false,phase2=false,extract=0,extractFill=0,extractCountdown=0,visited={},credits=0,components=0,bags=[],last=0,joystick=null,held=new Set(),ui={};
 const connections={'01':{N:'02'},'02':{S:'01',N:'05',W:'03',E:'04'},'03':{E:'02'},'04':{W:'02'},'05':{S:'02',N:'06'},'06':{S:'05',N:'09',W:'07',E:'08'},'07':{E:'06'},'08':{W:'06'},'09':{S:'06',N:'10'},'10':{S:'09',N:'11'},'11':{S:'10',N:'12'},'12':{S:'11'}};
 const spawnEnemy=(x,y,type)=>{let cfg=({scav:[50,0.85,15],scav2:[85,1,13],heavy:[140,.7,24],drone:[38,1.4,11],mech:[950,.55,24]})[type];foes.push({x,y,type,hp:cfg[0],max:cfg[0],speed:cfg[1],damage:cfg[2],cool:Math.random()*1.5,alert:0});};
 function enemiesFor(r){foes=[];if(clear[r])return; if(r==='02'){spawnEnemy(138,255,'scav');spawnEnemy(220,467,'scav');} if(r==='05'&&power!=='done'){if(power==='idle'){spawnEnemy(340,220,'drone');spawnEnemy(405,620,'drone');}if(power==='activated')spawnEnemy(350,260,'drone');} if(r==='07'){if(!triggered.r07){spawnEnemy(338,220,'scav');spawnEnemy(312,506,'scav');}else spawnEnemy(366,360,'scav2');}if(r==='09'){if(!triggered.r09){spawnEnemy(368,322,'drone');spawnEnemy(360,746,'drone');}else {spawnEnemy(330,210,'scav2');spawnEnemy(424,640,'scav2');}}if(r==='10'){spawnEnemy(182,270,'heavy');spawnEnemy(205,485,'drone');}if(r==='11'&&!bossDead)spawnEnemy(540,520,'mech');}
@@ -26,10 +26,22 @@ function blocked(x,y,radius=12){
  const r=data(room);if(!r||!Number.isFinite(x)||!Number.isFinite(y))return true;
  const margin=22;
  if(x-radius<margin||y-radius<margin||x+radius>r.w-margin||y+radius>r.h-margin)return true;
- // V6.3 : seuls les polygones de l’empreinte réelle sont physiques.
- // Les anciens rectangles r.obs NE doivent PAS doubler la collision.
+ const mask=collisionMasks[room];
+ if(mask){
+  // This is the SAME edited mask displayed by the debug overlay.
+  // A disk of probes approximates the Survivor footprint, not a huge AABB.
+  const probes=[[0,0],[1,0],[-1,0],[0,1],[0,-1],[.707,.707],[-.707,.707],[.707,-.707],[-.707,-.707]];
+  for(const [ux,uy] of probes){
+   const px=Math.max(0,Math.min(mask.width-1,Math.round(x+ux*radius)));
+   const py=Math.max(0,Math.min(mask.height-1,Math.round(y+uy*radius)));
+   if(mask.pixels[py*mask.width+px]>127)return true;
+  }
+  return false;
+ }
+ // Safety fallback ONLY if image failed to load: old polygons, never combined.
  return (r.solids||[]).some(poly=>circlePolygon(x,y,radius,poly));
 }
+
 function move(obj,dx,dy,rad=12){
  // Sous-pas : interdit de sauter au travers d'un mur entre deux frames.
  const steps=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))/Math.max(4,rad*.6)));
@@ -62,7 +74,7 @@ let nearest=null,dist=400;for(let e of foes){let d=Math.hypot(e.x-hero.x,e.y-her
 for(let e of foes){e.cool-=dt;let dx=hero.x-e.x,dy=hero.y-e.y,d=Math.hypot(dx,dy)||1;if(e.type==='mech'&&!phase2&&e.hp<e.max*.5){phase2=true;notify('PHASE 2 — Surcharge du Mécha !');}
 if(d>(e.type==='mech'?190:105)){move(e,dx/d*e.speed*55*dt,dy/d*e.speed*55*dt,e.type==='mech'?24:13);}if(e.cool<=0){e.cool=e.type==='mech'?(phase2?1.05:1.5):e.type==='heavy'?1.8:rand(1.5,2.5);let speed=e.type==='mech'?225:155;shots.push({x:e.x,y:e.y,vx:dx/d*speed,vy:dy/d*speed,from:'enemy',ttl:2.7,damage:e.damage});if(e.type==='mech')e.alert=.36;}}for(let s of shots){s.x+=s.vx*dt;s.y+=s.vy*dt;s.ttl-=dt;if(s.from==='hero'){for(let e of foes){if(Math.hypot(s.x-e.x,s.y-e.y)<(e.type==='mech'?34:18)){e.hp-=s.damage;s.ttl=0;break;}}}else if(Math.hypot(s.x-hero.x,s.y-hero.y)<14){hero.hp-=s.damage;s.ttl=0;}}shots=shots.filter(s=>s.ttl>0&&s.x>=0&&s.y>=0&&s.x<data(room).w&&s.y<data(room).h);foes=foes.filter(e=>e.hp>0);if(hero.hp<=0){close();window.alert('EXPÉDITION ÉCHOUÉE — ceci est le mode alpha indépendant ; la sauvegarde principale est intacte.');return;}if(isCombat()&&foes.length===0&&!(room==='05'&&power==='console'))nextWave();if(msgSec>0)msgSec-=dt;}
 function render(){const c=ui.canvas,ctx=c.getContext('2d'),r=data(room);if(!r)return;let cw=c.width,ch=c.height;ctx.fillStyle='#121c23';ctx.fillRect(0,0,cw,ch);let zoom=Math.min(cw/360,ch/650)*.96,camX=safe(hero.x-cw/(2*zoom),0,Math.max(0,r.w-cw/zoom)),camY=safe(hero.y-ch/(2*zoom),0,Math.max(0,r.h-ch/zoom));ctx.save();ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);let bg=backs[room];if(bg?.complete&&bg.naturalWidth)ctx.drawImage(bg,0,0,r.w,r.h);else {ctx.fillStyle='#36454c';ctx.fillRect(0,0,r.w,r.h);}for(let [dir,p] of Object.entries(r.doors)){let v=p[1],locked=isCombat(),x=dir==='N'?v-35:dir==='S'?v-35:dir==='W'?0:r.w-20,y=dir==='N'?0:dir==='S'?r.h-20:v-38;ctx.fillStyle=locked?'#a94443':'#40d5c8';ctx.fillRect(x,y,dir==='N'||dir==='S'?70:20,dir==='N'||dir==='S'?20:76);}
-if(collisionDebug){ctx.save();ctx.strokeStyle='#29a9ff';ctx.fillStyle='rgba(16,134,255,.16)';ctx.lineWidth=2;for(const poly of (r.solids||[])){ctx.beginPath();poly.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.fill();ctx.stroke();}ctx.restore();}
+if(collisionDebug){ctx.save();const m=collisionMasks[room];if(m){ctx.globalAlpha=.38;ctx.drawImage(m.overlay,0,0,r.w,r.h);}else{ctx.strokeStyle='#29a9ff';ctx.lineWidth=2;for(const poly of (r.solids||[])){ctx.beginPath();poly.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.stroke();}}ctx.restore();}
 if(room==='08'||room==='12'){ctx.beginPath();ctx.arc(180,room==='08'?275:330,78,0,Math.PI*2);ctx.strokeStyle=room==='08'?'#66ebdf':'#ffd074';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#dbe7e4';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText(extractCountdown>0?'EXTRACTION '+Math.ceil(extractCountdown)+'s':'EXTRACTION',180,(room==='08'?275:330)-4);if(extractFill>0){ctx.beginPath();ctx.arc(180,room==='08'?275:330,69,-Math.PI/2,-Math.PI/2+extractFill*2*Math.PI);ctx.strokeStyle='#fff';ctx.stroke();}}
 if(room==='05'&&power==='console'){ctx.fillStyle='#9ff5d8';ctx.beginPath();ctx.arc(360,605,23,0,Math.PI*2);ctx.fill();ctx.fillStyle='#22343b';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('ON',360,610);}
 for(let [i,chest] of (fixedChests[room]||[]).entries()){if((room==='07'||room==='09'||room==='11')&&!clear[room])continue;const open=chests[room+':'+i];ctx.fillStyle=open?'#576369':'#b68d4d';ctx.fillRect(chest.x-17,chest.y-13,34,26);ctx.strokeStyle='#fae0a3';ctx.strokeRect(chest.x-17,chest.y-13,34,26);}
@@ -80,5 +92,21 @@ const open=()=>{if(active)return;active=true;el.hidden=false;document.body.style
 window.addEventListener('keydown',e=>{if(!active)return;if(e.code==='KeyC'){collisionDebug=!collisionDebug;return;}held.add(e.code);if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault()});window.addEventListener('keyup',e=>held.delete(e.code));
 let start=null;c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);let rect=c.getBoundingClientRect();start={x:e.clientX,y:e.clientY};joystick={dx:0,dy:0};});c.addEventListener('pointermove',e=>{if(!start||!joystick)return;let dx=e.clientX-start.x,dy=e.clientY-start.y,d=Math.hypot(dx,dy)||1;joystick.dx=dx/Math.max(35,d);joystick.dy=dy/Math.max(35,d);});const end=()=>{start=null;joystick=null};c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);
 }
-fetch(RURL+'rooms.json').then(x=>x.json()).then(v=>{rooms=v;for(const k of Object.keys(v)){let im=new Image();im.src=RURL+k+'.webp?v=room06-v63';backs[k]=im;}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();}).catch(e=>console.error('Fixed world alpha failed:',e));
+function loadCollisionMask(id,r){
+ const im=new Image(); im.onload=()=>{
+  const c=document.createElement('canvas');c.width=r.w;c.height=r.h;const context=c.getContext('2d',{willReadFrequently:true});
+  context.drawImage(im,0,0,r.w,r.h);const pixels=context.getImageData(0,0,r.w,r.h).data;
+  const solid=new Uint8Array(r.w*r.h);
+  const overlay=document.createElement('canvas');overlay.width=r.w;overlay.height=r.h;
+  const octx=overlay.getContext('2d');const idata=octx.createImageData(r.w,r.h);
+  for(let i=0;i<solid.length;i++){
+   // PNG white denotes solids; alpha is always opaque.
+   const hit=pixels[i*4]>127?255:0;solid[i]=hit;
+   idata.data[i*4]=0;idata.data[i*4+1]=170;idata.data[i*4+2]=255;idata.data[i*4+3]=hit;
+  }
+  octx.putImageData(idata,0,0);collisionMasks[id]={width:r.w,height:r.h,pixels:solid,overlay};
+ };im.onerror=()=>console.warn('Collision mask unavailable for room',id);
+ im.src=RURL+'masks/'+id+'.png?v=mask64';
+}
+fetch(RURL+'rooms.json').then(x=>x.json()).then(v=>{rooms=v;for(const [id,r] of Object.entries(v))loadCollisionMask(id,r);for(const k of Object.keys(v)){let im=new Image();im.src=RURL+k+'.webp?v=room06-v63';backs[k]=im;}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();}).catch(e=>console.error('Fixed world alpha failed:',e));
 })();
