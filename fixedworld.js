@@ -36,6 +36,65 @@ function heroAtDoor(roomId,dir,x,y,r){
  return (dir==='N'||dir==='S')?Math.abs(x-tx)<=27&&Math.abs(y-ty)<=DOOR_ACTIVATION_RADIUS:
    Math.abs(y-ty)<=28&&Math.abs(x-tx)<=DOOR_ACTIVATION_RADIUS;
 }
+// V8.0 PILOTE — les lumières se superposent aux éléments physiques dessinés dans 05.webp.
+// Aucune modification du fond, du masque, des seuils ou des collisions.
+function drawPowerStationAtmosphere(ctx,now){
+ if(room!=='05')return;
+ const t=now*0.001,live=(power==='activated'||power==='done'),ready=(power==='console');
+ ctx.save();ctx.globalCompositeOperation='screen';
+ // Éclairage des optiques ambre déjà dessinées : transformateur et colonne latérale.
+ const amber=[[288,300,8],[432,300,8],[284,511,7],[436,511,7],[68,40,9],[651,40,9],[39,356,6],[677,356,6],[39,680,6],[677,680,6],[128,645,6],[590,645,6]];
+ for(let i=0;i<amber.length;i++){
+  const [x,y,r]=amber[i],v=.62+.18*Math.sin(t*2.1+i*.81)+.10*Math.sin(t*5.9+i*1.7);
+  const g=ctx.createRadialGradient(x,y,1,x,y,r*3.4);g.addColorStop(0,`rgba(255,202,110,${.26*v})`);g.addColorStop(.24,`rgba(255,146,57,${.12*v})`);g.addColorStop(1,'rgba(255,130,60,0)');
+  ctx.fillStyle=g;ctx.fillRect(x-r*3.4,y-r*3.4,r*6.8,r*6.8);
+ }
+ // Vrais tubes latéraux : fine intensité variable dans les lentilles déjà peintes.
+ const cyan=[[59,197],[658,197]];
+ for(let i=0;i<cyan.length;i++){
+  const [x,y]=cyan[i],v=.55+.17*Math.sin(t*1.6+i);
+  ctx.fillStyle=`rgba(68,216,222,${v*.17})`;ctx.fillRect(x-2.5,y-22,5,43);
+ }
+ // Vraie centrale : pulsations à la base des trois bobines, sans remplacer leur dessin.
+ for(let i=0;i<3;i++){
+  const x=315+i*45,y=378,v=(live?.18:.07)+(Math.sin(t*(live?3.2:1.3)+i*1.45)+1)*.055;
+  const g=ctx.createRadialGradient(x,y,2,x,y,20);g.addColorStop(0,`rgba(${live?'83,226,222':'255,168,78'},${v})`);g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(x-22,y-22,44,44);
+ }
+ ctx.restore();
+ // Panneau d'état physiquement ancré sur la façade basse de la machine (près de x360, y540).
+ // Il remplace le disque turquoise géant « ON » auparavant flottant sur le sol.
+ const px=360,py=533;
+ ctx.save();ctx.translate(px,py);
+ ctx.fillStyle='rgba(5,12,16,.88)';ctx.strokeStyle='rgba(124,130,124,.86)';ctx.lineWidth=1.3;
+ ctx.fillRect(-19,-9,38,18);ctx.strokeRect(-19,-9,38,18);
+ ctx.fillStyle='#53616a';ctx.fillRect(-15,-5,19,10);
+ ctx.fillStyle=live?'#69e3d2':ready?'#f4b85e':'#734846';ctx.fillRect(7,-4,7,7);
+ ctx.shadowBlur=5;ctx.shadowColor=ctx.fillStyle;ctx.fillRect(7,-4,7,7);ctx.shadowBlur=0;
+ // Trait indicateur discret sur le socle ; jamais un grand halo UI au milieu du sol.
+ ctx.strokeStyle=live?'rgba(92,228,207,.75)':ready?'rgba(244,184,94,.65)':'rgba(158,93,67,.4)';
+ ctx.beginPath();ctx.moveTo(-16,11);ctx.lineTo(16,11);ctx.stroke();
+ ctx.restore();
+ // Microétincelle localisée sur le câblage central uniquement en phase d'activation.
+ if(live && Math.sin(t*8)>0.965){
+  ctx.save();ctx.strokeStyle='rgba(135,239,237,.55)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(285,400);ctx.lineTo(280,393);ctx.lineTo(286,390);ctx.stroke();ctx.restore();
+ }
+}
+function drawPowerStationThreshold(ctx,dir,locked,now){
+ const d=realDoor('05',dir);if(!d)return;
+ const [x,y]=d.trigger,t=now*.001,bright=.6+.12*Math.sin(t*3.4);
+ ctx.save();ctx.globalCompositeOperation='screen';
+ // N : portail rouge réel sur le mur nord; S : ligne rouge au sol près du mur sud.
+ const gateY=dir==='N'?23:750,gateX=dir==='N'?360:180;
+ const src=locked?'255,88,68':'73,215,206';
+ const g=ctx.createRadialGradient(gateX,gateY,2,gateX,gateY,45);
+ g.addColorStop(0,`rgba(${src},${bright*.16})`);g.addColorStop(1,`rgba(${src},0)`);
+ ctx.fillStyle=g;ctx.fillRect(gateX-55,gateY-24,110,48);
+ ctx.fillStyle=`rgba(${src},${bright*.27})`;
+ // Deux témoins d'état vissés sur le seuil, pas un trait au milieu de la salle.
+ for(const dx of [-26,26]){ctx.beginPath();ctx.arc(gateX+dx,gateY,2.3,0,Math.PI*2);ctx.fill();}
+ ctx.restore();
+}
 function drawDoorMarker(ctx,roomId,dir,locked,r){
  const d=realDoor(roomId,dir);if(!d)return;
  const [x,y]=d.trigger;
@@ -242,10 +301,10 @@ if((room==='08'||room==='12')&& (room!=='12'||bossDead)){let x=180,y=room==='08'
 let nearest=null,dist=400;for(let e of foes){let d=Math.hypot(e.x-hero.x,e.y-hero.y);if(d<dist){dist=d;nearest=e;}}if(nearest){let d=Math.hypot(nearest.x-hero.x,nearest.y-hero.y)||1;heroFacing={x:(nearest.x-hero.x)/d,y:(nearest.y-hero.y)/d};}hero.fire-=dt;if(nearest&&hero.fire<=0){hero.fire=.33;let d=Math.hypot(nearest.x-hero.x,nearest.y-hero.y)||1;shots.push({x:hero.x,y:hero.y,vx:(nearest.x-hero.x)/d*350,vy:(nearest.y-hero.y)/d*350,from:'hero',ttl:1.6,damage:24});}
 for(let e of foes){e.cool-=dt;let dx=hero.x-e.x,dy=hero.y-e.y,d=Math.hypot(dx,dy)||1;e.fx=dx/d;e.fy=dy/d;if(e.type==='mech'&&!phase2&&e.hp<e.max*.5){phase2=true;notify('PHASE 2 — Surcharge du Mécha !');}
 if(d>(e.type==='mech'?190:105)){move(e,dx/d*e.speed*55*dt,dy/d*e.speed*55*dt,e.type==='mech'?24:13);}if(e.cool<=0){e.cool=e.type==='mech'?(phase2?1.05:1.5):e.type==='heavy'?1.8:rand(1.5,2.5);let speed=e.type==='mech'?225:155;shots.push({x:e.x,y:e.y,vx:dx/d*speed,vy:dy/d*speed,from:'enemy',ttl:2.7,damage:e.damage});if(e.type==='mech')e.alert=.36;}}for(let s of shots){s.x+=s.vx*dt;s.y+=s.vy*dt;s.ttl-=dt;if(s.from==='hero'){for(let e of foes){if(Math.hypot(s.x-e.x,s.y-e.y)<(e.type==='mech'?34:18)){e.hp-=s.damage;s.ttl=0;break;}}}else if(Math.hypot(s.x-hero.x,s.y-hero.y)<14){hero.hp-=s.damage;s.ttl=0;}}shots=shots.filter(s=>s.ttl>0&&s.x>=0&&s.y>=0&&s.x<data(room).w&&s.y<data(room).h);for(const e of foes){if(e.hp<=0&&!e.lootDropped){e.lootDropped=true;scatterLoot(e.x,e.y,'credit',e.type==='mech'?70:e.type==='heavy'?20:8,e.type==='mech'?'boss':'common');if(e.type==='mech'||Math.random()<0.55)scatterLoot(e.x+12,e.y,'component',e.type==='mech'?4:1,'common');}}foes=foes.filter(e=>e.hp>0);if(hero.hp<=0){close();window.alert('EXPÉDITION ÉCHOUÉE — ceci est le mode alpha indépendant ; la sauvegarde principale est intacte.');return;}if(isCombat()&&foes.length===0&&!(room==='05'&&power==='console'))nextWave();if(msgSec>0)msgSec-=dt;}
-function render(){const c=ui.canvas,ctx=c.getContext('2d'),r=data(room);if(!r)return;let cw=c.width,ch=c.height;ctx.fillStyle='#121c23';ctx.fillRect(0,0,cw,ch);let zoom=Math.min(cw/360,ch/650)*.96,camX=safe(hero.x-cw/(2*zoom),0,Math.max(0,r.w-cw/zoom)),camY=safe(hero.y-ch/(2*zoom),0,Math.max(0,r.h-ch/zoom));ctx.save();ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);let bg=backs[room];if(bg?.complete&&bg.naturalWidth)ctx.drawImage(bg,0,0,r.w,r.h);else {ctx.fillStyle='#36454c';ctx.fillRect(0,0,r.w,r.h);}for(let [dir,p] of Object.entries(r.doors))drawDoorMarker(ctx,room,dir,isCombat(),r);
+function render(){const c=ui.canvas,ctx=c.getContext('2d'),r=data(room);if(!r)return;let cw=c.width,ch=c.height;ctx.fillStyle='#121c23';ctx.fillRect(0,0,cw,ch);let zoom=Math.min(cw/360,ch/650)*.96,camX=safe(hero.x-cw/(2*zoom),0,Math.max(0,r.w-cw/zoom)),camY=safe(hero.y-ch/(2*zoom),0,Math.max(0,r.h-ch/zoom));ctx.save();ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);let bg=backs[room];if(bg?.complete&&bg.naturalWidth)ctx.drawImage(bg,0,0,r.w,r.h);else {ctx.fillStyle='#36454c';ctx.fillRect(0,0,r.w,r.h);}for(let [dir,p] of Object.entries(r.doors)){if(room==='05')drawPowerStationThreshold(ctx,dir,isCombat(),performance.now());else drawDoorMarker(ctx,room,dir,isCombat(),r);}drawPowerStationAtmosphere(ctx,performance.now());
 if(collisionDebug){ctx.save();const m=collisionMasks[room];if(m){ctx.globalAlpha=.38;ctx.drawImage(m.overlay,0,0,r.w,r.h);}else{ctx.strokeStyle='#29a9ff';ctx.lineWidth=2;for(const poly of (r.solids||[])){ctx.beginPath();poly.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.stroke();}}ctx.restore();}
 if(room==='08'||room==='12'){ctx.beginPath();ctx.arc(180,room==='08'?275:330,78,0,Math.PI*2);ctx.strokeStyle=room==='08'?'#66ebdf':'#ffd074';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#dbe7e4';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText(extractCountdown>0?'EXTRACTION '+Math.ceil(extractCountdown)+'s':'EXTRACTION',180,(room==='08'?275:330)-4);if(extractFill>0){ctx.beginPath();ctx.arc(180,room==='08'?275:330,69,-Math.PI/2,-Math.PI/2+extractFill*2*Math.PI);ctx.strokeStyle='#fff';ctx.stroke();}}
-if(room==='05'&&power==='console'){ctx.fillStyle='#9ff5d8';ctx.beginPath();ctx.arc(360,605,23,0,Math.PI*2);ctx.fill();ctx.fillStyle='#22343b';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('ON',360,610);}
+// V8.0: l'état de la centrale est rendu sur son panneau physique par drawPowerStationAtmosphere().
 for(let [i,chest] of (fixedChests[room]||[]).entries()){if((room==='07'||room==='09'||room==='11')&&!clear[room])continue;drawChest(ctx,chest,i);}drawLoot(ctx);
 for(let e of foes){if(!drawEnemySprite(ctx,e)){ctx.fillStyle=e.type==='drone'?'#e6b56e':e.type==='mech'?'#bc8267':'#d27669';ctx.beginPath();ctx.arc(e.x,e.y,e.type==='mech'?32:14,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#20252a';ctx.fillRect(e.x-25,e.y-(e.type==='mech'?47:28),50,5);ctx.fillStyle='#f39b88';ctx.fillRect(e.x-25,e.y-(e.type==='mech'?47:28),50*e.hp/e.max,5);}
 for(let s of shots){ctx.fillStyle=s.from==='hero'?'#87f0dd':'#ffbd76';ctx.beginPath();ctx.arc(s.x,s.y,5,0,Math.PI*2);ctx.fill();}
