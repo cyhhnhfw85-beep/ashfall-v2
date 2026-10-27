@@ -58,3 +58,15 @@
 .ash922-item .eq2-mini-art{background:#0a1e2a;border-radius:7px;min-height:52px;grid-row:1!important}.ash922-item-details{min-width:0;display:flex;flex-direction:column;gap:4px}.ash922-item-details strong{font-size:13px}.ash922-item-details small{font-size:11px;line-height:1.4}.ash922-item .eq2-run-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px}.ash922-item .eq2-run-actions button{flex:1;min-height:41px;font-weight:750;background:#204d5e;border:1px solid #488c9e;color:#effdff}.ash922-item .eq2-run-actions button.ash922-discard{background:#292c36;border-color:#77585b;color:#edc4c0}.ash922-item .eq2-run-actions button:disabled{opacity:.45}
 .ash922-ground{margin:11px 0;padding:10px;border:1px solid #426475;border-radius:9px;background:#102635}.ash922-ground summary{color:#addce2;font-size:12px;font-weight:800;cursor:pointer;min-height:25px}.ash922-ground-list{display:grid;gap:7px;padding-top:10px}.ash922-ground-list button{min-height:40px;text-align:left}.ash922-empty-note{color:#a3bdc8;font-size:13px}
 @media(max-width:365px){.ash922-slot{gap:5px;padding:7px 5px}.ash922-slot-art{flex-basis:32px}.ash922-slot-art .weapon-art,.ash922-slot-art img{max-width:32px!important}.ash922-slot-body strong{font-size:10px}}
+
+/* V9.2.5 — Identité visuelle des équipements, au refuge et en expédition. */
+.ash925-gear-art{display:grid;place-items:center;width:100%;height:100%;min-height:35px;color:#b7e8ed;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.ash925-glyph{width:86%;height:86%;max-width:52px;max-height:52px;overflow:visible}
+.ash925-armor{color:#c1d2dc}.ash925-boots{color:#a2d2d4}.ash925-module{color:#92d9ea}.ash925-bag{color:#d0bea3}.ash925-artifact{color:#c8b0ee}
+.ash922-slot-art,.ash922-item .eq2-mini-art,.eq2-owned-card .eq2-mini-art{position:relative;isolation:isolate;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--eq2-rarity, #456879) 55%,transparent),inset 0 -16px 23px rgba(0,0,0,.22)}
+.ash922-slot-art::after,.ash922-item .eq2-mini-art::after{content:"";position:absolute;inset:auto 4px 4px 4px;height:2px;border-radius:5px;background:var(--eq2-rarity, #557688);opacity:.8;pointer-events:none}
+.ash922-item .eq2-mini-art{display:grid;place-items:center;overflow:hidden}
+.ash922-slot.ash922-worn{box-shadow:inset 0 0 0 1px rgba(123,228,191,.12)}
+.ash922-item-equipped{box-shadow:inset 0 0 0 1px rgba(103,217,165,.15)}
+.eq2-owned-card .ash925-gear-art{min-width:31px;min-height:40px}
+@media (max-width:390px){.ash925-glyph{max-height:42px}.ash922-item .eq2-mini-art{min-height:48px}}

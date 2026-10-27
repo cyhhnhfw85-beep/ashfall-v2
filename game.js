@@ -64,7 +64,21 @@ function e2MigrateWhenSafe(){
  }catch(err){e2MigrationError=String(err?.message||err);msg('⚠ Migration interrompue : '+e2MigrationError);return false;}
 }
 function e2PickWeapon(item){return item?.slot==='weapon'||!item?.slot;}
-function e2ItemArt(w){return e2PickWeapon(w)?weaponArt(w):`<span class="eq2-icon" aria-hidden="true">${{armor:'⬡',boots:'↗',module:'✦',bag:'▣',artifact:'◇'}[w.slot]||'✧'}</span>`;}
+// V9.2.5 — Silhouettes vectorielles cohérentes pour chaque famille d'équipements.
+// SVG intégrés : aucun asset distant, même rendu en PWA hors ligne.
+function e2GearGlyph(slot){
+ const shapes={
+  armor:`<path d="M18 8 27 12 37 12 46 8 53 19 46 24 44 54 20 54 18 24 11 19Z"/><path d="M27 12 32 18 37 12M22 28H42M23 36H41M27 44H37"/><path d="M18 24 22 28 20 49M46 24 42 28 44 49"/>`,
+  boots:`<path d="M13 11H29L30 32 36 39 43 42 48 42Q54 43 54 50V54H9V47L14 40 16 31Z"/><path d="M12 50H53M16 24H30M16 30H29M15 41L31 42M36 44H48"/><path d="M21 11V20"/>`,
+  module:`<rect x="13" y="13" width="38" height="38" rx="7"/><rect x="22" y="22" width="20" height="20" rx="4"/><path d="M29 22 25 32 31 32 28 42 39 29 33 29 36 22M7 23H13M7 32H13M7 41H13M51 23H57M51 32H57M51 41H57M23 7V13M41 7V13M23 51V57M41 51V57"/>`,
+  bag:`<path d="M16 21H48L52 52H12Z"/><path d="M24 21V15Q24 9 32 9T40 15V21M16 29H48M23 36H41V47H23Z"/><path d="M32 36V47M27 41H37"/>`,
+  artifact:`<path d="M32 7 49 22 44 44 32 56 20 44 15 22Z"/><path d="M32 7V56M15 22H49M20 44 32 22 44 44M24 12 32 22 40 12"/>`
+ };
+ const body=shapes[slot]||shapes.artifact;
+ return `<svg class="ash925-glyph" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`;
+}
+function e2ItemArt(w){return e2PickWeapon(w)?weaponArt(w):`<span class="ash925-gear-art ash925-${w.slot||'artifact'}" aria-hidden="true">${e2GearGlyph(w.slot)}</span>`;}
+
 function e2SlotName(slot){return ({weapon:'Arme',armor:'Armure',boots:'Bottes',module:'Module',bag:'Sac tactique',artifact:'Artefact'})[slot]||slot;}
 function e2ItemStats(w){
  if(!w)return '';
@@ -106,7 +120,7 @@ function e2RunBagMarkup(r){
  const progress=threshold?`<p class="eq2-secure-line">Sécurisation : ${Math.min(threshold,s.clearedIds.length)}/${threshold} salles · ${s.secure.itemId?'1 objet protégé':s.secure.abandoned?'Protection abandonnée':s.secure.activated?'Protection prête':'En charge'} · transfert ${s.secure.transfers}/1</p>`:'';
  const currentDrops=ground(r.rooms[r.current]).filter(d=>d.kind==='weapon'&&!d.got);
  const pending=s.pendingDrop?currentDrops.find(x=>x.id===s.pendingDrop):null;
- return `<section class="ash922-bag"><header class="ash922-header"><span class="ash922-kicker">INVENTAIRE TACTIQUE · V9.2.2</span><h2>SAC D’EXPÉDITION</h2><div class="ash922-capacity"><strong>${s.loot.length}<span>/8</span></strong><span>Objets récupérés</span></div><div class="ash922-capacity-track"><span style="width:${Math.min(100,s.loot.length/8*100)}%"></span></div></header><section class="ash922-section"><h3>ÉQUIPEMENT PORTÉ <span>6 emplacements</span></h3><div class="ash922-slots">${slots}</div></section>${progress}<section class="ash922-section"><h3>CONTENU DU SAC <span>${s.loot.length} objet(s)</span></h3><p class="ash922-help">Une pièce équipée est signalée en vert. Changement possible en salle sécurisée.</p>${currentDrops.length?`<details class="ash922-ground"><summary>ÉQUIPEMENTS AU SOL · ${currentDrops.length}</summary><div class="ash922-ground-list">${currentDrops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">${d.manualDiscard?'Récupérer volontairement':'Comparer'} · ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</div></details>`:''}${pending?`<section class="eq2-pending"><strong>SAC PLEIN — ${uiSafe(pending.item.name)}</strong><p>Choisis une pièce à laisser au sol ou conserve ton équipement.</p>${s.loot.map(w=>`<button data-e2-replace="${uiSafe(w.id)}" ${w.id===s.secure.itemId?'disabled':''}>Remplacer ${uiSafe(w.name)}</button>`).join('')}<button data-e2-dismiss="1">Laisser la trouvaille</button></section>`:''}<div class="eq2-run-list">${collected||'<p class="ash922-empty-note">Ton sac ne contient encore aucun nouveau butin.</p>'}</div>${startChoices?`<details class="ash922-ground"><summary>Équipements disponibles au départ</summary><div class="ash922-ground-list">${startChoices}</div></details>`:''}</section></section>`;
+ return `<section class="ash922-bag"><header class="ash922-header"><span class="ash922-kicker">INVENTAIRE TACTIQUE · V9.2.5</span><h2>SAC D’EXPÉDITION</h2><div class="ash922-capacity"><strong>${s.loot.length}<span>/8</span></strong><span>Objets récupérés</span></div><div class="ash922-capacity-track"><span style="width:${Math.min(100,s.loot.length/8*100)}%"></span></div></header><section class="ash922-section"><h3>ÉQUIPEMENT PORTÉ <span>6 emplacements</span></h3><div class="ash922-slots">${slots}</div></section>${progress}<section class="ash922-section"><h3>CONTENU DU SAC <span>${s.loot.length} objet(s)</span></h3><p class="ash922-help">Une pièce équipée est signalée en vert. Changement possible en salle sécurisée.</p>${currentDrops.length?`<details class="ash922-ground"><summary>ÉQUIPEMENTS AU SOL · ${currentDrops.length}</summary><div class="ash922-ground-list">${currentDrops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">${d.manualDiscard?'Récupérer volontairement':'Comparer'} · ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</div></details>`:''}${pending?`<section class="eq2-pending"><strong>SAC PLEIN — ${uiSafe(pending.item.name)}</strong><p>Choisis une pièce à laisser au sol ou conserve ton équipement.</p>${s.loot.map(w=>`<button data-e2-replace="${uiSafe(w.id)}" ${w.id===s.secure.itemId?'disabled':''}>Remplacer ${uiSafe(w.name)}</button>`).join('')}<button data-e2-dismiss="1">Laisser la trouvaille</button></section>`:''}<div class="eq2-run-list">${collected||'<p class="ash922-empty-note">Ton sac ne contient encore aucun nouveau butin.</p>'}</div>${startChoices?`<details class="ash922-ground"><summary>Équipements disponibles au départ</summary><div class="ash922-ground-list">${startChoices}</div></details>`:''}</section></section>`;
 }
 function e2OpenBag(){if(!data.run?.eq2)return;overlay='bag';$('overlay').innerHTML='<button class="close" data-op="close">✕ Fermer</button>'+e2RunBagMarkup(data.run);$('overlay').hidden=false;persist();}
 function e2RunAction(type,id){const r=data.run;if(!r?.eq2)return;const s=r.eq2;
@@ -1608,9 +1622,9 @@ if(isBoss(id,r)&&!room.cleared){room.activated=true;msg('⚠ BOSS K-17 : portes 
 player.inv=.65;bullets=[];closeOverlay();persist();render();if(room.hazardNeutralizedByTerminal){room.hazardNeutralizedByTerminal=false;msg('⚡ Blindage de zone actif : danger environnemental neutralisé.')}else if(!isArena(id,r)&&!isBoss(id,r))msg(isExit(id,r)?'Terminal d’extraction détecté.':`K-17 · salle ${id+1}/${r.rooms.length} · secteur ${room.sector+1}`)}
 // 0.8.9.59 — Coffres : tirage et débit dans la même sauvegarde vérifiée.
 const ASH_CHEST_TIERS=[
- {id:'common',name:'COMMUN',price:900,accent:'#9bb7bd',odds:[780,200,19,1]},
- {id:'rare',name:'RARE',price:2800,accent:'#72b8ed',odds:[350,550,90,10]},
- {id:'epic',name:'ÉPIQUE',price:7500,accent:'#c693f1',odds:[60,340,520,80]}
+ {id:'common',name:'COMMUN',price:750,accent:'#9bb7bd',odds:[650,310,38,2]},
+ {id:'rare',name:'RARE',price:2400,accent:'#72b8ed',odds:[200,620,160,20]},
+ {id:'epic',name:'ÉPIQUE',price:6200,accent:'#c693f1',odds:[20,230,620,130]}
 ];
 const ASH_CHEST_RARITIES=['Commun','Rare','Épique','Légendaire'];
 function ashChestWeapon(rarity,price,tier){
@@ -1629,14 +1643,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3-procedural-contracts-v9.2.3';
+const ASHFALL_RUNTIME_VERSION='0.9.3-procedural-chests-v9.2.4';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-procedural-contracts-v9.2.3, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-procedural-chests-v9.2.4, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -2959,9 +2973,38 @@ const staticSurfaces=new Map();
 window.addEventListener('ash-p01-assets-ready',()=>{staticSurfaces.clear();staticSurfacePixels=0;});
 const STATIC_MAX_PIXELS=2400000; // env. 9.6 Mio en RGBA, sans compter les overheads navigateur.
 let staticSurfacePixels=0,staticPaintCount=0;
+// V9.2.6 — finition commune sur les cellules de toutes les zones.
+// Uniquement du rendu statique : la disposition, les collisions et les sauvegardes restent identiques.
+function drawSharedRoomFinish(room,sec,theme){
+ const geometry=roomGeom(room);
+ cx.save();
+ for(const [tx,ty] of geometry.cells){
+  const x=tx*CELL_W,y=ty*CELL_H;
+  const h=((Math.imul(room.id+31,1664525)^Math.imul(tx+17,374761393)^Math.imul(ty+13,668265263))>>>0);
+  // Vis communes, espacées : même taille, même perspective et même lumière.
+  for(const [ox,oy] of [[34,38],[CELL_W-36,38],[34,CELL_H-40],[CELL_W-36,CELL_H-40]]){
+   cx.fillStyle='rgba(4,12,17,.48)';cx.fillRect(x+ox-2,y+oy-1,5,5);
+   cx.fillStyle='rgba(182,197,194,.36)';cx.fillRect(x+ox-1,y+oy-1,3,2);
+   cx.fillStyle='rgba(5,16,20,.65)';cx.fillRect(x+ox,y+oy,2,1);
+  }
+  // Traces d'usure fines sur le sol, jamais de faux obstacles.
+  const ix=x+58+(h%89),iy=y+90+((h>>>9)%125);
+  cx.strokeStyle='rgba(5,14,18,.22)';cx.lineWidth=1.5;cx.beginPath();
+  cx.moveTo(ix,iy);cx.lineTo(ix+19,iy+3);cx.lineTo(ix+26,iy-2);cx.stroke();
+  cx.strokeStyle='rgba(182,198,192,.10)';cx.lineWidth=1;cx.beginPath();
+  cx.moveTo(ix+2,iy+3);cx.lineTo(ix+19,iy+6);cx.stroke();
+  // Repère technique très discret : accent propre au secteur, géométrie commune.
+  cx.fillStyle=theme.accent;cx.globalAlpha=.14;
+  cx.fillRect(x+CELL_W-58,y+67,21,2);cx.fillRect(x+CELL_W-58,y+72,11,2);
+  cx.globalAlpha=1;
+ }
+ cx.restore();
+}
 function paintStaticSurface(room,sec,theme){
  if(window.AshP01Graphics?.applies(room,sec)){
-  window.AshP01Graphics.floor(cx,room,roomObstacles(room));return;
+  window.AshP01Graphics.floor(cx,room,roomObstacles(room));
+  drawSharedRoomFinish(room,sec,theme);
+  return;
  }
  drawScenicFloor(room,sec,theme);
  drawSectorSurface(room,sec,theme);
@@ -2969,6 +3012,7 @@ function paintStaticSurface(room,sec,theme){
  drawSectorIdentity(room,sec,theme);
  drawInteriorFloorSeams(room,sec,theme);
  drawScenicProps(room,sec,theme);
+ drawSharedRoomFinish(room,sec,theme);
  cx.font='bold 10px monospace';cx.fillStyle=theme.accent;cx.textAlign='left';
  /* Les sols sont dépourvus de texte : secteur indiqué uniquement dans le HUD. */
 }
