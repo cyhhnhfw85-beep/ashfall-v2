@@ -821,10 +821,10 @@ function sanitizeEnemyPositions(room){
  }
  return changed;
 }
-function enemiesFor(id){let r=data.run,room=r?.rooms[id];if(id===0||room?.kind==='outpost')return[];let arena=isArena(id,r),boss=isBoss(id,r),sec=sectorOf(room);let count=boss?3:arena?4:isExit(id,r)?2:pick(2,3);const enemies=[];
+function enemiesFor(id){let r=data.run,room=r?.rooms[id];if(id===0||room?.kind==='outpost')return[];let arena=isArena(id,r),boss=isBoss(id,r),sec=sectorOf(room);let count=boss?4:arena?6:isExit(id,r)?pick(3,4):room?.kind==='guarded'?pick(6,9):pick(4,7);const enemies=[];
  for(let k=0;k<count;k++){
-  let type=(boss||arena)&&k===count-1?'sentinel':sec===0?(k%2?'ranged':'chaser'):sec===1?(k%3?'ranged':'drone'):sec===2?(k%2?'brute':'ranged'):(k%2?'sentinel':'drone');
-  let hp=(type==='sentinel'?(boss?250:125):type==='brute'?125:type==='drone'?65:type==='ranged'?60:75)*(1+sec*.12);
+  let type=(boss||arena)&&k===count-1?'sentinel':sec===0?(k%4===3?'drone':k%2?'ranged':'chaser'):sec===1?(k%3===0?'ranged':k%3===1?'drone':'chaser'):sec===2?(k%3===0?'brute':k%3===1?'ranged':'drone'):(k%3===0?'sentinel':k%3===1?'drone':'chaser');
+  let hp=(type==='sentinel'?(boss?370:180):type==='brute'?195:type==='drone'?94:type==='ranged'?90:115)*(1+sec*.14);
   const pos=spawnSafe(room,enemies);
   if(pos)enemies.push({id:uid(),type,...pos,hp,max:hp,cd:Math.random()+.6,wind:0,aim:0,...(boss&&k===count-1?{guardian:true}:{} )});
  }
@@ -937,7 +937,7 @@ function ashDrawBossHud(room){
 }
 
 function spawnReinforcement(room,count){for(let k=0;k<count;k++){
- const type=k%2===0?'ranged':'chaser',hp=type==='ranged'?60:75;
+ const type=room.kind==='arena'?(k%5===0?'brute':k%3===0?'drone':k%2?'chaser':'ranged'):(k%2===0?'ranged':'chaser'),hp=type==='brute'?190:type==='drone'?94:type==='ranged'?90:115;
  const pos=spawnSafe(room,room.enemies,{x:k%2?292:67,y:85+35*(k%3)});
  if(pos)room.enemies.push({id:uid(),type,...pos,hp,max:hp,cd:1,wind:0,aim:0});
 }}
@@ -1701,14 +1701,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3-procedural-contracts-v9.2.9';
+const ASHFALL_RUNTIME_VERSION='0.9.3-combat-reborn-v9.3.0';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-procedural-contracts-v9.2.9, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-combat-reborn-v9.3.0, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -3430,7 +3430,7 @@ function objective(name){let r=data.run;if(!r.objectives.includes(name))r.object
 function update(dt){if(!data.run||overlay)return;enforceArena();let r=data.run,room=r.rooms[r.current];if(r.eq2)e2Tick(dt,room);combatFxStep(dt,room);ashSweepFxStep(dt);if(Number.isFinite(r.elapsedSeconds))r.elapsedSeconds+=dt;environment(room);if(room.cleared){room.hazardOn=false;for(let i=bullets.length-1;i>=0;i--)if(bullets[i].enemy)bullets.splice(i,1)}if(sanitizeEnemyPositions(room))persist();let sec=sectorOf(room);room.envPhase+=dt; updateInteractables(room,dt);if(!data.run)return; if(!room.cleared&&!room.hazardDisabled&&room.kind!=='outpost'&&!isExit(r.current,r)&&r.current!==0&&(sec===1||sec===2)){room.hazardCooldown-=dt;if(room.hazardCooldown<=0){room.hazardOn=!room.hazardOn;room.hazardCooldown=room.hazardOn?1.15:2.9;if(!room.hazardOn)room.hazardX=sec===1?pick(105,255):pick(105,255)}if(room.hazardOn){let hit=sec===1?Math.abs(player.x-room.hazardX)<14&&player.y>50&&player.y<350:Math.hypot(player.x-room.hazardX,player.y-205)<42;if(hit){if(!room.hazardTick||room.hazardTick<=0){hurt(sec===1?11:15,'environnement');if(!data.run)return;room.hazardTick=.65}}}room.hazardTick=Math.max(0,(room.hazardTick||0)-dt)}player.inv=Math.max(0,player.inv-dt);player.fire=Math.max(0,player.fire-dt);player.dash=0;player.dashCooldown=Math.max(0,(player.dashCooldown||0)-dt);player.dashFlash=Math.max(0,(player.dashFlash||0)-dt);
 let vx=joy.x+(keyState.ArrowRight||keyState.d?1:0)-(keyState.ArrowLeft||keyState.a?1:0),vy=joy.y+(keyState.ArrowDown||keyState.s?1:0)-(keyState.ArrowUp||keyState.w?1:0),mag=Math.hypot(vx,vy);if(mag>1){vx/=mag;vy/=mag}player.dx=vx;player.dy=vy;if(mag>.15){player.facingX=vx;player.facingY=vy}advanceSolid(player,vx*150*(1+perkBonus('speed')+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,vy*150*(1+perkBonus('speed')+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,12,room);if(transition())return;
 updateIncident(room,dt);if(!data.run)return;
-if(room.activated&&isArena(r.current,r)&&room.enemies.length===0&&!room.cleared){room.arenaWave=(room.arenaWave||1)+1;if(room.arenaWave<=3){spawnReinforcement(room,room.arenaWave===2?3:4);if(room.arenaWave===3){const elite=enemiesFor(r.current)[3];const pos=spawnSafe(room,room.enemies,{x:180,y:105});if(elite&&pos)room.enemies.push({...elite,id:uid(),hp:160,max:160,...pos});}player.inv=Math.max(player.inv,.7);msg(`⚠ ARÈNE : vague ${room.arenaWave}/3 !`)}else{room.cleared=true;room.chest='closed';r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};const arenaReward=pick(150,250);r.earnedCredits+=arenaReward;r.economy.arena+=arenaReward;objective('arène');objective('arène-recherche-1');objective('arène-recherche-2');msg('🏆 VICTOIRE : coffre épique en cours d’ouverture !')}persist()}if(isBoss(r.current,r)&&room.spawned&&room.enemies.length===0&&!room.cleared){room.cleared=true;region().bossDefeated=true;data.unlockHelix=true;r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=450;r.economy.boss+=450;objective('boss-k17');objective('boss-recherche');msg('🏆 GARDIEN K-17 VAINCU ! HELIX DÉBLOQUÉ (future région).');persist()}if(!room.cleared&&room.spawned&&room.enemies.length===0&&!isArena(r.current,r)&&!isBoss(r.current,r)&&!incidentBlocksClear(room)){room.cleared=true;if(room.kind!=='start'&&room.kind!=='outpost'){r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=20;r.economy.room+=20;objective('combat-'+r.current)}msg('✓ Salle sécurisée : nouvelles portes ouvertes !');persist()}
+if(room.activated&&isArena(r.current,r)&&room.enemies.length===0&&!room.cleared){room.arenaWave=(room.arenaWave||1)+1;if(room.arenaWave<=3){spawnReinforcement(room,room.arenaWave===2?7:4);if(room.arenaWave===3){const elite=enemiesFor(r.current).find(e=>e.type==='sentinel');const pos=spawnSafe(room,room.enemies,{x:180,y:105});if(elite&&pos)room.enemies.push({...elite,id:uid(),hp:350,max:350,...pos});}player.inv=Math.max(player.inv,.7);msg(`⚠ ARÈNE : vague ${room.arenaWave}/3 !`)}else{room.cleared=true;room.chest='closed';r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};const arenaReward=pick(150,250);r.earnedCredits+=arenaReward;r.economy.arena+=arenaReward;objective('arène');objective('arène-recherche-1');objective('arène-recherche-2');msg('🏆 VICTOIRE : coffre épique en cours d’ouverture !')}persist()}if(isBoss(r.current,r)&&room.spawned&&room.enemies.length===0&&!room.cleared){room.cleared=true;region().bossDefeated=true;data.unlockHelix=true;r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=450;r.economy.boss+=450;objective('boss-k17');objective('boss-recherche');msg('🏆 GARDIEN K-17 VAINCU ! HELIX DÉBLOQUÉ (future région).');persist()}if(!room.cleared&&room.spawned&&room.enemies.length===0&&!isArena(r.current,r)&&!isBoss(r.current,r)&&!incidentBlocksClear(room)){room.cleared=true;if(room.kind!=='start'&&room.kind!=='outpost'){r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=20;r.economy.room+=20;objective('combat-'+r.current)}msg('✓ Salle sécurisée : nouvelles portes ouvertes !');persist()}
 if(room.enemies.length&&player.fire<=0){
  const candidates=room.enemies.filter(e=>hasLineOfSight(player.x,player.y,e.x,e.y,room));
  const tactical=tacticalObjectToTarget(room,candidates);
@@ -3439,15 +3439,15 @@ if(room.enemies.length&&player.fire<=0){
   const spread=tactical?0:mag>.15?(Math.random()-.5)*.46:(Math.random()-.5)*.09;
   const ang=Math.atan2(target.y-player.y,target.x-player.x)+spread;
   const shotKind=combatFxFire(player.x,player.y,ang,r.equipped);
-  bullets.push({x:player.x,y:player.y,vx:Math.cos(ang)*300,vy:Math.sin(ang)*300,enemy:false,style:shotKind,dmg:damage()*(1+perkBonus('power'))*(1+ashRunGear().damage+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killDamage+ashRunGear().frenzy:0)),ttl:1.5});
+  bullets.push({x:player.x,y:player.y,vx:Math.cos(ang)*300,vy:Math.sin(ang)*300,enemy:false,style:shotKind,dmg:damage()*(1+perkBonus('power'))*(1+Math.min(.55,ashRunGear().damage+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killDamage+ashRunGear().frenzy:0))),ttl:1.5});
   player.fire=1/(r.equipped.rate*(1+perkBonus('rapid')+ashRunGear().rate+(r.eq2&&r.equipped.optimized==='rate'?.05:0)))
  }}
 for(let e of room.enemies){let d=length(e,player),angle=Math.atan2(player.y-e.y,player.x-e.x);e.wind=e.wind||0;if(ashBossTick(e,room,dt))continue;
  const oppositeWing=roomGeom(room).type==='ell'&&((e.x>355&&player.y>395)||(e.y>395&&player.x>355));
  const navTarget=oppositeWing?{x:180,y:195}:player;
  const moveAngle=Math.atan2(navTarget.y-e.y,navTarget.x-e.x);
-if(e.wind>0){e.wind-=dt;if(e.wind<=0){if(e.type==='chaser'||e.type==='brute'){if(e.type==='chaser')advanceSolid(e,Math.cos(e.aim)*21,Math.sin(e.aim)*21,14,room);let reach=length(e,player);if(reach<(e.type==='brute'?125:115)&&Math.abs(Math.atan2(Math.sin(angle-e.aim),Math.cos(angle-e.aim)))<.48)hurt(e.type==='brute'?25:18)}else{let count=e.type==='sentinel'?3:1;for(let j=0;j<count;j++){let a=e.aim+(j-(count-1)/2)*.18;bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(e.type==='sentinel'?190:e.type==='drone'?215:175),vy:Math.sin(a)*(e.type==='sentinel'?190:e.type==='drone'?215:175),enemy:true,dmg:e.type==='sentinel'?22:e.type==='drone'?16:14,ttl:3});if(j===0)combatFxEnemyShot(e.x,e.y,a,e.type)}}e.cd=e.type==='sentinel'?2.5:e.type==='drone'?1.45:e.type==='brute'?2.1:e.type==='ranged'?1.8:1.5}}
-else{if((oppositeWing?Math.hypot(navTarget.x-e.x,navTarget.y-e.y):d)>(e.type==='ranged'?140:e.type==='drone'?160:e.type==='sentinel'?155:e.type==='brute'?36:36)){advanceSolid(e,Math.cos(moveAngle)*dt*(e.type==='sentinel'?32:e.type==='brute'?37:e.type==='drone'?67:e.type==='ranged'?47:80),Math.sin(moveAngle)*dt*(e.type==='sentinel'?32:e.type==='brute'?37:e.type==='drone'?67:e.type==='ranged'?47:80),14,room)}ashStrafeEnemy(e,room,dt,angle,d);e.cd-=dt;if(e.cd<=0&&d<(e.type==='chaser'?135:300)){e.aim=angle;e.wind=e.type==='chaser'?.8:e.type==='brute'?1.15:e.type==='sentinel'?1.2:e.type==='drone'?.6:.7}}
+if(e.wind>0){e.wind-=dt;if(e.wind<=0){if(e.type==='chaser'||e.type==='brute'){if(e.type==='chaser')advanceSolid(e,Math.cos(e.aim)*21,Math.sin(e.aim)*21,14,room);let reach=length(e,player);if(reach<(e.type==='brute'?125:115)&&Math.abs(Math.atan2(Math.sin(angle-e.aim),Math.cos(angle-e.aim)))<.48)hurt(e.type==='brute'?25:18)}else{let count=e.type==='sentinel'?3:1;for(let j=0;j<count;j++){let a=e.aim+(j-(count-1)/2)*.18;bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*(e.type==='sentinel'?190:e.type==='drone'?215:175),vy:Math.sin(a)*(e.type==='sentinel'?190:e.type==='drone'?215:175),enemy:true,dmg:e.type==='sentinel'?22:e.type==='drone'?16:14,ttl:3});if(j===0)combatFxEnemyShot(e.x,e.y,a,e.type)}}e.cd=e.type==='sentinel'?2.0:e.type==='drone'?1.16:e.type==='brute'?1.7:e.type==='ranged'?1.45:1.26}}
+else{if((oppositeWing?Math.hypot(navTarget.x-e.x,navTarget.y-e.y):d)>(e.type==='ranged'?140:e.type==='drone'?160:e.type==='sentinel'?155:e.type==='brute'?36:36)){advanceSolid(e,Math.cos(moveAngle)*dt*(e.type==='sentinel'?42:e.type==='brute'?53:e.type==='drone'?90:e.type==='ranged'?64:106),Math.sin(moveAngle)*dt*(e.type==='sentinel'?42:e.type==='brute'?53:e.type==='drone'?90:e.type==='ranged'?64:106),14,room)}ashStrafeEnemy(e,room,dt,angle,d);e.cd-=dt;if(e.cd<=0&&d<(e.type==='chaser'?135:300)){e.aim=angle;e.wind=e.type==='chaser'?.68:e.type==='brute'?1.05:e.type==='sentinel'?1.05:e.type==='drone'?.52:.62}}
 }
 if(!data.run)return;
 for(let b of bullets){
@@ -3471,7 +3471,7 @@ if(room.enemies.length===0){
 if(room.chest==='closed'&&room.cleared&&room.enemies.length===0&&!locked()&&!incidentBlocksClear(room)){
  room.chest='opened';room.chestFx=1.15;
  const g=makeWeapon(freeChestWeaponLevel(r,room));
- if(isArena(r.current,r)){g.rar='Épique';g.dmg=Math.max(43,g.dmg+16)}
+ if(isArena(r.current,r)){g.rar='Épique';g.dmg=Math.max(36,g.dmg+10)}
  if(isGuarded(r.current,r)&&g.rar==='Commun'){g.rar='Rare';g.dmg+=8}
  lootSpawn(room,'weapon',180,118,g);lootSpawn(room,'credits',177,122,null,pick(12,24));
  ground(room)[ground(room).length-1].source='chest';msg('✨ Coffre ouvert automatiquement · '+g.name+' !');persist();
