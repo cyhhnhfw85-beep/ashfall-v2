@@ -55,3 +55,8 @@
 .sv-detail .sv-gear-detail .eq2-owned-card{display:flex;flex-wrap:wrap;gap:12px;align-items:center;border:2px solid var(--eq2-rarity,#d9e2e9);max-width:100%;box-sizing:border-box}
 .sv-detail .sv-gear-detail .eq2-item-actions{display:flex;flex-wrap:wrap;gap:8px;width:100%}
 .sv-detail .sv-gear-detail .eq2-item-actions button{flex:1 1 110px;min-height:44px}
+
+/* V9.5.8: keep the historical engine adapters non-visual in the unified Survivor view. */
+#survivor-panel-equipment[data-sv947="1"] > .sv-legacy { display:none!important; }
+#survivor-panel-equipment[data-sv947="1"] > .sv-hero,
+#survivor-panel-equipment[data-sv947="1"] > .sv-inventory { display:block!important; }
