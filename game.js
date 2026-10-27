@@ -1719,14 +1719,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3-survivant-compact-v9.3.5';
+const ASHFALL_RUNTIME_VERSION='0.9.3-expedition-clean-v9.3.6';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-survivant-compact-v9.3.5, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-expedition-clean-v9.3.6, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -3526,7 +3526,7 @@ function ashFitPlayfield(){
     const inset=Math.max(0,Math.min(bounds.height-160,Math.ceil(hudBottom-bounds.top)+4));
     const top=inset+'px';
     if(stage.style.getPropertyValue('--ash25-play-top')!==top)stage.style.setProperty('--ash25-play-top',top);
-    const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight-inset-Math.min(174,Math.max(122,stage.clientHeight*.185)));
+    const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight-inset-Math.min(132,Math.max(108,stage.clientHeight*.125)));
     const renderH=Math.max(1,Math.round(360*h/w));
     if(cv.width!==360||cv.height!==renderH){cv.width=360;cv.height=renderH;roomCamera.id=-1;}
     return;
