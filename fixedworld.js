@@ -8,8 +8,26 @@ const safe=(n,a,b)=>Math.max(a,Math.min(b,n)),rand=(a,b)=>a+Math.random()*(b-a);
 let message='',msgSec=0;
 function notify(t){message=t;msgSec=3;}
 function data(r){return rooms[r]}
-function blocked(x,y,radius=12){const r=data(room);if(!r)return true;if(x<22+radius||y<22+radius||x>r.w-22-radius||y>r.h-22-radius)return true;return r.obs.some(([a,b,w,h])=>x+radius>a&&x-radius<a+w&&y+radius>b&&y-radius<b+h);}
-function move(obj,dx,dy,rad=12){if(!blocked(obj.x+dx,obj.y,rad))obj.x+=dx;if(!blocked(obj.x,obj.y+dy,rad))obj.y+=dy;}
+// V6.1 : murs continus infranchissables, empreintes d'obstacles et déplacements anti-traversée.
+function blocked(x,y,radius=12){
+ const r=data(room);if(!r||!Number.isFinite(x)||!Number.isFinite(y))return true;
+ const margin=22;
+ if(x-radius<margin||y-radius<margin||x+radius>r.w-margin||y+radius>r.h-margin)return true;
+ // Collision cercle / rectangle : précision dans les angles, sans arrêt invisible carré.
+ return r.obs.some(([a,b,w,h])=>{
+  const cx=safe(x,a,a+w),cy=safe(y,b,b+h);
+  return (x-cx)*(x-cx)+(y-cy)*(y-cy)<radius*radius;
+ });
+}
+function move(obj,dx,dy,rad=12){
+ // Sous-pas : interdit de sauter au travers d'un mur entre deux frames.
+ const steps=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))/Math.max(4,rad*.6)));
+ for(let i=0;i<steps;i++){
+  const sx=dx/steps,sy=dy/steps;
+  if(!blocked(obj.x+sx,obj.y,rad))obj.x+=sx;
+  if(!blocked(obj.x,obj.y+sy,rad))obj.y+=sy;
+ }
+}
 function isCombat(){return ['02','05','07','09','10','11'].includes(room)&&!clear[room]}
 function initRun(){heroFacing={x:0,y:-1};room='01';hero={x:180,y:620,hp:150,max:150,fire:0,dash:0};shots=[];drops=[];chests={};clear={};triggered={};power='idle';bossDead=false;phase2=false;extract=0;extractFill=0;extractCountdown=0;visited={};credits=0;components=0;bags=[];loadRoom('01',null);notify('Expédition K-17 — Monde fixe alpha');}
 function loadRoom(next,coming){room=next;const r=data(room);if(coming){const opposite={N:'S',S:'N',W:'E',E:'W'}[coming];const dest=r.doors[opposite];const entry=dest?dest[1]:(coming==='N'||coming==='S'?r.w/2:r.h/2);if(coming==='N'){hero.x=entry;hero.y=r.h-72;}else if(coming==='S'){hero.x=entry;hero.y=72;}else if(coming==='W'){hero.x=r.w-75;hero.y=entry;}else {hero.x=75;hero.y=entry;}}hero.x=safe(hero.x,55,r.w-55);hero.y=safe(hero.y,55,r.h-55);shots=[];drops=[];visited[room]=true;enemiesFor(room);extract=0;extractFill=0;extractCountdown=0;notify(room+' · '+r.name);}
