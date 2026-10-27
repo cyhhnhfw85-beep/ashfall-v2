@@ -42,3 +42,13 @@ body.ashfall-expedition #game #afHudBar{grid-template-columns:minmax(102px,0.94f
 body.ashfall-expedition #stage #joystickZone{padding-bottom:36px!important;box-sizing:border-box!important}
 /* The intrinsic canvas dimensions are fitted to this viewport in ashFitPlayfield. */
 body.ashfall-expedition #stage #canvas{object-fit:contain!important}
+
+/* V9.4.1: override the legacy ash25 fullscreen selector, which otherwise
+   extends the canvas BELOW the joystick panel and hides the room's bottom. */
+body.ashfall-expedition.ash25-fullscreen #stage #canvas{
+  position:absolute!important;left:0!important;
+  top:var(--af-hud-h)!important;
+  height:calc(100% - var(--af-hud-h) - var(--af-controls-h))!important;
+  width:100%!important;object-fit:fill!important;aspect-ratio:auto!important;
+  transform:none!important;
+}
