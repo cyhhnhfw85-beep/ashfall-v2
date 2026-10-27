@@ -1,9 +1,0 @@
-ASHFALL V9.3.0 — COMBAT REBORN — BUILD DE TEST
-
-- Ennemis standards: 4-7; gardées: 6-9; arènes 6 + 7 + 5 dont une élite.
-- Ennemis plus rapides, points de vie augmentés; attaques plus rapprochées, télégraphes conservés.
-- Dégâts de bonus d’équipement cumulés plafonnés à +55 % (base des armes préservée).
-- Arme épique gratuite d’arène: bonus ajusté.
-- Nouvel identifiant build/cache; conserve les 50 salles et les Contrats 3.0.
-- Nouvelles expéditions recommandées pour tester la population; anciennes sauvegardes non purgées.
-- Équilibrage expérimental: faire valider sur iPhone par les testeurs, risque de difficulté excessive.
