@@ -1007,3 +1007,27 @@ body.ashfall-expedition #ashContractHud .ash-contract-caption{
 body.ashfall-expedition #ashContractHud .ash-contract-name{
   font-size:9px;line-height:1.2;
 }
+
+/* ASHFALL V9.3.2 — compact HUD, unoccluded mobile playfield */
+body.ashfall-expedition .ash-hud-avatar{display:none!important}
+body.ashfall-expedition .ash-hud-left{min-width:0!important}
+body.ashfall-expedition .ash-survivor-readout{display:flex!important;align-items:center!important;gap:5px!important}
+body.ashfall-expedition .hud-main{display:flex!important;align-items:center!important;gap:7px!important;min-width:0!important}
+body.ashfall-expedition .hud-topline{display:none!important}
+body.ashfall-expedition .ash-health-group,body.ashfall-expedition .ash-experience-group{position:relative!important;width:49px!important;height:49px!important;flex:0 0 49px!important;overflow:hidden!important;border:none!important;background:transparent!important;padding:0!important;margin:0!important}
+body.ashfall-expedition .ash-health-group{clip-path:polygon(50% 17%, 61% 4%, 79% 4%, 93% 16%, 95% 37%, 87% 54%,50% 94%,13% 54%,5% 37%,7% 16%,21% 4%,39% 4%);background:#52242b!important}
+body.ashfall-expedition .ash-experience-group{clip-path:polygon(50% 0%,94% 25%,94% 75%,50% 100%,6% 75%,6% 25%);background:#183746!important}
+body.ashfall-expedition .ash-vital-track,body.ashfall-expedition .ash-xp-track{position:absolute!important;inset:0!important;height:100%!important;width:100%!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:hidden!important;margin:0!important}
+body.ashfall-expedition #hpFill,body.ashfall-expedition #xpFill{position:absolute!important;bottom:0!important;left:0!important;width:100%!important;transition:height .2s ease!important;border-radius:0!important}
+body.ashfall-expedition #hpFill{background:#dc5967!important}body.ashfall-expedition #xpFill{background:#299cc5!important}
+body.ashfall-expedition .ash-vital-line,body.ashfall-expedition .ash-xp-line{position:absolute!important;inset:0!important;display:flex!important;z-index:3!important;align-items:center!important;justify-content:center!important;pointer-events:none!important;padding:0!important}
+body.ashfall-expedition .ash-vital-name,body.ashfall-expedition .ash-xp-name{display:none!important}
+body.ashfall-expedition #hpText,body.ashfall-expedition #xpDisplay{display:block!important;color:white!important;font-size:16px!important;line-height:1!important;font-weight:900!important;text-shadow:0 1px 3px #0b1525,0 0 3px #0b1525!important;margin:0!important}
+body.ashfall-expedition .ash-hud-right{flex-shrink:0!important}
+body.ashfall-expedition .ash-minimap-button{width:92px!important;min-width:92px!important;height:91px!important;min-height:91px!important;max-height:91px!important;overflow:hidden!important}
+body.ashfall-expedition .ash-minimap-image{height:68px!important;overflow:hidden!important}
+body.ashfall-expedition .ash-minimap-image svg{display:block!important;width:100%!important;height:100%!important}
+/* The joystick has an isolated lower control band; the game canvas ends before it. */
+body.ashfall-expedition.ash25-fullscreen #stage #canvas{height:calc(78% - var(--ash25-play-top,100px))!important}
+body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{position:absolute!important;top:auto!important;bottom:env(safe-area-inset-bottom,0px)!important;height:22%!important;min-height:120px!important;opacity:1!important;background:linear-gradient(180deg,rgba(9,19,30,.95),#07121e)!important;z-index:8!important;touch-action:none!important}
+body.ashfall-expedition.ash25-fullscreen #stage #joyBase{opacity:.95!important}

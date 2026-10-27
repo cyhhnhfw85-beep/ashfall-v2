@@ -678,7 +678,7 @@ function roomWalls(room){
 // Camera only affects rendering. World coordinates and collision data stay untransformed.
 let roomCamera={x:0,y:0,zoom:1,id:-1};
 function cameraFor(room){
- const modern=data.run?.geometryVersion===25;
+ const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?cv.height:400)/zoom;
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
@@ -1733,14 +1733,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3-room-gen-v9.3.1';
+const ASHFALL_RUNTIME_VERSION='0.9.3-hud-mobile-v9.3.2';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-room-gen-v9.3.1, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-hud-mobile-v9.3.2, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -2235,8 +2235,8 @@ function ashMapMarkup(run,mini=false){
  // visited est conservé comme source de verité lors de la reprise d'anciennes sauvegardes.
  const visited=new Set(run.visited||[]),intel=new Set(run.intelRooms||[]);
  const known=z=>!!z.seen||visited.has(z.id)||intel.has(z.id)||z.id===run.current;
- const nodes=mapNodes.filter(known);
- const bounds=mini?nodes:mapNodes;
+ const nodes=mapNodes.filter(z=>known(z)&&(!mini||(Math.abs(z.gx-current.gx)<=2&&Math.abs(z.gy-current.gy)<=2)));
+ const bounds=mini?[{gx:current.gx-2,gy:current.gy-2},{gx:current.gx+2,gy:current.gy+2}]:mapNodes;
  const minx=Math.min(...bounds.map(z=>z.gx));
  const miny=Math.min(...bounds.map(z=>z.gy));
  const maxx=Math.max(...bounds.map(z=>z.gx+(run.geometryVersion===25?roomGeom(z).w/CELL_W-1:0)));
@@ -2286,7 +2286,7 @@ function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidd
  $('upDmg').textContent=data.dmgLv>=8?'NIVEAU MAX':`Améliorer +3 dégâts · ${4+data.dmgLv*4} recherche`;$('upHp').disabled=data.hpLv>=8||data.research<4+data.hpLv*4;$('upDmg').disabled=data.dmgLv>=8||data.research<4+data.dmgLv*4;$('equipped').textContent=data.equipped?`${data.equipped.name} · ${data.equipped.rar} · ${data.equipped.dmg} dégâts · ${data.equipped.rate} tirs/s`:'Aucune';$('insurance').textContent=data.insured===data.equipped?.id?'ASSURÉE':'Non assurée';$('insure').textContent=`Assurer · ${premium()} ¤`;$('insure').disabled=data.insured===data.equipped.id||data.credits<premium();$('stash').innerHTML='<p class="ui-help">Armes stockées au refuge · appuie sur ÉQUIPER pour changer d’arme.</p>'+(data.stash.length?data.stash.map((g,i)=>itemRow(g,i,'stash')).join(''):'<p class="ui-empty">Réserve vide : extrais des armes pour remplir ton stock.</p>');if($('merchantLaunch'))$('merchantLaunch').innerHTML=afIcon('merchant')+' OUVRIR LE COMPTOIR · '+data.credits+' crédits';$('log').dataset.region=region().maxSector;
  
  if(data.eq2){$('insurance').textContent='Acquis définitivement';$('insure').hidden=true;$('insure').disabled=true;}
- const status=$('regionStatus');if(status)status.textContent='K-17 · secteurs '+(region().maxSector+1)+'/4 · avant-postes '+region().outposts.length+'/3 · Gardien '+(region().bossDefeated?'vaincu':'à découvrir')+' · Helix '+(data.unlockHelix?'débloquée (non jouable)':'verrouillée');if($('homeSectorCount'))$('homeSectorCount').textContent=(region().maxSector+1)+' / 4 secteurs';if($('homeSectorFill'))$('homeSectorFill').style.width=(25*(region().maxSector+1))+'%';if($('homeSectorProgress'))$('homeSectorProgress').setAttribute('aria-valuenow',String(region().maxSector+1));if($('statusChipSector'))$('statusChipSector').textContent='Secteurs '+(region().maxSector+1)+'/4';if($('statusChipOutpost'))$('statusChipOutpost').textContent='Avant-postes '+region().outposts.length+'/3';if($('statusChipBoss'))$('statusChipBoss').textContent='Gardien '+(region().bossDefeated?'vaincu':'à découvrir');renderRefugeCharacter();renderRefugeProgress();ashRenderContractSelection();ashRenderCareer();ashRenderLongProgress();ashRefreshContractHud(null);if(refugeActivePage==='merchant')merchantRender();if(refugeActivePage==='chests')ashChestRender();return}let room=r.rooms[r.current];if($('uiMission'))$('uiMission').textContent=uiMission().replace(/^[⚠⚡✦✓⚔📡◈]\s*/u,'');$('roomTitle').textContent=isBoss(r.current,r)?'BOSS K-17':isArena(r.current,r)?'ARÈNE':isExit(r.current,r)?'EXTRACTION':room.kind==='secret'?'SALLE SECRÈTE':room.kind==='outpost'?'BALISE':`K-17 · ${r.current+1}/${r.rooms.length}`;$('hpText').textContent=`${Math.ceil(player.hp)} / ${player.max}`;$('hpFill').style.width=`${clamp(player.hp/player.max*100,0,100)}%`;if($('hpFill'))$('hpFill').classList.toggle('ash-critical',player.hp/player.max<.28);runProgress();$('bagCount').textContent=r.eq2?`${r.eq2.loot.length}/8`:`${r.bag.length}/6`;ashRenderMiniMap(r);const xp=$('xpDisplay');if(xp){xp.textContent=`NIV. ${r.runLevel} · ${Math.floor(r.xp)}/${xpThreshold(r.runLevel)}`;xp.style.display='block';$('xpFill').style.width=(100*clamp(r.xp/xpThreshold(r.runLevel),0,1))+'%'}ashRefreshContractHud(r);const statusHint=hudStatus();$('hint').textContent=statusHint;$('hint').hidden=!statusHint}
+ const status=$('regionStatus');if(status)status.textContent='K-17 · secteurs '+(region().maxSector+1)+'/4 · avant-postes '+region().outposts.length+'/3 · Gardien '+(region().bossDefeated?'vaincu':'à découvrir')+' · Helix '+(data.unlockHelix?'débloquée (non jouable)':'verrouillée');if($('homeSectorCount'))$('homeSectorCount').textContent=(region().maxSector+1)+' / 4 secteurs';if($('homeSectorFill'))$('homeSectorFill').style.width=(25*(region().maxSector+1))+'%';if($('homeSectorProgress'))$('homeSectorProgress').setAttribute('aria-valuenow',String(region().maxSector+1));if($('statusChipSector'))$('statusChipSector').textContent='Secteurs '+(region().maxSector+1)+'/4';if($('statusChipOutpost'))$('statusChipOutpost').textContent='Avant-postes '+region().outposts.length+'/3';if($('statusChipBoss'))$('statusChipBoss').textContent='Gardien '+(region().bossDefeated?'vaincu':'à découvrir');renderRefugeCharacter();renderRefugeProgress();ashRenderContractSelection();ashRenderCareer();ashRenderLongProgress();ashRefreshContractHud(null);if(refugeActivePage==='merchant')merchantRender();if(refugeActivePage==='chests')ashChestRender();return}let room=r.rooms[r.current];if($('uiMission'))$('uiMission').textContent=uiMission().replace(/^[⚠⚡✦✓⚔📡◈]\s*/u,'');$('roomTitle').textContent=isBoss(r.current,r)?'BOSS K-17':isArena(r.current,r)?'ARÈNE':isExit(r.current,r)?'EXTRACTION':room.kind==='secret'?'SALLE SECRÈTE':room.kind==='outpost'?'BALISE':`K-17 · ${r.current+1}/${r.rooms.length}`;$('hpText').textContent=String(Math.ceil(player.hp));$('hpText').title=`${Math.ceil(player.hp)} / ${player.max} PV`;$('hpFill').style.height=`${clamp(player.hp/player.max*100,0,100)}%`;if($('hpFill'))$('hpFill').classList.toggle('ash-critical',player.hp/player.max<.28);runProgress();$('bagCount').textContent=r.eq2?`${r.eq2.loot.length}/8`:`${r.bag.length}/6`;ashRenderMiniMap(r);const xp=$('xpDisplay');if(xp){xp.textContent=`NIV. ${r.runLevel} · ${Math.floor(r.xp)}/${xpThreshold(r.runLevel)}`;xp.style.display='block';$('xpFill').style.height=(100*clamp(r.xp/xpThreshold(r.runLevel),0,1))+'%'}ashRefreshContractHud(r);const statusHint=hudStatus();$('hint').textContent=statusHint;$('hint').hidden=!statusHint}
 function closeOverlay(){if(overlay==='level'&&data.run?.pendingLevels>0)return;if(overlayReturn==='pause'&&data.run&&(overlay==='bag'||overlay==='map')){overlayReturn='';openOverlay('pause');return;}overlayReturn='';overlay='';$('overlay').hidden=true;$('overlay').innerHTML='';if(data.run?.pendingLevels>0&&ashSweepChoiceTimer===null)openLevelChoice()}
 function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2OpenBag();return;}overlay=mode;let r=data.run,html='<button class="close" data-op="close">'+afIcon('close')+' Fermer</button>';if(mode==='bag'){html+=`<h3>${afIcon("bag")} SAC D’EXPÉDITION <span class="ui-tag">${r.bag.length}/6 places</span></h3><p class="muted">Arme équipée et objets transportés. La rareté est indiquée par une couleur.</p><div class="ash-run-build"><b>CONFIGURATION</b> · ${ashGearById(r.loadout?.helmet)?.name||'Casque standard'} · ${ashGearById(r.loadout?.module)?.name||'Module vide'}</div><div class="ui-group-label">ARME ÉQUIPÉE</div>${uiWeaponCard(r.equipped,-1,'bag',true)}<div class="ui-group-label">OBJETS TRANSPORTÉS</div>${r.bag.length?r.bag.map((w,i)=>({w,i})).sort((a,b)=>(LOOT_RARITY_RANK[b.w.rar]||0)-(LOOT_RARITY_RANK[a.w.rar]||0)||lootPower(b.w)-lootPower(a.w)||a.i-b.i).map(({w,i})=>uiWeaponCard(w,i,'bag',false)).join(''):'<p class="ui-empty">Ton sac est vide. Ramasse les armes au sol pour les ajouter ici.</p>'}<p class="ui-help">${afIcon("info")} Équiper une autre arme replace l’ancienne dans le sac. L’assurance reste attachée à son objet d’origine.</p>`;
 }else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">Découvertes : '+ashDiscoveryStats(r).complete+'/'+ashDiscoveryStats(r).total+' explorées.</p><p class="muted">La forme des nouvelles pièces varie de 1×2 à 3×3 ; les anciennes expéditions gardent leurs formes historiques. Un ? représente un indice de salle non visitée.</p><div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div><p class="muted">'+r.visited.length+'/'+r.rooms.length+' salles explorées · ● Vous · B Gardien · A Arène · E Extraction · P Balise · D Découverte (d terminée). Glisse pour explorer la carte.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Équipements 2.0 · '+r.eq2.loot.length+'/8 objets nouveaux':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/${r.rooms.length} SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/8':r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button><button type="button" data-op="map">${afIcon("map")} CARTE</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
@@ -3531,16 +3531,16 @@ function joystickPaint(){const dx=joy.cx-joystickZone.clientWidth/2,dy=joy.cy-jo
 function ashFitPlayfield(){
   if(!document.body.classList.contains('ashfall-expedition'))return;
   const stage=$('stage'),hud=document.querySelector('#game .gamebar');
-  if(data.run?.geometryVersion===25){
+  if(data.run?.geometryVersion===25||data.run?.geometryVersion===31){
     document.body.classList.add('ash25-fullscreen');
     if(!stage||!hud)return;
     // Le HUD est réservé au-dessus du terrain, sans masquer l'espace bas du joystick.
     const bounds=stage.getBoundingClientRect();
     const hudBottom=hud.getBoundingClientRect().bottom;
-    const inset=Math.max(0,Math.min(bounds.height-120,Math.ceil(hudBottom-bounds.top)+4));
+    const inset=Math.max(0,Math.min(bounds.height-160,Math.ceil(hudBottom-bounds.top)+4));
     const top=inset+'px';
     if(stage.style.getPropertyValue('--ash25-play-top')!==top)stage.style.setProperty('--ash25-play-top',top);
-    const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight-inset);
+    const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight-inset-Math.max(120,stage.clientHeight*.22));
     const renderH=Math.max(1,Math.round(360*h/w));
     if(cv.width!==360||cv.height!==renderH){cv.width=360;cv.height=renderH;roomCamera.id=-1;}
     return;
@@ -3592,7 +3592,7 @@ window.addEventListener('keydown',e=>{if(e.target.tagName==='TEXTAREA')return;ke
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(data.run&&!overlay)openOverlay('pause');persist(false)}});
 window.addEventListener('pagehide',()=>persist());
 window.addEventListener('freeze',()=>persist());
-if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js?v=pc9281',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});
+if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js?v=hud932',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});
 if(data.run){runProgress();data.run.exitWave=data.run.exitWave||(data.run.exitStarted?1:0);if(data.run.exitStarted&&!Number.isInteger(data.run.exitRoom))data.run.exitRoom=data.run.current;setPlayer();if(data.run.exitStarted&&!isExit(data.run.current,data.run))cancelExtraction(data.run,'tu as quitté la salle');sanitizeEnemyPositions(data.run.rooms[data.run.current]);if(isArena(data.run.current,data.run))enforceArena();else{let cr=data.run.rooms[data.run.current];if(cr&&cr.spawned&&!isBoss(data.run.current,data.run))autoSecure(cr)}if(!player||!data.run.rooms[data.run.current]){data.run=null;data.equipped=data.equipped||starter();msg('Ancienne expédition incompatible : refuge récupéré.')}else{openOverlay('pause');msg('Expédition retrouvée : appuie sur Reprendre.')}}
 
 // Initial training: self-contained guide. The flag is intentionally separate from ashfall_pwa_v1.
