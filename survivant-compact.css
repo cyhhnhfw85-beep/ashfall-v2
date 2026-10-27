@@ -1,0 +1,33 @@
+/* ASHFALL V9.3.5 — Survivant : une seule section de gestion à la fois. */
+#refuge-page-character { --surv-space: 12px; }
+#refuge-page-character .refuge-section-head {margin: 0 0 8px!important;}
+#refuge-page-character .survivor-subnav {margin: 0 0 12px!important;}
+#survivor-panel-equipment .character-showcase {margin:0 0 10px!important; padding:12px 8px!important; min-height:0!important;}
+#survivor-panel-equipment .loadout-grid {display:none!important;}
+#survivor-panel-equipment .character-equipped-card {display:none!important;}
+#survivor-panel-equipment .ash-gear-drawer {display:none!important;}
+#survivor-panel-equipment .survivor-quickstats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 12px;}
+#survivor-panel-equipment .survivor-quickstat {border:1px solid #365467;border-radius:12px;background:#102a3b;padding:10px 5px;text-align:center;min-width:0;}
+#survivor-panel-equipment .survivor-quickstat small {display:block;color:#9bb8c8;letter-spacing:.04em;font-size:10px;}
+#survivor-panel-equipment .survivor-quickstat strong {display:block;color:#f2f6fa;font-size:17px;margin-top:4px;}
+#survivor-panel-equipment .survivor-manager {border:1px solid #3a5a6d;border-radius:14px;background:#102534;margin:10px 0;overflow:hidden;}
+#survivor-panel-equipment .survivor-manager > summary {list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:16px;color:#ecf4f8;font-weight:750;cursor:pointer;min-height:54px;}
+#survivor-panel-equipment .survivor-manager > summary::-webkit-details-marker {display:none;}
+#survivor-panel-equipment .survivor-manager > summary:after {content:'⌄';color:#83c9dc;font-size:20px;}
+#survivor-panel-equipment .survivor-manager[open] > summary:after {content:'⌃';}
+#survivor-panel-equipment .survivor-manager .survivor-manager-inner {padding:0 10px 12px;}
+#survivor-panel-equipment .survivor-manager .section-subhead {margin:8px 0!important;}
+#survivor-panel-equipment .survivor-manager .eq2-panel {padding:8px!important;}
+#survivor-panel-equipment .survivor-manager .eq2-head strong {font-size:14px;}
+#survivor-panel-equipment .survivor-manager .eq2-tip {display:none;}
+#survivor-panel-equipment .survivor-manager .eq2-collection {margin:8px 0!important;}
+#survivor-panel-equipment #characterReservePreview {display:none!important;}
+#survivor-panel-equipment .survivor-manager #stash {min-height:0!important;}
+#survivor-panel-equipment .survivor-manager .ash-loot-controls {padding:8px 0!important;}
+#survivor-panel-equipment .survivor-manager .ash-loot-controls button {min-height:38px;}
+#survivor-panel-equipment .equip-square[data-eq2-portrait-slot] {cursor:pointer;touch-action:manipulation;}
+#survivor-panel-equipment .survivor-tip {font-size:12px;color:#8eacbd;text-align:center;margin:0 0 12px;}
+@media (max-width:440px) {
+  #survivor-panel-equipment .survivor-quickstat strong{font-size:16px;}
+  #survivor-panel-equipment .survivor-manager > summary {font-size:14px;}
+}
