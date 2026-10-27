@@ -46,3 +46,12 @@
 }
 .sv-detail .ash-loot-selected,.sv-detail .ash-loot-weapon-card{border-color:var(--item-rarity,#3b6176)!important}
 .sv-detail .eq2-owned-card{border-color:var(--eq2-rarity,#3b6176)!important}
+
+/* V9.5.1 — same compact collection for weapons and tactical equipment. */
+#survivor-panel-equipment .sv-grid .sv-gear{appearance:none;color:#e7f8ff;text-align:center;cursor:pointer}
+#survivor-panel-equipment .sv-grid .sv-gear-art{height:66px;max-height:66px;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#survivor-panel-equipment .sv-grid .sv-gear-art img,#survivor-panel-equipment .sv-grid .sv-gear-art svg{max-width:85%;max-height:62px;object-fit:contain}
+#survivor-panel-equipment .sv-grid .sv-gear-name{font-size:11px;line-height:1.12;max-height:26px;overflow:hidden}
+.sv-detail .sv-gear-detail .eq2-owned-card{display:flex;flex-wrap:wrap;gap:12px;align-items:center;border:2px solid var(--eq2-rarity,#d9e2e9);max-width:100%;box-sizing:border-box}
+.sv-detail .sv-gear-detail .eq2-item-actions{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+.sv-detail .sv-gear-detail .eq2-item-actions button{flex:1 1 110px;min-height:44px}

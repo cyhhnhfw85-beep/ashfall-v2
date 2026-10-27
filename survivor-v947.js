@@ -26,19 +26,42 @@ function init(){
     );});grid.appendChild(clone);
   });}
   if(filter!=='weapons'&&gear){
-   // Reuse actual equipment2 item nodes, preserving engine's own interactions.
-   const candidates=[...gear.querySelectorAll('.eq2-owned-card,[data-eq2-item],[data-e2-select],[data-eq2-id],[data-eq2-select]')].filter(el=>!el.closest('.sv-item'));
-   const distinct=candidates.filter(el=>!candidates.some(other=>other!==el&&other.contains(el))).slice(0,120);
-   for(const source of distinct){const clone=source.cloneNode(true);clone.classList.add('sv-item','sv-gear');clone.style.setProperty('--eq2-rarity',getComputedStyle(source).getPropertyValue('--eq2-rarity').trim()||'#d9e2e9');clone.addEventListener('click',()=>open('ÉQUIPEMENT',gear));grid.appendChild(clone);}
+   // Render owned tactical gear from the same equipment2 source used by the engine.
+   // Only top-level cards, never nested action buttons or the collection wrapper.
+   const cards=[...gear.querySelectorAll('.eq2-owned-list > .eq2-owned-card')]
+    .filter(source=>!source.closest('.eq2-collection')?.querySelector('summary')?.textContent?.startsWith('Arme équipée'));
+   for(const source of cards){
+    const card=document.createElement('button');card.type='button';card.className='sv-item sv-gear';
+    const tone=source.style.getPropertyValue('--eq2-rarity').trim()||'#d9e2e9';card.style.setProperty('--eq2-rarity',tone);
+    const art=source.querySelector('.eq2-mini-art'),copy=source.querySelector('.eq2-item-copy');
+    const name=copy?.querySelector('strong')?.textContent||'Équipement';
+    card.innerHTML='<span class="sv-gear-art"></span><span class="sv-gear-name"></span>';
+    if(art)card.querySelector('.sv-gear-art').innerHTML=art.innerHTML;
+    card.querySelector('.sv-gear-name').textContent=name;
+    card.addEventListener('click',()=>{
+     const panel=document.createElement('article');panel.className='sv-gear-detail';panel.style.setProperty('--eq2-rarity',tone);
+     const item=source.cloneNode(true);item.querySelectorAll('button').forEach(button=>{
+      const attr=button.hasAttribute('data-e2-home-equip')?'data-e2-home-equip':button.hasAttribute('data-e2-sell')?'data-e2-sell':null;
+      if(!attr)return;
+      const id=button.getAttribute(attr);
+      button.addEventListener('click',event=>{
+       event.preventDefault();event.stopPropagation();
+       const original=[...gear.querySelectorAll('['+attr+']')].find(b=>b.getAttribute(attr)===id);
+       if(original){original.click();close();}
+      });
+     });
+     panel.appendChild(item);open('ÉQUIPEMENT',panel);
+    });grid.appendChild(card);
+   }
   }
   if(!grid.children.length){const empty=document.createElement('p');empty.className='sv-empty';empty.textContent='Aucun objet dans cette catégorie.';grid.appendChild(empty);}
  }
  inv.querySelectorAll('[data-sv-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.svFilter;inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x===b));refresh()}));
  // Slot tap opens real equipment configurator, and weapon slot uses existing weapon list.
- showcase.querySelectorAll('[data-eq2-portrait-slot]').forEach(slot=>{slot.setAttribute('role','button');slot.tabIndex=0;const handler=()=>{const isWeapon=slot.dataset.eq2PortraitSlot==='weapon';filter=isWeapon?'weapons':'gear';inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x.dataset.svFilter===filter));if(isWeapon){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'})}else if(gear){open('ÉQUIPEMENT',gear);}};slot.addEventListener('click',handler);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler()}})});
+ showcase.querySelectorAll('[data-eq2-portrait-slot]').forEach(slot=>{slot.setAttribute('role','button');slot.tabIndex=0;const handler=()=>{const isWeapon=slot.dataset.eq2PortraitSlot==='weapon';filter=isWeapon?'weapons':'gear';inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x.dataset.svFilter===filter));if(isWeapon){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'})}else if(gear){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'});}};slot.addEventListener('click',handler);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler()}})});
  // Engine repaints its UI; reflect results after the engine's own render cycle.
  let queued=false;const observer=new MutationObserver(()=>{if(queued||!dialog.hidden)return;queued=true;requestAnimationFrame(()=>{queued=false;refresh()})});
- if(preview)observer.observe(preview,{childList:true});if(gear)observer.observe(gear,{childList:true});
+ if(preview)observer.observe(preview,{childList:true});if(gear)observer.observe(gear,{childList:true,subtree:true});
  refresh();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
