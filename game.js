@@ -670,7 +670,7 @@ function cameraFor(room){
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
  const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
- else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.22;roomCamera.zoom=zoom}
+ else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.38;roomCamera.zoom=zoom}
  return roomCamera;
 }
 function drawRoomWalls(room,r){
@@ -1719,7 +1719,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3.9-hud-reconstruction-alpha';
+const ASHFALL_RUNTIME_VERSION='0.9.4.0-hud-layout-correction';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
@@ -2260,7 +2260,21 @@ function ashRenderMiniMap(run){
  const scanned=(run.intelRooms||[]).length;
  // La carte est réactualisée à chaque changement de salle ou découverte.
  const signature=[run.current,discovered,scanned,(run.intelRooms||[]).join(',')].join('|');
- if(signature!==ashLastMiniSignature){target.innerHTML=ashMapMarkup(run,true);ashLastMiniSignature=signature;}
+ if(signature!==ashLastMiniSignature){target.innerHTML=ashMapMarkup(run,true);
+ const mapSvg=target.querySelector('svg');
+ if(mapSvg){
+  const vb=mapSvg.viewBox.baseVal;const w=vb.width/2,h=vb.height/2;
+  // Zoom to 2x, centered around the currently visited room, clamped to map boundaries.
+  const here=(run.rooms||[])[run.current];
+  const tiles=Array.from(mapSvg.querySelectorAll('g'));
+  const active=tiles.find(g=>g.querySelector('circle'));
+  let cx=vb.x+vb.width/2,cy=vb.y+vb.height/2;
+  if(active){const bb=active.getBBox();cx=bb.x+bb.width/2;cy=bb.y+bb.height/2;}
+  const x=Math.max(vb.x,Math.min(vb.x+vb.width-w,cx-w/2));
+  const y=Math.max(vb.y,Math.min(vb.y+vb.height-h,cy-h/2));
+  mapSvg.setAttribute('viewBox',`${x} ${y} ${w} ${h}`);
+ }
+ ashLastMiniSignature=signature;}
 }
 function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
@@ -3528,7 +3542,8 @@ function ashFitPlayfield(){
     if(stage.style.getPropertyValue('--ash25-play-top')!==top)stage.style.setProperty('--ash25-play-top',top);
     const controlHeight=Math.max(1,Math.ceil(joystickZone.getBoundingClientRect().height));
     stage.style.setProperty('--af938-control-height',controlHeight+'px');
-    const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight-inset-controlHeight);
+    const playBounds=cv.getBoundingClientRect();
+    const w=Math.max(1,playBounds.width),h=Math.max(1,playBounds.height);
     const renderH=Math.max(1,Math.round(360*h/w));
     if(cv.width!==360||cv.height!==renderH){cv.width=360;cv.height=renderH;roomCamera.id=-1;}
     return;
