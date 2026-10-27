@@ -1,0 +1,13 @@
+/* V9.4.3: compact contracts between experience and smaller mini-map. */
+body.ashfall-expedition #game #afHudBar{grid-template-columns:minmax(96px,1.05fr) 52px minmax(90px,1.35fr) minmax(65px,.8fr)!important;gap:4px!important}
+body.ashfall-expedition #game #ashContractHud{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;gap:5px!important;position:relative!important;inset:auto!important;min-height:0!important;max-height:100%!important;width:52px!important;margin:0!important;padding:0!important;opacity:1!important;visibility:visible!important;background:none!important;border:0!important;box-shadow:none!important;pointer-events:none!important;overflow:visible!important}
+body.ashfall-expedition #game #ashContractHud[hidden]{display:none!important}
+#afHudBar .af-contract-item{display:flex;align-items:center;gap:3px;min-width:0;height:23px;color:#daeef1;white-space:nowrap;font-variant-numeric:tabular-nums}
+#afHudBar .af-contract-icon{width:20px;height:20px;flex:0 0 20px;display:grid;place-items:center;color:#56d3e5}
+#afHudBar .af-contract-icon svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;fill:none;display:block}
+#afHudBar .af-contract-item:nth-child(2) .af-contract-icon{color:#e6a96b}
+#afHudBar .af-contract-item:nth-child(3) .af-contract-icon{color:#a6d4a3}
+#afHudBar .af-contract-numbers{font-size:10px;line-height:1;font-weight:800;color:#f0f6f7;text-shadow:0 1px 2px #000}
+#afHudBar .af-contract-item.complete .af-contract-numbers{color:#91e4b5}
+body.ashfall-expedition #afHudBar #mapBtn{height:clamp(68px,9.5dvh,104px)!important}
+@media(max-width:365px){body.ashfall-expedition #game #afHudBar{grid-template-columns:minmax(89px,1fr) 45px minmax(75px,1.2fr) minmax(59px,.73fr)!important;gap:2px!important}body.ashfall-expedition #game #ashContractHud{width:45px!important}#afHudBar .af-contract-icon{width:17px;height:17px;flex-basis:17px}#afHudBar .af-contract-numbers{font-size:9px}}

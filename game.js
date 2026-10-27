@@ -294,7 +294,8 @@ function ashRefreshContractHud(r){
  const hud=$('ashContractHud');if(!hud)return;
  const statuses=ashContractStatuses(r);hud.hidden=!statuses.length;
  if(!statuses.length)return;
- hud.innerHTML=statuses.map(c=>`<span class="ash-contract-caption"><span><span class="ash-contract-tag">${c.complete?'✓':'◈'} CONTRAT</span><span class="ash-contract-name">${uiSafe(c.name)}</span></span><strong class="ash-contract-progress">${Math.min(c.actual,c.target)}/${c.target}</strong></span>`).join('');
+ const icons={rooms:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>',kills:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/></svg>',quality:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l3 6-9 12L3 9zM3 9h18M9 3l3 6 3-6M12 9v12"/></svg>'};
+ hud.innerHTML=statuses.map((c,i)=>{const group=ashFindContract(c.id)?.group||['rooms','kills','quality'][i]||'quality';const desc=group==='rooms'?'Exploration':group==='kills'?'Combat':'Extraction de matériel';return `<span class="af-contract-item ${c.complete?'complete':''}" title="${uiSafe(desc+': '+c.name)}" aria-label="${uiSafe(desc)} ${c.actual} sur ${c.target}"><span class="af-contract-icon">${icons[group]||icons.quality}</span><strong class="af-contract-numbers">${Math.min(c.actual,c.target)}/${c.target}</strong></span>`}).join('');
  hud.classList.toggle('complete',statuses.every(c=>c.complete));
 }
 function ashRegisterCareer(summary){
