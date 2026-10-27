@@ -994,3 +994,16 @@ body.ashfall-expedition #stage #joyKnob{width:49px!important;height:49px!importa
 /* ASHFALL 25 G2 experimental: only new generation runs. */
 body.ashfall-expedition.ash25-fullscreen #stage #canvas{position:absolute!important;left:0!important;top:var(--ash25-play-top,100px)!important;transform:none!important;width:100%!important;height:calc(100% - var(--ash25-play-top,100px))!important;max-width:none!important;max-height:none!important;aspect-ratio:auto!important;}
 body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
+
+/* V9.2.9 — trois contrats visibles pendant l'expédition */
+body.ashfall-expedition #ashContractHud:not([hidden]){
+  display:flex!important;flex-direction:column!important;gap:3px!important;
+  max-height:100px!important;overflow:auto!important;
+}
+body.ashfall-expedition #ashContractHud .ash-contract-caption{
+  display:flex;justify-content:space-between;align-items:center;gap:5px;
+  min-height:19px;white-space:normal;
+}
+body.ashfall-expedition #ashContractHud .ash-contract-name{
+  font-size:9px;line-height:1.2;
+}

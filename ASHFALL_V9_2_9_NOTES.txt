@@ -1,0 +1,9 @@
+ASHFALL V9.2.9 — 50 SALLES ET CONTRATS 3.0
+- Nouvelles expéditions : générateur historique 50 salles, 3 sorties.
+- Trois contrats simultanés : exploration, combat, extraction de matériel rare/épique.
+- Primes cumulées uniquement lors d'une extraction réussie, une fois par expédition.
+- Contrats historiques des anciennes expéditions toujours reconnus.
+- Identifiants de publication et cache actualisés.
+- Ne supprimez pas les données Safari : exportez les sauvegardes avant publication.
+- Vérifications : syntaxe JS, 100 générations de carte connectée, tests unitaires des contrats.
+- À valider : gameplay et affichage sur iPhone.
