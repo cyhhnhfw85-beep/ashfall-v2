@@ -1,0 +1,33 @@
+/* V9.4.4 — two horizontal action buttons stacked vertically, upper pause smaller */
+body.ashfall-expedition #game #afHudBar .af-hud-actions{
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;
+ justify-content:center!important;gap:5px!important;width:100%!important;
+ min-width:0!important;max-width:none!important;align-self:center!important;
+}
+body.ashfall-expedition #game #afHudBar #pauseBtn,
+body.ashfall-expedition #game #afHudBar #bagBtn{
+ box-sizing:border-box!important;display:flex!important;flex-direction:row!important;
+ align-items:center!important;justify-content:center!important;
+ flex:none!important;max-width:none!important;width:100%!important;
+ min-width:0!important;min-height:0!important;margin:0!important;
+ border:1px solid #238ea2!important;border-radius:8px!important;
+ padding:2px 4px!important;background:#071c29!important;
+ box-shadow:inset 0 0 0 1px #133746!important;touch-action:manipulation!important;
+}
+body.ashfall-expedition #game #afHudBar #pauseBtn{
+ height:clamp(29px,3.7dvh,40px)!important;
+ color:#65dce9!important;
+}
+body.ashfall-expedition #game #afHudBar #pauseBtn svg{
+ width:clamp(17px,4.2vw,23px)!important;height:clamp(17px,4.2vw,23px)!important;
+}
+body.ashfall-expedition #game #afHudBar #bagBtn{
+ height:clamp(43px,5.5dvh,62px)!important;gap:3px!important;
+ color:#ecb568!important;
+}
+body.ashfall-expedition #game #afHudBar #bagBtn svg{
+ width:clamp(20px,4.9vw,28px)!important;height:clamp(20px,4.9vw,28px)!important;
+}
+body.ashfall-expedition #game #afHudBar #bagCount{
+ font-size:clamp(10px,2.6vw,14px)!important;line-height:1!important;white-space:nowrap!important;
+}
