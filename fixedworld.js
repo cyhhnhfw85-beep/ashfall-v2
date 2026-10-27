@@ -126,7 +126,12 @@ function atDoor(){let r=data(room);if(doorGrace>0)return;if(!doorTransitionArmed
 const chestImages={};
 const chestCategory=t=>t==='boss'?'boss':t==='rare'||t==='defense'?'rare':t==='militaire'?'epic':'common';
 for(const grade of ['common','rare','epic','boss'])for(const state of ['closed','opening','open']){
- const img=new Image();img.src='assets/loot2/chest_'+grade+'_'+state+'.png?v=74';chestImages[grade+'_'+state]=img;
+ const img=new Image();img.src='assets/loot2/chest_'+grade+'_'+state+'.png?v=76';chestImages[grade+'_'+state]=img;
+}
+const lootItemImages={};
+for(const kind of ['weapon','equipment','component','credit','consumable'])for(const grade of ['common','rare','epic','boss']){
+ const image=new Image();image.src='assets/loot2/item_'+kind+'_'+grade+'.png?v=76';
+ lootItemImages[kind+'_'+grade]=image;
 }
 function freeLootPosition(x,y){
  const r=data(room),bx=safe(x,45,r.w-45),by=safe(y,45,r.h-45);
@@ -194,20 +199,21 @@ function drawChest(ctx,chest,i){
  const grade=chestCategory(chest.t),img=chestImages[grade+'_'+state];
  ctx.save();ctx.translate(chest.x,chest.y);
  const bounce=ani?Math.sin(ani.elapsed*24)*1.2:Math.sin(performance.now()/390+i)*0.7;
- if(img&&img.complete&&img.naturalWidth)ctx.drawImage(img,-26,-27+bounce,52,52);
+ if(img&&img.complete&&img.naturalWidth)ctx.drawImage(img,-35,-28+bounce,70,56);
  else {ctx.fillStyle='#d49a4b';ctx.fillRect(-22,-16,44,32);}
  if(ani){ctx.strokeStyle='#e7f7fb';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,31,-Math.PI/2,-Math.PI/2+2*Math.PI*ani.elapsed/ani.duration);ctx.stroke();}
  ctx.restore();
 }
 function drawLoot(ctx){
- for(const d of drops){const t=performance.now()/320+d.phase,up=Math.sin(t)*2;
+ for(const d of drops){
+  const phase=performance.now()/320+d.phase,up=Math.sin(phase)*1.5;
+  const key=d.kind+'_'+(lootItemImages[d.kind+'_'+d.quality]?d.quality:'common');
+  const img=lootItemImages[key];
+  const side=d.kind==='equipment'?29:d.kind==='weapon'?32:d.kind==='component'?23:d.kind==='credit'?21:26;
   ctx.save();ctx.translate(d.x,d.y+up);
-  ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.ellipse(0,7,10,4,0,0,Math.PI*2);ctx.fill();
-  const c=d.kind==='credit'?'#f2ca60':d.kind==='component'?'#70e5ec':d.quality==='boss'?'#ffbd54':d.quality==='epic'?'#bd7bff':'#58bdf5';
-  ctx.shadowColor=c;ctx.shadowBlur=7;
-  if(d.kind==='credit'){ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(0,0,7,5,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#805324';ctx.lineWidth=1;ctx.stroke();}
-  else if(d.kind==='component'){ctx.fillStyle=c;ctx.fillRect(-5,-5,10,10);ctx.strokeStyle='#163e57';ctx.strokeRect(-5,-5,10,10);}
-  else {ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(8,0);ctx.lineTo(0,9);ctx.lineTo(-8,0);ctx.closePath();ctx.fill();}
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,side*.33,side*.32,3,0,0,Math.PI*2);ctx.fill();
+  if(img&&img.complete&&img.naturalWidth)ctx.drawImage(img,-side/2,-side/2,side,side);
+  else {ctx.fillStyle='#55bfd8';ctx.fillRect(-5,-5,10,10);}
   ctx.restore();
  }
 }
