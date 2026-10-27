@@ -25,3 +25,10 @@
 .ash-end-contract{margin:10px 0 14px;border:1px solid #4b7184;background:#102b3b;border-radius:10px;padding:11px}.ash-end-contract-title{font-size:10px;color:#c3d8e3;font-weight:900;letter-spacing:.1em;margin-bottom:6px}.ash-end-contract-result{display:grid;gap:5px;color:#bfd0d9;font-size:11px}.ash-end-contract-result.complete{color:#91dfbc}.ash-end-contract-result strong{color:#ebb975;font-size:12px}
 @media(max-width:360px){.ash-contract-picker{padding:9px}.ash-contract-options{gap:4px}.ash-contract-option{padding:7px 4px!important}.ash-career{padding:11px 9px}.ash-career-row{gap:6px}.ash-career-metrics strong{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.ash-contract-option{transition:none!important}}
+
+/* Contrats V9.2.3 : sélecteur compact lisible sur téléphone */
+.ash-contract-tier-title{font-size:11px;letter-spacing:.13em;color:#b9cad4;font-weight:800;margin:14px 0 4px;}
+.ash-contract-tiers{grid-template-columns:repeat(2,minmax(0,1fr));margin:5px 0 10px;}
+.ash-contract-tiers .ash-contract-option{min-height:54px!important;padding:8px 4px!important;}
+.ash-contract-tiers .ash-contract-label{font-size:11px;letter-spacing:.02em;}
+@media(min-width:430px){.ash-contract-tiers{grid-template-columns:repeat(4,minmax(0,1fr));}}

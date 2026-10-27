@@ -195,32 +195,37 @@ function e2Finish(won,cause){const r=data.run;if(!r?.eq2)return false;
 // ASHFALL 0.8.9.67 — Contrats d'extraction. Aucun multiplicateur de loot ni de combat.
 // Le contrat est fixé dans le snapshot au départ. Récompense UNIQUE au moment de finish(true).
 const ASH_CONTRACTS=Object.freeze([
- {id:'survey',name:'RECONNAISSANCE',short:'EXPLORER',subtitle:'Cartographier le danger',detail:'Visiter au moins 12 salles différentes puis réussir une extraction.',kind:'rooms',target:12,credits:80,research:2},
- {id:'clear',name:'NETTOYAGE',short:'COMBATTRE',subtitle:'Affronter les hostiles',detail:'Éliminer au moins 20 ennemis puis réussir une extraction.',kind:'kills',target:20,credits:110,research:3},
- {id:'recover',name:'RÉCUPÉRATION',short:'RAPPORTER',subtitle:'Rapporter du matériel',detail:'Revenir avec au moins 2 armes dans le sac, puis réussir une extraction.',kind:'weapons',target:2,credits:100,research:2}
+ // Contrats historiques : restent lisibles pour les expéditions déjà sauvegardées.
+ {id:'survey',name:'RECONNAISSANCE',short:'EXPLORER',subtitle:'Cartographier le danger',detail:'Visiter 12 salles différentes et réussir une extraction.',kind:'rooms',target:12,credits:80,research:2,legacy:true},
+ {id:'clear',name:'NETTOYAGE',short:'COMBATTRE',subtitle:'Affronter les hostiles',detail:'Éliminer 20 ennemis et réussir une extraction.',kind:'kills',target:20,credits:110,research:3,legacy:true},
+ {id:'recover',name:'RÉCUPÉRATION',short:'RAPPORTER',subtitle:'Rapporter du matériel',detail:'Revenir avec 2 objets de butin puis réussir une extraction.',kind:'items',target:2,credits:100,research:2,legacy:true},
+ ...[[10,65,1],[20,155,3],[30,300,5],[50,600,10]].map(([target,credits,research])=>({id:'explore-'+target,name:'EXPLORATION '+target,short:'EXPLORER',subtitle:'Cartographier '+target+' salles',detail:'Découvrir '+target+' salles distinctes au cours de cette expédition et réussir une extraction.',kind:'rooms',target,credits,research,group:'rooms'})),
+ ...[[10,85,2],[25,210,4],[45,440,8]].map(([target,credits,research])=>({id:'combat-'+target,name:'ÉLIMINATION '+target,short:'COMBATTRE',subtitle:'Neutraliser '+target+' hostiles',detail:'Éliminer '+target+' ennemis pendant cette expédition et réussir une extraction.',kind:'kills',target,credits,research,group:'kills'})),
+ ...[[2,85,2],[4,190,4],[6,340,7]].map(([target,credits,research])=>({id:'recover-'+target,name:'RÉCUPÉRATION '+target,short:'RAPPORTER',subtitle:'Extraire '+target+' équipements',detail:'Conserver '+target+' objets de butin dans le sac à l’extraction. Les objets équipés ou abandonnés ne comptent pas.',kind:'items',target,credits,research,group:'items'}))
 ]);
 const ashFindContract=id=>ASH_CONTRACTS.find(c=>c.id===id)||null;
-const ashChosenContract=()=>ashFindContract(data.contractChoice)||ASH_CONTRACTS[0];
+const ashChosenContract=()=>{const c=ashFindContract(data.contractChoice);return c&&!c.legacy?c:ASH_CONTRACTS.find(x=>x.id==='explore-10');};
 function ashContractProgress(r,c){
  if(!r||!c)return 0;
  if(c.kind==='rooms')return new Set((r.visited||[]).filter(Number.isFinite)).size;
  if(c.kind==='kills')return Math.max(0,Math.floor(Number(r.kills)||0));
- if(c.kind==='weapons')return Array.isArray(r.bag)?r.bag.length:0;
+ if(c.kind==='items'||c.kind==='weapons')return r.eq2&&Array.isArray(r.eq2.loot)?r.eq2.loot.length:(Array.isArray(r.bag)?r.bag.length:0);
  return 0;
 }
 function ashContractStatus(r){
  const c=ashFindContract(r?.contractId);
- if(!c)return null; // anciennes expéditions : jamais de contrat rétroactif
+ if(!c)return null;
  const actual=ashContractProgress(r,c);
  return {id:c.id,name:c.name,actual,target:c.target,complete:actual>=c.target,credits:c.credits,research:c.research};
 }
 function ashRenderContractSelection(){
  const host=$('ashContractPicker');if(!host||data.run)return;
  const selected=ashChosenContract();
- host.innerHTML=`<div class="ash-contract-heading"><span>CHOISIS TON CONTRAT</span><small>Prime à l’extraction</small></div><div class="ash-contract-options" role="group" aria-label="Sélection du contrat">${ASH_CONTRACTS.map(c=>`<button class="ash-contract-option ${selected.id===c.id?'active':''}" type="button" data-contract-choice="${c.id}" aria-pressed="${selected.id===c.id}"><span class="ash-contract-label">${uiSafe(c.short)}</span><span class="ash-contract-mini">+${c.credits} CR · +${c.research} RECH.</span></button>`).join('')}</div><details class="home-contract-details"><summary><span>${uiSafe(selected.name)} : objectif</span><span aria-hidden="true">⌄</span></summary><div class="ash-contract-description"><strong>${uiSafe(selected.subtitle)}</strong><p>${uiSafe(selected.detail)}</p><small>Prime uniquement après extraction réussie. Échec ou abandon : 0 prime.</small></div></details>`;
+ const groups=[['rooms','EXPLORATION'],['kills','COMBAT'],['items','RÉCUPÉRATION']];
+ host.innerHTML=`<div class="ash-contract-heading"><span>CONTRATS 2.0</span><small>Un contrat par expédition · Prime à l’extraction</small></div>${groups.map(([key,title])=>`<div class="ash-contract-tier-title">${title}</div><div class="ash-contract-options ash-contract-tiers" role="group" aria-label="Contrats ${title}">${ASH_CONTRACTS.filter(c=>c.group===key).map(c=>`<button class="ash-contract-option ${selected.id===c.id?'active':''}" type="button" data-contract-choice="${c.id}" aria-pressed="${selected.id===c.id}"><span class="ash-contract-label">${c.target} ${key==='rooms'?'SALLES':key==='kills'?'ENNEMIS':'OBJETS'}</span><span class="ash-contract-mini">+${c.credits} CR · +${c.research} RECH.</span></button>`).join('')}</div>`).join('')}<details class="home-contract-details"><summary><span>${uiSafe(selected.name)} : objectif</span><span aria-hidden="true">⌄</span></summary><div class="ash-contract-description"><strong>${uiSafe(selected.subtitle)}</strong><p>${uiSafe(selected.detail)}</p><small>Prime versée une seule fois, uniquement après extraction réussie. Les objectifs de 50 salles sont prévus pour les expéditions à 50 salles.</small></div></details>`;
 }
 function ashSelectContract(id){
- if(data.run||data.pendingDebrief||data.chestPending||!ashFindContract(id))return;
+ if(data.run||data.pendingDebrief||data.chestPending||(!ashFindContract(id)||ashFindContract(id).legacy))return;
  const detailsOpen=!!$('ashContractPicker')?.querySelector('.home-contract-details')?.open;
  const before=data.contractChoice;data.contractChoice=id;
  if(!persist()){data.contractChoice=before;ashRenderContractSelection();return}
@@ -950,7 +955,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractId:ashChosenContract().id,earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractId:(ashChosenContract().kind==='rooms'&&ashChosenContract().target>m.rooms.length?'explore-10':ashChosenContract().id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1624,14 +1629,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3-procedural-clean-v9.1';
+const ASHFALL_RUNTIME_VERSION='0.9.3-procedural-contracts-v9.2.3';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-procedural-clean-v9.1, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-procedural-contracts-v9.2.3, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
