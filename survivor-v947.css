@@ -34,3 +34,15 @@
 .sv-detail{overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px;min-height:0}
 .sv-detail #inventorySelection{display:block!important}.sv-detail .eq2-panel{max-width:100%!important}
 @media(max-width:375px){#survivor-panel-equipment .sv-grid{gap:5px}#survivor-panel-equipment .sv-filter{padding:7px}#survivor-panel-equipment .tactical-showcase .equip-square{height:62px!important;min-height:62px!important;max-height:62px!important}}
+
+/* V9.5.0 — Survivor item rarity outlines, from the engine-provided rarity variables. */
+#survivor-panel-equipment .sv-grid .sv-item[style*="--item-rarity"] {
+ border:2px solid var(--item-rarity,#d9e2e9)!important;
+ box-shadow:inset 0 -2px 0 var(--item-rarity,#d9e2e9)!important;
+}
+#survivor-panel-equipment .sv-grid .sv-gear[style*="--eq2-rarity"] {
+ border:2px solid var(--eq2-rarity,#d9e2e9)!important;
+ box-shadow:inset 0 -2px 0 var(--eq2-rarity,#d9e2e9)!important;
+}
+.sv-detail .ash-loot-selected,.sv-detail .ash-loot-weapon-card{border-color:var(--item-rarity,#3b6176)!important}
+.sv-detail .eq2-owned-card{border-color:var(--eq2-rarity,#3b6176)!important}

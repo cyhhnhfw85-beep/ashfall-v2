@@ -120,7 +120,7 @@ function e2ComparisonMarkup(selected,current){
 }
 function e2OwnedCard(w,slot,selected){
  const isOn=selected?.id===w.id,level=w.level||1;
- return `<article class="eq2-owned-card ${isOn?'is-equipped':''}" style="--eq2-rarity:${tint(w)}"><span class="eq2-mini-art">${e2ItemArt(w)}</span><div class="eq2-item-copy"><strong>${uiSafe(w.name)}</strong><small>${uiSafe(w.rar)} · Nv ${level}</small><small>${uiSafe(e2ItemStats(w))}</small></div><div class="eq2-item-actions">${isOn?'<span class="eq2-current">PORTÉ</span>':`<button data-e2-home-equip="${uiSafe(w.id)}">Équiper</button>`}${!isOn?`<button data-e2-sell="${uiSafe(w.id)}">Vendre</button><button data-e2-recycle="${uiSafe(w.id)}">Recycler</button>`:''}</div></article>`;
+ return `<article class="eq2-owned-card ${isOn?'is-equipped':''}" style="--eq2-rarity:${tint(w)}"><span class="eq2-mini-art">${e2ItemArt(w)}</span><div class="eq2-item-copy"><strong>${uiSafe(w.name)}</strong><small>${uiSafe(w.rar)} · Nv ${level}</small><small>${uiSafe(e2ItemStats(w))}</small></div><div class="eq2-item-actions">${isOn?'<span class="eq2-current">PORTÉ</span>':`<button data-e2-home-equip="${uiSafe(w.id)}">Équiper</button>`}${!isOn?`<button data-e2-sell="${uiSafe(w.id)}">Vendre</button>`:''}</div></article>`;
 }
 function e2RenderHome(){
  const host=$('ashGearConfigurator');if(!host||data.run||!data.eq2)return;
@@ -191,9 +191,6 @@ function e2GearAction(op,id,statOverride=null){if(data.run||!data.eq2)return;con
  }else if(op==='sell'){
   if(!confirm(`Vendre définitivement ${w.name} ?`))return;
   if(E2.sell(data,id,salvagePrice)===null)return;
- }else if(op==='recycle'){
-  if(!confirm(`Recycler définitivement ${w.name} en Composants ?`))return;
-  if(E2.recycle(data,id)===null)return;
  }
  if(!E2.validate(data)){data=JSON.parse(before);msg('Intégrité équipement incohérente, modification annulée');return;}
  if(!persist()){data=JSON.parse(before);msg('Modification annulée : sauvegarde indisponible');}render();renderRefugeCharacter();
@@ -1712,7 +1709,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.4.9-permanent-upgrades';
+const ASHFALL_RUNTIME_VERSION='0.9.5.0-survivant-sans-recyclage';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
@@ -2116,7 +2113,7 @@ function renderInventorySelection(){
  <div class="inventory-selected-head"><span class="inventory-selected-art">${weaponArt(w)}</span><div class="ash-loot-selected-copy"><b>${uiSafe(w.name)}</b><small>${lootDisplay(w.dmg)} dégâts · ${lootDisplay(w.rate)} tirs/s</small><strong>${lootDisplay(lootPower(w))} puissance indicative</strong></div></div>
  ${lootCompare(w,data.equipped)}
  <div class="ash-loot-resale">Valeur de revente : <strong>${salvagePrice(w)} crédits</strong></div>
- <div class="inventory-selected-actions"><button type="button" data-grid-equip="${i}">ÉQUIPER</button><button type="button" data-grid-sell="${i}" class="ui-secondary">VENDRE · ${salvagePrice(w)} CRÉDITS</button>${data.eq2?`<button data-e2-recycle="${uiSafe(w.id)}">RECYCLER</button>`:''}</div>`;
+ <div class="inventory-selected-actions"><button type="button" data-grid-equip="${i}">ÉQUIPER</button><button type="button" data-grid-sell="${i}" class="ui-secondary">VENDRE · ${salvagePrice(w)} CRÉDITS</button></div>`;
 }
 function renderRefugeCharacter(){
  const stats=data.stats||{};
@@ -3643,7 +3640,7 @@ function survivorSwitch(panel){
 }
 document.querySelectorAll('[data-survivor-panel]').forEach(button=>button.addEventListener('click',()=>survivorSwitch(button.dataset.survivorPanel)));
 $('ashGearConfigurator').addEventListener('click',e=>{
- if(data.eq2){const b=e.target.closest('[data-e2-home-equip],[data-e2-sell],[data-e2-recycle]');if(b){const mapping={'data-e2-home-equip':'equip','data-e2-sell':'sell','data-e2-recycle':'recycle'};for(const [attribute,op] of Object.entries(mapping))if(b.hasAttribute(attribute)){e2GearAction(op,b.getAttribute(attribute),b.getAttribute('data-e2-stat'));return;}}return;}
+ if(data.eq2){const b=e.target.closest('[data-e2-home-equip],[data-e2-sell]');if(b){const mapping={'data-e2-home-equip':'equip','data-e2-sell':'sell'};for(const [attribute,op] of Object.entries(mapping))if(b.hasAttribute(attribute)){e2GearAction(op,b.getAttribute(attribute),b.getAttribute('data-e2-stat'));return;}}return;}
  const buy=e.target.closest('[data-gear-id]');if(buy){ashGearAction(buy.dataset.gearId);return}const rem=e.target.closest('[data-gear-remove]');if(rem)ashGearAction(rem.dataset.gearRemove,true);});
 
 function refugeNavigate(tab){

@@ -27,9 +27,9 @@ function init(){
   });}
   if(filter!=='weapons'&&gear){
    // Reuse actual equipment2 item nodes, preserving engine's own interactions.
-   const candidates=[...gear.querySelectorAll('[data-eq2-item],[data-e2-select],[data-eq2-id],[data-eq2-select]')].filter(el=>!el.closest('.sv-item'));
+   const candidates=[...gear.querySelectorAll('.eq2-owned-card,[data-eq2-item],[data-e2-select],[data-eq2-id],[data-eq2-select]')].filter(el=>!el.closest('.sv-item'));
    const distinct=candidates.filter(el=>!candidates.some(other=>other!==el&&other.contains(el))).slice(0,120);
-   for(const source of distinct){const clone=source.cloneNode(true);clone.classList.add('sv-item','sv-gear');clone.addEventListener('click',()=>open('ÉQUIPEMENT',gear));grid.appendChild(clone);}
+   for(const source of distinct){const clone=source.cloneNode(true);clone.classList.add('sv-item','sv-gear');clone.style.setProperty('--eq2-rarity',getComputedStyle(source).getPropertyValue('--eq2-rarity').trim()||'#d9e2e9');clone.addEventListener('click',()=>open('ÉQUIPEMENT',gear));grid.appendChild(clone);}
   }
   if(!grid.children.length){const empty=document.createElement('p');empty.className='sv-empty';empty.textContent='Aucun objet dans cette catégorie.';grid.appendChild(empty);}
  }
