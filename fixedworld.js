@@ -2,18 +2,18 @@
 const RURL='assets/fixedworld/';let collisionDebug=new URLSearchParams(location.search).has('collisionDebug');let heroFacing={x:0,y:-1};let rooms={},backs={},collisionMasks={},active=false,room='01',hero,foes=[],shots=[],drops=[],chests={},chestAnimations={},roomDrops={},clear={},triggered={},power='idle',bossDead=false,phase2=false,extract=0,extractFill=0,extractCountdown=0,visited={},credits=0,components=0,bags=[],last=0,joystick=null,held=new Set(),ui={},doorTransitionArmed=true,doorGrace=0;
 const connections={'01':{N:'02'},'02':{S:'01',N:'05',W:'03',E:'04'},'03':{E:'02'},'04':{W:'02'},'05':{S:'02',N:'06'},'06':{S:'05',N:'09',W:'07',E:'08'},'07':{E:'06'},'08':{W:'06'},'09':{S:'06',N:'10'},'10':{S:'09',N:'11'},'11':{S:'10',N:'12'},'12':{S:'11'}};
 const doorBoxes={
- '01':{N:[147,0,213,16]},
- '02':{N:[147,0,213,16],S:[147,784,213,799],W:[0,364,16,436],E:[344,364,359,436]},
- '03':{E:[704,364,719,436]},
- '04':{W:[0,364,16,436]},
- '05':{S:[147,784,213,799],N:[327,0,393,16]},
- '06':{S:[327,1184,393,1199],N:[327,0,393,16],W:[0,564,16,636],E:[704,564,719,636]},
- '07':{E:[704,364,719,436]},
- '08':{W:[0,364,16,436]},
- '09':{S:[327,1184,393,1199],N:[327,0,393,16]},
- '10':{S:[147,784,213,799],N:[147,0,213,16]},
- '11':{S:[507,1184,573,1199],N:[507,0,573,16]},
- '12':{S:[147,784,213,799]}
+ '01':{N:[127,0,234,37]},
+ '02':{N:[125,0,235,37],S:[125,763,235,799],W:[0,349,36,450],E:[323,349,359,450]},
+ '03':{E:[683,339,719,439]},
+ '04':{W:[0,350,36,440]},
+ '05':{S:[133,763,227,799],N:[314,0,406,37]},
+ '06':{S:[310,1163,410,1199],N:[310,0,410,37],W:[0,550,36,650],E:[683,550,719,650]},
+ '07':{E:[683,343,719,443]},
+ '08':{W:[0,350,36,450]},
+ '09':{S:[281,1163,445,1199],N:[190,0,348,37]},
+ '10':{S:[124,763,228,799],N:[124,0,228,37]},
+ '11':{S:[443,1163,637,1199],N:[445,0,635,37]},
+ '12':{S:[133,763,227,799]}
 };
 function doorBox(roomId,dir){
  const box=doorBoxes[roomId]?.[dir];
@@ -37,17 +37,21 @@ function heroAtDoor(roomId,dir,x,y,r){
 }
 function drawDoorMarker(ctx,roomId,dir,locked,r){
  const b=doorBox(roomId,dir);if(!b)return;
- const center=doorCenter(roomId,dir,dir==='N'||dir==='S'?r.w/2:r.h/2);
- // Le fond reste visible : seul un filet lumineux signale l'etat de la porte.
- const half=(dir==='N'||dir==='S'?b.w:b.h)/2-5;
- ctx.save();ctx.globalAlpha=.75;ctx.strokeStyle=locked?'#ff7760':'#50e7d8';ctx.lineWidth=3;
- ctx.beginPath();
- if(dir==='N'){ctx.moveTo(center-half,31);ctx.lineTo(center+half,31);}
- else if(dir==='S'){ctx.moveTo(center-half,r.h-31);ctx.lineTo(center+half,r.h-31);}
- else if(dir==='W'){ctx.moveTo(31,center-half);ctx.lineTo(31,center+half);}
- else{ctx.moveTo(r.w-31,center-half);ctx.lineTo(r.w-31,center+half);}
- ctx.stroke();ctx.restore();
+ const isHorizontal=dir==='N'||dir==='S';
+ // La zone colorée épouse le seuil visible, sans recouvrir les objets du décor.
+ const x=isHorizontal?b.x1+6:(dir==='W'?24:r.w-36);
+ const y=isHorizontal?(dir==='N'?24:r.h-36):b.y1+6;
+ const w=isHorizontal?b.w-12:12;
+ const h=isHorizontal?12:b.h-12;
+ const color=locked?'#ff344b':'#29adff';
+ ctx.save();
+ ctx.shadowColor=color;ctx.shadowBlur=13;
+ ctx.globalAlpha=.75;ctx.fillStyle=color;ctx.fillRect(x,y,w,h);
+ ctx.shadowBlur=0;ctx.globalAlpha=.96;ctx.strokeStyle=locked?'#ff8790':'#a2eaff';ctx.lineWidth=2;
+ ctx.beginPath();if(isHorizontal){ctx.moveTo(x,y+h/2);ctx.lineTo(x+w,y+h/2);}else{ctx.moveTo(x+w/2,y);ctx.lineTo(x+w/2,y+h);}ctx.stroke();
+ ctx.restore();
 }
+
 
 // Bestiaire V7.1: 5 PNG transparents issus de la planche graphique validée.
 const enemyArt={};
