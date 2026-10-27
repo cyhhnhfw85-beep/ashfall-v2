@@ -99,14 +99,22 @@ function e2RunBagMarkup(r){const s=r.eq2,bag=E2.active(r,'bag');const canSwap=!!
  const progress=threshold?`<p class="eq2-secure-line">Sécurisation : ${Math.min(threshold,s.clearedIds.length)}/${threshold} salles · ${s.secure.itemId?'1 objet protégé':s.secure.abandoned?'Protection abandonnée':s.secure.activated?'Protection prête':'En charge'} · transfert ${s.secure.transfers}/1</p>`:'';
  const currentDrops=ground(r.rooms[r.current]).filter(d=>d.kind==='weapon'&&!d.got);
  const pending=s.pendingDrop?currentDrops.find(x=>x.id===s.pendingDrop):null;
- return `<h3>ÉQUIPEMENTS · ${s.loot.length}/8 nouvelles pièces</h3><p class="eq2-tip">Les objets acquis au départ ne comptent pas. Changement uniquement après sécurisation de la salle.</p><div class="eq2-active-slots">${stats}</div>${progress}${currentDrops.length?`<details><summary>Équipements au sol · ${currentDrops.length}</summary>${currentDrops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">Comparer ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</details>`:''}${pending?`<section class="eq2-pending"><strong>SAC PLEIN — ${uiSafe(pending.item.name)}</strong><p>Choisis un objet à laisser au sol, ou conserve ton chargement.</p>${s.loot.map(w=>`<button data-e2-replace="${uiSafe(w.id)}" ${w.id===s.secure.itemId?'disabled':''}>Remplacer ${uiSafe(w.name)}</button>`).join('')}<button data-e2-dismiss="1">Laisser la trouvaille</button></section>`:''}<div class="eq2-run-list">${collected||'<p>Aucun nouvel équipement</p>'}</div>${startChoices?`<details><summary>Rééquiper un objet acquis au départ</summary>${startChoices}</details>`:''}`;
+ return `<h3>ÉQUIPEMENTS · ${s.loot.length}/8 nouvelles pièces</h3><p class="eq2-tip">Les objets acquis au départ ne comptent pas. Changement uniquement après sécurisation de la salle.</p><div class="eq2-active-slots">${stats}</div>${progress}${currentDrops.length?`<details><summary>Équipements au sol · ${currentDrops.length}</summary>${currentDrops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">${d.manualDiscard?'Récupérer volontairement':'Comparer'} ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</details>`:''}${pending?`<section class="eq2-pending"><strong>SAC PLEIN — ${uiSafe(pending.item.name)}</strong><p>Choisis un objet à laisser au sol, ou conserve ton chargement.</p>${s.loot.map(w=>`<button data-e2-replace="${uiSafe(w.id)}" ${w.id===s.secure.itemId?'disabled':''}>Remplacer ${uiSafe(w.name)}</button>`).join('')}<button data-e2-dismiss="1">Laisser la trouvaille</button></section>`:''}<div class="eq2-run-list">${collected||'<p>Aucun nouvel équipement</p>'}</div>${startChoices?`<details><summary>Rééquiper un objet acquis au départ</summary>${startChoices}</details>`:''}`;
 }
 function e2OpenBag(){if(!data.run?.eq2)return;overlay='bag';$('overlay').innerHTML='<button class="close" data-op="close">✕ Fermer</button>'+e2RunBagMarkup(data.run);$('overlay').hidden=false;persist();}
 function e2RunAction(type,id){const r=data.run;if(!r?.eq2)return;const s=r.eq2;
  // Aucun retrait ou remplacement d'équipement lors d'une salle encore hostile.
  if((type==='drop'||type==='replace')&&(!r.rooms[r.current]?.cleared||r.rooms[r.current]?.enemies?.length)){msg('Gestion de l’équipement disponible seulement en salle sécurisée.');return;}
  if(type==='dismiss'){s.pendingDrop=null;e2OpenBag();return;}
- if(type==='inspect'){const dropped=ground(r.rooms[r.current]).find(d=>d.id===id&&!d.got);if(!dropped)return;s.pendingDrop=dropped.id;e2OpenBag();return;}
+ if(type==='inspect'){
+  const dropped=ground(r.rooms[r.current]).find(d=>d.id===id&&!d.got);if(!dropped)return;
+  if(dropped.manualDiscard&&E2.pickup(r,dropped.item)){
+   if(e2PickWeapon(dropped.item))r.bag.push(dropped.item);
+   dropped.got=true;r.rooms[r.current].drops=ground(r.rooms[r.current]).filter(d=>!d.got);
+   s.pendingDrop=null;ashRefreshContractHud(r);e2RefreshRunWeapon();persist();render();e2OpenBag();return;
+  }
+  s.pendingDrop=dropped.id;e2OpenBag();return;
+ }
  if(type==='equip'){
   const target=E2.runItem(r,id);if(!target)return;
   if(target.slot==='bag'&&s.secure.itemId&&E2.active(r,'bag')?.id!==target.id){if(!confirm('Renoncer définitivement à la protection de cette expédition pour changer de sac ?'))return;E2.renounce(r);}
@@ -116,12 +124,12 @@ function e2RunAction(type,id){const r=data.run;if(!r?.eq2)return;const s=r.eq2;
  else if(type==='drop'){
   if(s.secure.itemId===id){if(!confirm('Cet objet est protégé. Abandonner sa protection définitivement et le laisser au sol ?'))return;E2.renounce(r);}
   const item=E2.drop(r,id);if(!item)return;r.bag=r.bag.filter(w=>w.id!==id);
-  item._eq2Dropped=true;lootSpawn(r.rooms[r.current],'weapon',player.x,player.y,item);ground(r.rooms[r.current]).at(-1).pickupBlocked=true;e2RefreshRunWeapon();
+  item._eq2Dropped=true;lootSpawn(r.rooms[r.current],'weapon',player.x,player.y,item);Object.assign(ground(r.rooms[r.current]).at(-1),{pickupBlocked:true,manualDiscard:true});e2RefreshRunWeapon();
  }else if(type==='replace'){
   const d=ground(r.rooms[r.current]).find(x=>x.id===s.pendingDrop&&!x.got);
   if(!d||!d.item)return;
   const item=E2.drop(r,id);if(!item)return;r.bag=r.bag.filter(w=>w.id!==id);
-  item._eq2Dropped=true;lootSpawn(r.rooms[r.current],'weapon',player.x,player.y,item);ground(r.rooms[r.current]).at(-1).pickupBlocked=true;
+  item._eq2Dropped=true;lootSpawn(r.rooms[r.current],'weapon',player.x,player.y,item);Object.assign(ground(r.rooms[r.current]).at(-1),{pickupBlocked:true,manualDiscard:true});
   if(!E2.pickup(r,d.item))throw Error('failed replacement');d.got=true;
   if(d.item.slot==='weapon')r.bag.push(d.item);
   r.rooms[r.current].drops=ground(r.rooms[r.current]).filter(x=>!x.got);
@@ -1086,7 +1094,14 @@ function ashSweepFxDraw(){
 }
 function lootUpdate(room,dt){
  const drops=ground(room);for(const d of drops){d.age=(d.age||0)+dt;d.bounce=Math.max(0,(d.bounce||0)-dt);
+  // Les objets volontairement abandonnés ne sont jamais aspirés.
+  if(d.manualDiscard||d.item?._eq2Dropped)continue;
   if(data.run?.eq2&&d.pickupBlocked){if(Math.hypot(player.x-d.x,player.y-d.y)>52)d.pickupBlocked=false;else continue;}
+  // Un sac plein n'attire pas les nouveaux équipements : pas d'aspiration visuelle trompeuse.
+  if(d.kind==='weapon' && (data.run?.eq2 ? data.run.eq2.loot.length>=8 : data.run.bag.length>=6)){
+   if(!d.warned){d.warned=true;msg('Sac plein : équipement laissé au sol. Ouvre SAC pour le comparer.');}
+   continue;
+  }
   const dist=Math.hypot(player.x-d.x,player.y-d.y);const range=d.kind==='xp'?104:68;
   if(dist<range&&d.bounce<=0&&hasLineOfSight(d.x,d.y,player.x,player.y,room)){const speed=d.kind==='xp'?340:250;const t=Math.min(1,speed*dt/Math.max(1,dist));let tx=d.x+(player.x-d.x)*t,ty=d.y+(player.y-d.y)*t;if(!collidesSolid(tx,ty,6,room)){d.x=tx;d.y=ty}}
   if(Math.hypot(player.x-d.x,player.y-d.y)<18&&d.bounce<=0){
@@ -1098,9 +1113,7 @@ function lootUpdate(room,dt){
          if(e2PickWeapon(d.item))data.run.bag.push(d.item);
          ashRefreshContractHud(data.run);ashLootPickupToast(d.item);d.got=true;persist();
        }else if(!d.warned){
-         d.warned=true;data.run.eq2.pendingDrop=d.id;
-         if(data.run.rooms[data.run.current].cleared&&!data.run.rooms[data.run.current].enemies.length)e2OpenBag();
-         else msg('8/8 équipements : compare les trouvailles dans une salle sécurisée.');
+         d.warned=true;msg('Sac plein : ouvre SAC pour comparer la trouvaille, sans interruption.');
        }
      }else if(data.run.bag.length<6){data.run.bag.push(d.item);ashRefreshContractHud(data.run);msg(d.item.rar+' : '+d.item.name+' ramassé !');ashLootPickupToast(d.item);d.got=true}
     else if(!d.warned){d.warned=true;msg('Sac plein : arme au sol conservée. Libère une place dans SAC.')}
