@@ -5,11 +5,36 @@ let cx=cv.getContext('2d'); // V44: le contexte est temporairement redirige pend
 
 const pick=(a,b)=>Math.floor(a+Math.random()*(b-a+1)), clamp=(n,a,b)=>Math.max(a,Math.min(b,n)), length=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const uid=()=> 'af-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
-const starter=()=>({id:uid(),name:'Pistolet usé',rar:'Commun',dmg:13,rate:1.8});
+const starter=()=>({id:uid(),name:'VARKEN',rar:'Commun',dmg:19,rate:2.15,level:1});
 const fresh=()=>({version:1,credits:400,research:0,hpLv:0,dmgLv:0,runs:0,equipped:starter(),stash:[],insured:null,run:null,stats:{extractions:0,deaths:0}});
 let data=fresh(), player=null, bullets=[],sparks=[],joy={x:0,y:0,pointer:null,cx:0,cy:0},keyState={},overlay='',overlayReturn='',last=0,drawTime=0,tickSave=0;
 function msg(v){const host=$('log'),d=window.afDecorateStatus?window.afDecorateStatus(v):{text:String(v),icon:null};host.textContent=d.text;if(d.icon&&window.afIcon)host.insertAdjacentHTML('afterbegin',window.afIcon(d.icon));}
 function valid(d){return d&&d.version===1&&Number.isFinite(d.credits)&&Number.isFinite(d.research)&&Array.isArray(d.stash)&&((d.equipped&&typeof d.equipped.id==='string')||(d.run&&d.run.equipped&&typeof d.run.equipped.id==='string'))&&(!d.run||(Array.isArray(d.run.rooms)&&d.run.rooms.length>0&&Number.isInteger(d.run.current)&&d.run.rooms[d.run.current]&&d.run.player))}
+// Refonte arsenal V9.5.7 : migration ciblée unique, autres ressources conservées.
+const ASH_NEW_WEAPON_NAMES=['VARKEN','STRYGA','KALDOR','VALTIS','KORVEX','NEXAR'];
+const ASH_NEW_WEAPON_STATS={VARKEN:[20,2.2],STRYGA:[13,3.7],KALDOR:[40,0.9],VALTIS:[46,0.8],KORVEX:[18,3.0],NEXAR:[31,1.75]};
+const ASH_NEW_RARITIES=['Commun','Inhabituel','Rare','Épique','Légendaire','Mythique'];
+function ashWeaponRoll(level=1,rarity=null,model=null){
+ const name=model||ASH_NEW_WEAPON_NAMES[pick(0,5)];const rar=rarity||(['Commun','Commun','Inhabituel','Rare','Épique','Légendaire','Mythique'][pick(0,6)]);
+ const [base,rate]=ASH_NEW_WEAPON_STATS[name];const tier=Math.max(0,ASH_NEW_RARITIES.indexOf(rar));
+ return {id:uid(),name,model:name.toLowerCase(),slot:'weapon',rar,level:Math.max(1,Math.min(4,Number(level)||1)),dmg:Math.round((base+Math.max(0,level-1)*2)*(1+tier*.19)),rate:Math.round(rate*100)/100};
+}
+function ashArsenalReset(){
+ if(data.arsenalV957===true)return;
+ // L'ancienne session peut contenir des references aux armes retirees.
+ // Les devises, Recherche, ameliorations, statistiques, secteurs et equipements restent.
+ if(data.run){data.run=null;player=null;}
+ data.equipped=ashWeaponRoll(1,'Commun','VARKEN');data.stash=[];data.insured=null;
+ if(data.eq2){
+  data.eq2.gear=(data.eq2.gear||[]).filter(x=>x && x.slot!=='weapon');
+  data.eq2.slots=data.eq2.slots||{};data.eq2.slots.weapon=data.equipped.id;
+ }
+ if(data.merchant){data.merchant.stock=[];data.merchant.rebornGearCycle=null;}
+ if(data.longTerm){data.longTerm.families=[];}
+ data.chestPending=null;
+ data.arsenalV957=true;
+ persist();
+}
 // Two verified snapshots protect against incomplete or invalid primary saves.
 const RECOVERY_KEY=KEY+'_recovery', SAVE_STATUS_KEY=KEY+'_lastok';
 let persistenceWarning=false;
@@ -45,6 +70,7 @@ function region(){if(!data.regions)data.regions={k17:{maxSector:0,bossDefeated:f
 // Équipements 2.0 — pont minimal vers le moteur historique.
 const E2=window.AshEquipment2;
 let e2MigrationError=null;
+ashArsenalReset();
 function e2MigrateWhenSafe(){
  if(data.run||data.eq2)return !!data.eq2;
  if(!E2){e2MigrationError='Module Équipements 2.0 absent';return false;}
@@ -337,18 +363,18 @@ const ASH_LONG_TRACKS=Object.freeze([
  {id:'returns',label:'SURVIE',icon:'extraction',key:'returns',tiers:[3,12,30],unit:'extractions réussies'},
  {id:'arsenal',label:'RÉCUPÉRATION',icon:'weapon',key:'gear',tiers:[6,25,60],unit:'armes extraites'}
 ]);
-const ASH_LONG_FAMILIES=Object.freeze(['Nomade','Vektor','Spectre','Ion','Cendre']);
+const ASH_LONG_FAMILIES=Object.freeze(['VARKEN','STRYGA','KALDOR','VALTIS','KORVEX','NEXAR']);
 const ASH_LONG_SECTORS=Object.freeze(['PÉRIPHÉRIE','LABORATOIRES','FONDERIE','CITADELLE']);
 const ASH_LONG_BADGES=Object.freeze([
  {id:'recrue',name:'RECRUE',icon:'survivor',check:()=>true},
  {id:'pisteur',name:'PISTEUR',icon:'map',check:s=>s.rooms>=30},
  {id:'traqueur',name:'TRAQUEUR',icon:'enemies',check:s=>s.kills>=60},
  {id:'veteran',name:'VÉTÉRAN',icon:'shield',check:s=>s.returns>=12},
- {id:'collectionneur',name:'ARSENAL',icon:'weapon',check:s=>s.families.length===5},
+ {id:'collectionneur',name:'ARSENAL',icon:'weapon',check:s=>s.families.length===6},
  {id:'sentinelle',name:'SENTINELLE',icon:'sectors',check:s=>s.sectors.every(Boolean)}
 ]);
 function ashLongWeaponFamily(w){
- const name=String(w?.name||'');return ASH_LONG_FAMILIES.find(f=>name.toLowerCase().startsWith(f.toLowerCase()+'-'))||null;
+ const name=String(w?.name||'');return ASH_LONG_FAMILIES.find(f=>name.toLowerCase()===f.toLowerCase()||name.toLowerCase().startsWith(f.toLowerCase()+'-'))||null;
 }
 function ashLongClean(n){return Number.isFinite(Number(n))?Math.max(0,Math.min(1000000,Math.floor(Number(n)))):0;}
 function ashLongState(){
@@ -465,7 +491,7 @@ function salvagePrice(w){
 function premium(){return Math.max(20,Math.ceil(value(data.equipped)*.12))}
 function price(){return Math.round(value(data.equipped)*.55)}
 function tint(w){return ({'Commun':'#d9e2e9','Inhabituel':'#60de98','Rare':'#5aa9ff','Épique':'#c184ff','Légendaire':'#ffbd4c','Mythique':'#ff667c'})[w.rar]||'#d9e2e9'}
-function makeWeapon(level=0){let r=Math.random(),rar=r<.075?'Épique':r<.32?'Rare':'Commun';return{id:uid(),name:['Nomade','Vektor','Spectre','Ion','Cendre'][pick(0,4)]+'-'+pick(1,9),rar,dmg:pick(15,23)+level*2+(rar==='Rare'?8:rar==='Épique'?17:0),rate:Math.round((1.3+Math.random()*1.4)*10)/10}}
+function makeWeapon(level=0){return ashWeaponRoll(Math.max(1,Math.min(4,level+1)));}
 
 // ASHFALL 0.8.9.73 — Configuration tactique du survivant.
 // Ces modules sont débloqués une fois, puis équipés au refuge. Ils ne tombent pas au sol,
@@ -1705,11 +1731,9 @@ const ASH_CHEST_TIERS=[
 ];
 const ASH_CHEST_RARITIES=['Commun','Rare','Épique','Légendaire'];
 function ashChestWeapon(rarity,price,tier){
- const archetypes=['Nomade','Vektor','Spectre','Ion','Cendre'];
+ const archetypes=ASH_NEW_WEAPON_NAMES;
  const rarityBoost={'Commun':0,'Rare':10,'Épique':23,'Légendaire':39}[rarity];
- return {id:uid(),name:archetypes[pick(0,4)]+'-'+pick(1,9),rar:rarity,
- dmg:pick(17,24)+rarityBoost+pick(0,4),rate:Math.round((1.4+Math.random()*1.25+(rarity==='Légendaire'?.25:0))*10)/10,
- origin:'coffre',purchasePrice:price,chestTier:tier};
+ return {...ashWeaponRoll(1,rarity,archetypes[pick(0,5)]),origin:'coffre',purchasePrice:price,chestTier:tier};
 }
 function ashChestRoll(tier){
  const roll=Math.floor(Math.random()*1000),weights=tier.odds;let cumulative=0;
@@ -1720,7 +1744,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.5.3-accueil-reborn';
+const ASHFALL_RUNTIME_VERSION='0.9.5.7-arsenal-six';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
@@ -1958,22 +1982,18 @@ if(r.exitStarted&&isExit(r.current,r)){let contested=room.enemies.some(e=>length
 
 // ASHFALL 0.8.9.36 — illustrations d'inventaire issues de la planche visuelle validée.
 // Encodage direct : aucune dépendance de chemin pour le chargement sur iPhone/PWA.
-const WEAPON_SPRITES = {"carbine_k17": "assets/inventory_v952/carbine_k17.png", "cendre": "assets/inventory_v952/cendre.png", "impulse": "assets/inventory_v952/impulse.png", "ion": "assets/inventory_v952/ion.png", "nomade9": "assets/inventory_v952/nomade9.png", "pistol_reinforced": "assets/inventory_v952/pistol_reinforced.png", "pistol_rescue": "assets/inventory_v952/pistol_rescue.png", "pistol_used": "assets/inventory_v952/pistol_used.png", "precision": "assets/inventory_v952/precision.png", "prototype": "assets/inventory_v952/prototype.png", "reliquat": "assets/inventory_v952/reliquat.png", "rifle_industrial": "assets/inventory_v952/rifle_industrial.png", "rifle_recovery": "assets/inventory_v952/rifle_recovery.png", "smg_sector": "assets/inventory_v952/smg_sector.png", "spectre": "assets/inventory_v952/spectre.png", "vektor": "assets/inventory_v952/vektor.png"};
-const WEAPON_NAMED_ART = {"pistolet usé":"pistol_used","pistolet de secours":"pistol_rescue","pistolet renforcé":"pistol_reinforced","smg de secteur":"smg_sector","carabine k-17":"carbine_k17","fusil de récupération":"rifle_recovery","fusil industriel":"rifle_industrial","viseur de précision":"precision","lanceur à impulsion":"impulse","prototype balistique":"prototype","reliquat de citadelle":"reliquat","nomade-9":"nomade9","vektor-9":"vektor","spectre-9":"spectre","ion-9":"ion","cendre-9":"cendre"};
+const WEAPON_SPRITES = Object.fromEntries(ASH_NEW_WEAPON_NAMES.flatMap(n=>ASH_NEW_RARITIES.map((r,i)=>[n+"|"+r,"assets/arsenal_v957/"+n.toLowerCase()+"_"+(i+1)+".png"])));
+const WEAPON_NAMED_ART = {};
 function weaponSkinKey(w){
- const n=String(w?.name||'').trim().toLowerCase();
- const specific=WEAPON_NAMED_ART[n];
- if(specific)return specific;
- for(const [prefix,skin] of [['nomade-','nomade9'],['vektor-','vektor'],['spectre-','spectre'],['ion-','ion'],['cendre-','cendre']]){
-  if(n.startsWith(prefix)&&/^\d+$/.test(n.slice(prefix.length)))return skin;
- }
- return null;
+ const name=String(w?.name||'').trim().toUpperCase().split('-')[0];
+ return ASH_NEW_WEAPON_NAMES.includes(name)?name:null;
 }
 // Représentations SVG locales : aucun asset externe, aucune modification des sauvegardes.
 function weaponArt(w){
  const skin=weaponSkinKey(w);
- if(skin&&WEAPON_SPRITES[skin]){
-  return `<img class="weapon-art weapon-art-img" aria-hidden="true" alt="" loading="eager" decoding="async" src="${WEAPON_SPRITES[skin]}">`;
+ if(skin){
+  const rar=ASH_NEW_RARITIES.includes(w?.rar)?w.rar:'Commun';
+  return `<img class="weapon-art weapon-art-img" aria-hidden="true" alt="" loading="eager" decoding="async" src="${WEAPON_SPRITES[skin+'|'+rar]}">`;
  }
  const n=String(w?.name||'').toLowerCase();
  const kind=/pistolet|secours/.test(n)?'pistol':/smg|vektor|mitrail/.test(n)?'smg':/nomade|précision|viseur/.test(n)?'marksman':/lanceur|impulsion|prototype|reliquat/.test(n)?'energy':/fusil|industriel/.test(n)?'rifle':'carbine';
@@ -1999,16 +2019,42 @@ function drop(i){let r=data.run,w=r.bag[i];if(!w)return;if(r.eq2){e2RunAction('d
 function sell(i){if(data.run)return;let w=data.stash[i];if(!w)return;if(data.eq2){e2GearAction('sell',w.id);return;}if(w.id===data.insured){msg("Objet assuré : vente refusée.");return}let gain=salvagePrice(w);if(!confirm(`Vendre définitivement ${w.name} pour ${gain} crédits ?`))return;data.stash.splice(i,1);data.credits+=gain;persist();render();msg(`${w.name} vendu : +${gain} crédits.`)}
 // Marchand évolutif — stock sauvegardé, jamais régénéré sur simple ouverture.
 const MERCHANT_CATALOG=[
- {name:'Pistolet de secours',rar:'Commun',dmg:17,rate:2.1},
- {name:'Pistolet renforcé',rar:'Commun',dmg:21,rate:2},
- {name:'Fusil de récupération',rar:'Inhabituel',dmg:26,rate:1.5},
- {name:'Carabine K-17',rar:'Inhabituel',dmg:23,rate:2.2},
- {name:'Viseur de précision',rar:'Rare',dmg:35,rate:1.15},
- {name:'SMG de secteur',rar:'Rare',dmg:18,rate:3.8},
- {name:'Fusil industriel',rar:'Rare',dmg:32,rate:1.75},
- {name:'Lanceur à impulsion',rar:'Épique',dmg:44,rate:1.3},
- {name:'Prototype balistique',rar:'Épique',dmg:29,rate:2.8},
- {name:'Reliquat de citadelle',rar:'Légendaire',dmg:48,rate:2.2}
+ {name:'VARKEN',rar:'Commun',dmg:20,rate:2.20},
+ {name:'VARKEN',rar:'Inhabituel',dmg:24,rate:2.20},
+ {name:'VARKEN',rar:'Rare',dmg:28,rate:2.20},
+ {name:'VARKEN',rar:'Épique',dmg:31,rate:2.20},
+ {name:'VARKEN',rar:'Légendaire',dmg:35,rate:2.20},
+ {name:'VARKEN',rar:'Mythique',dmg:39,rate:2.20},
+ {name:'STRYGA',rar:'Commun',dmg:13,rate:3.70},
+ {name:'STRYGA',rar:'Inhabituel',dmg:15,rate:3.70},
+ {name:'STRYGA',rar:'Rare',dmg:18,rate:3.70},
+ {name:'STRYGA',rar:'Épique',dmg:20,rate:3.70},
+ {name:'STRYGA',rar:'Légendaire',dmg:23,rate:3.70},
+ {name:'STRYGA',rar:'Mythique',dmg:25,rate:3.70},
+ {name:'KALDOR',rar:'Commun',dmg:40,rate:0.90},
+ {name:'KALDOR',rar:'Inhabituel',dmg:48,rate:0.90},
+ {name:'KALDOR',rar:'Rare',dmg:55,rate:0.90},
+ {name:'KALDOR',rar:'Épique',dmg:63,rate:0.90},
+ {name:'KALDOR',rar:'Légendaire',dmg:70,rate:0.90},
+ {name:'KALDOR',rar:'Mythique',dmg:78,rate:0.90},
+ {name:'VALTIS',rar:'Commun',dmg:46,rate:0.80},
+ {name:'VALTIS',rar:'Inhabituel',dmg:55,rate:0.80},
+ {name:'VALTIS',rar:'Rare',dmg:63,rate:0.80},
+ {name:'VALTIS',rar:'Épique',dmg:72,rate:0.80},
+ {name:'VALTIS',rar:'Légendaire',dmg:81,rate:0.80},
+ {name:'VALTIS',rar:'Mythique',dmg:90,rate:0.80},
+ {name:'KORVEX',rar:'Commun',dmg:18,rate:3.00},
+ {name:'KORVEX',rar:'Inhabituel',dmg:21,rate:3.00},
+ {name:'KORVEX',rar:'Rare',dmg:25,rate:3.00},
+ {name:'KORVEX',rar:'Épique',dmg:28,rate:3.00},
+ {name:'KORVEX',rar:'Légendaire',dmg:32,rate:3.00},
+ {name:'KORVEX',rar:'Mythique',dmg:35,rate:3.00},
+ {name:'NEXAR',rar:'Commun',dmg:31,rate:1.75},
+ {name:'NEXAR',rar:'Inhabituel',dmg:37,rate:1.75},
+ {name:'NEXAR',rar:'Rare',dmg:43,rate:1.75},
+ {name:'NEXAR',rar:'Épique',dmg:49,rate:1.75},
+ {name:'NEXAR',rar:'Légendaire',dmg:55,rate:1.75},
+ {name:'NEXAR',rar:'Mythique',dmg:60,rate:1.75},
 ];
 const MERCHANT_RANK={Commun:0,Inhabituel:1,Rare:2,'Épique':3,'Légendaire':4,Mythique:5};
 function merchantTier(){let reg=region();return Math.min(4,Math.max(0,Number(reg.maxSector)||0)+(reg.bossDefeated?1:0))}
