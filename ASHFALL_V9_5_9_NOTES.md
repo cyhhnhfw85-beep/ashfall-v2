@@ -1,0 +1,1 @@
+ASHFALL V9.5.9 — Correctif de mise en page des contrats iPhone. Base V9.5.8. Aucun changement de logique, récompenses, armes ou sauvegardes. Nouvelle CSS responsive et cache versionné. Validation iPhone requise.

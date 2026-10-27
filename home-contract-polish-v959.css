@@ -1,0 +1,16 @@
+/* ASHFALL V9.5.9 — contrats responsive */
+#refuge-page-home #ashContractPicker{box-sizing:border-box;width:100%;min-width:0;padding:0 12px!important;gap:14px}
+#refuge-page-home #ashContractPicker .home953-heading,#refuge-page-home #ashContractPicker .home953-intro{padding-left:4px;padding-right:4px}
+#refuge-page-home #ashContractPicker .home953-intro{line-height:1.5;margin-bottom:5px}
+#refuge-page-home #ashContractPicker .home953-contract{box-sizing:border-box;width:100%;min-width:0;padding:13px 12px!important}
+#refuge-page-home #ashContractPicker .home953-contract-head{gap:10px;margin-bottom:12px}
+#refuge-page-home #ashContractPicker .home953-options{gap:8px;min-width:0}
+#refuge-page-home #ashContractPicker .home953-option{box-sizing:border-box;min-width:0;min-height:73px;padding:9px 2px!important;gap:5px;overflow:hidden}
+#refuge-page-home #ashContractPicker .home953-option strong{font-size:clamp(12px,3.3vw,16px);line-height:1.18}
+#refuge-page-home #ashContractPicker .home953-rewards{min-width:0;max-width:100%;gap:3px;align-items:center}
+#refuge-page-home #ashContractPicker .home953-rewards b{font-size:clamp(9px,2.5vw,11px);line-height:1.1;white-space:nowrap}
+#refuge-page-home #ashContractPicker .home953-rewards small{font-size:clamp(8px,2.2vw,10px);line-height:1.1;white-space:nowrap}
+#refuge-page-home #ashContractPicker .home953-footnote{padding:2px 6px;line-height:1.45}
+#refuge-page-home #start{box-sizing:border-box;width:calc(100% - 24px)!important;max-width:calc(100% - 24px);margin:4px 12px 0!important}
+@media(max-width:420px){#refuge-page-home #ashContractPicker .home953-contract{padding:11px 10px!important}#refuge-page-home #ashContractPicker .home953-options{gap:6px}#refuge-page-home #ashContractPicker .home953-rooms .home953-options{gap:5px}#refuge-page-home #ashContractPicker .home953-glyph{width:39px;height:39px;flex-basis:39px}#refuge-page-home #ashContractPicker .home953-contract-head h4{font-size:12px;letter-spacing:.8px}#refuge-page-home #ashContractPicker .home953-selected{font-size:9px;max-width:75px}}
+@media(max-width:355px){#refuge-page-home #ashContractPicker{padding:0 8px!important}#refuge-page-home #ashContractPicker .home953-contract{padding:9px 7px!important}#refuge-page-home #ashContractPicker .home953-options{gap:4px}#refuge-page-home #ashContractPicker .home953-rewards b{font-size:8px}#refuge-page-home #ashContractPicker .home953-rewards small{font-size:7px}}
