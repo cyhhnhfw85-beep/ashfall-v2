@@ -1,0 +1,36 @@
+/* V9.4.7 — one visible Survivor interface */
+#survivor-panel-equipment .sv-legacy{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important;pointer-events:none!important;opacity:0!important}
+#refuge-page-character .refuge-section-head{margin-bottom:6px!important}
+#refuge-page-character .survivor-subnav{margin:0 0 12px!important}
+#survivor-panel-equipment .sv-hero h3,#survivor-panel-equipment .sv-bar h3{font-size:15px;letter-spacing:.06em;margin:0;color:#f0f7fc}
+#survivor-panel-equipment .sv-hero h3{margin:0 0 9px}
+#survivor-panel-equipment .character-showcase.tactical-showcase{display:grid!important;grid-template-columns: minmax(54px,19%) minmax(0,1fr) minmax(54px,19%)!important;gap:7px!important;align-items:center!important;min-height:246px!important;padding:10px 7px!important;margin:0!important;border:1px solid #355b6f!important;border-radius:14px!important;background:radial-gradient(ellipse at 50% 30%,#1d465b,#0b2031 75%)!important;overflow:hidden!important}
+#survivor-panel-equipment .tactical-showcase .tactical-column{display:flex!important;flex-direction:column!important;gap:7px!important;grid-row:1!important;position:relative;z-index:1}
+#survivor-panel-equipment .tactical-left{grid-column:1!important}#survivor-panel-equipment .tactical-right{grid-column:3!important}
+#survivor-panel-equipment .tactical-showcase .equip-square{box-sizing:border-box!important;min-width:0!important;width:100%!important;height:69px!important;min-height:69px!important;max-height:69px!important;padding:3px!important;margin:0!important;border:1px solid #47758b!important;border-radius:10px!important;background:#102e41!important;cursor:pointer}
+#survivor-panel-equipment .tactical-showcase .equip-square small{font-size:9px!important;line-height:1.1!important;letter-spacing:0!important}
+#survivor-panel-equipment .tactical-showcase .survivor-portrait{grid-row:1!important;grid-column:2!important;min-width:0!important;width:100%!important;height:233px!important;min-height:233px!important;overflow:hidden!important;border:0!important;background:transparent!important}
+#survivor-panel-equipment .nomade-stage{width:100%!important;height:231px!important;overflow:hidden!important}
+#survivor-panel-equipment .nomade-complete{max-height:228px!important;height:228px!important;max-width:100%!important;object-fit:contain!important}
+#survivor-panel-equipment .survivor-meta,#survivor-panel-equipment .portrait-label{display:none!important}
+#survivor-panel-equipment .sv-inventory{margin-top:15px}
+#survivor-panel-equipment .sv-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 11px}
+#survivor-panel-equipment .sv-bar h3{margin-right:auto}
+#survivor-panel-equipment .sv-filter{border:1px solid #35596d;border-radius:20px;color:#a8c5d5;background:#0e2534;font-size:10px;padding:8px 9px;min-height:35px}
+#survivor-panel-equipment .sv-filter.active{background:#195064;color:#effcff;border-color:#58c7d8}
+#survivor-panel-equipment .sv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#survivor-panel-equipment .sv-grid .sv-item{width:100%!important;min-width:0!important;max-width:none!important;min-height:106px!important;height:111px!important;padding:7px 3px!important;margin:0!important;border-radius:10px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:space-around!important;overflow:hidden!important;background:#132c3d!important;border:1px solid #3b6176!important;box-shadow:none!important;font-size:10px!important}
+#survivor-panel-equipment .sv-grid .inventory-symbol{height:54px!important;max-height:54px!important;width:100%!important;display:flex!important;justify-content:center!important;align-items:center!important}
+#survivor-panel-equipment .sv-grid .inventory-symbol img{max-height:50px!important;max-width:90%!important;object-fit:contain!important}
+#survivor-panel-equipment .sv-grid .inventory-name{font-size:11px!important;line-height:1.12!important;white-space:normal!important;max-height:27px!important;overflow:hidden!important}
+#survivor-panel-equipment .sv-grid .inventory-rarity,#survivor-panel-equipment .sv-grid .ash-loot-cell-power{display:none!important}
+#survivor-panel-equipment .sv-empty{grid-column:1/-1;text-align:center;color:#91b4c6;padding:24px 5px}
+.sv-dialog-open{overflow:hidden!important}.sv-layer[hidden]{display:none!important}
+.sv-layer{position:fixed;inset:0;z-index:210000;display:flex;justify-content:center;align-items:flex-end}
+.sv-scrim{position:absolute;inset:0;background:#03101acb;backdrop-filter:blur(3px)}
+.sv-sheet{position:relative;box-sizing:border-box;width:100%;max-width:600px;max-height:calc(100dvh - env(safe-area-inset-top,0px) - 20px);background:#0a2030;border:1px solid #3b6b7e;border-radius:17px 17px 0 0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:env(safe-area-inset-bottom,0px);color:#e7f8ff}
+.sv-sheet>header{flex:none;display:flex;justify-content:space-between;align-items:center;padding:12px 15px;background:#102b3d}
+.sv-sheet>header button{font-size:26px;border:1px solid #446a7c;border-radius:8px;color:#d6eef5;background:#18394b;min-width:40px;min-height:40px}
+.sv-detail{overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px;min-height:0}
+.sv-detail #inventorySelection{display:block!important}.sv-detail .eq2-panel{max-width:100%!important}
+@media(max-width:375px){#survivor-panel-equipment .sv-grid{gap:5px}#survivor-panel-equipment .sv-filter{padding:7px}#survivor-panel-equipment .tactical-showcase .equip-square{height:62px!important;min-height:62px!important;max-height:62px!important}}

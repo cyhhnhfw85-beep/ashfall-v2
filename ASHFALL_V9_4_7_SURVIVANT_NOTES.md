@@ -1,0 +1,1 @@
+V9.4.7 — Survivant V2. Ancien script de présentation supprimé. Nouvelle grille unique et fiche modale ; les nœuds historiques nécessaires au moteur restent invisibles et réutilisés, sans duplication de leurs IDs. Moteur et sauvegardes inchangés. Validation iPhone requise.
