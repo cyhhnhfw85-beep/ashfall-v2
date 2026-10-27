@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const RURL='assets/fixedworld/';let collisionDebug=new URLSearchParams(location.search).has('collisionDebug');let heroFacing={x:0,y:-1};let rooms={},backs={},collisionMasks={},active=false,room='01',hero,foes=[],shots=[],drops=[],chests={},clear={},triggered={},power='idle',bossDead=false,phase2=false,extract=0,extractFill=0,extractCountdown=0,visited={},credits=0,components=0,bags=[],last=0,joystick=null,held=new Set(),ui={},doorTransitionArmed=true,doorGrace=0;
+const RURL='assets/fixedworld/';let collisionDebug=new URLSearchParams(location.search).has('collisionDebug');let heroFacing={x:0,y:-1};let rooms={},backs={},collisionMasks={},active=false,room='01',hero,foes=[],shots=[],drops=[],chests={},chestAnimations={},roomDrops={},clear={},triggered={},power='idle',bossDead=false,phase2=false,extract=0,extractFill=0,extractCountdown=0,visited={},credits=0,components=0,bags=[],last=0,joystick=null,held=new Set(),ui={},doorTransitionArmed=true,doorGrace=0;
 const connections={'01':{N:'02'},'02':{S:'01',N:'05',W:'03',E:'04'},'03':{E:'02'},'04':{W:'02'},'05':{S:'02',N:'06'},'06':{S:'05',N:'09',W:'07',E:'08'},'07':{E:'06'},'08':{W:'06'},'09':{S:'06',N:'10'},'10':{S:'09',N:'11'},'11':{S:'10',N:'12'},'12':{S:'11'}};
 const doorBoxes={
  '01':{N:[147,0,213,16]},
@@ -111,7 +111,7 @@ function move(obj,dx,dy,rad=12){
  }
 }
 function isCombat(){return ['02','05','07','09','10','11'].includes(room)&&!clear[room]}
-function initRun(){doorTransitionArmed=true;doorGrace=0;heroFacing={x:0,y:-1};room='01';hero={x:180,y:620,hp:150,max:150,fire:0,dash:0};shots=[];drops=[];chests={};clear={};triggered={};power='idle';bossDead=false;phase2=false;extract=0;extractFill=0;extractCountdown=0;visited={};credits=0;components=0;bags=[];loadRoom('01',null);notify('Expédition K-17 — Monde fixe alpha');}
+function initRun(){doorTransitionArmed=true;doorGrace=0;heroFacing={x:0,y:-1};room='01';hero={x:180,y:620,hp:150,max:150,fire:0,dash:0};shots=[];drops=[];chests={};chestAnimations={};roomDrops={};clear={};triggered={};power='idle';bossDead=false;phase2=false;extract=0;extractFill=0;extractCountdown=0;visited={};credits=0;components=0;bags=[];loadRoom('01',null);notify('Expédition K-17 — Monde fixe alpha');}
 function loadRoom(next,coming){doorTransitionArmed=!coming;doorGrace=coming?.32:0;room=next;const r=data(room);if(coming){const opposite={N:'S',S:'N',W:'E',E:'W'}[coming];const dest=r.doors[opposite];const fallback=dest?dest[1]:(coming==='N'||coming==='S'?r.w/2:r.h/2);const entry=doorCenter(room,opposite,fallback);if(coming==='N'){hero.x=entry;hero.y=r.h-DOOR_SPAWN_DEPTH;}else if(coming==='S'){hero.x=entry;hero.y=DOOR_SPAWN_DEPTH;}else if(coming==='W'){hero.x=r.w-DOOR_SPAWN_DEPTH;hero.y=entry;}else {hero.x=DOOR_SPAWN_DEPTH;hero.y=entry;}}hero.x=safe(hero.x,55,r.w-55);hero.y=safe(hero.y,55,r.h-55);
 if(blocked(hero.x,hero.y,12)){
  let found=false;for(let dist=12;dist<=210&&!found;dist+=12){for(let a=0;a<24;a++){
@@ -119,24 +119,112 @@ if(blocked(hero.x,hero.y,12)){
   if(!blocked(xx,yy,12)){hero.x=xx;hero.y=yy;found=true;break;}
  }}
 }
-shots=[];drops=[];visited[room]=true;enemiesFor(room);extract=0;extractFill=0;extractCountdown=0;notify(room+' · '+r.name);}
+shots=[];drops=roomDrops[room]||(roomDrops[room]=[]);visited[room]=true;enemiesFor(room);extract=0;extractFill=0;extractCountdown=0;notify(room+' · '+r.name);}
 function nextWave(){if(room==='05'){if(power==='idle'){power='console';notify('Défenses neutralisées : active la console centrale');return;}if(power==='activated'){power='done';clear[room]=true;credits+=45;components+=3;notify('Centrale rétablie · +45 crédits · +3 composants');return;}}if(room==='07'&&!triggered.r07){triggered.r07=true;spawnEnemy(366,360,'scav2');notify('Renfort récupérateur !');return;}if(room==='09'&&!triggered.r09){triggered.r09=true;spawnEnemy(330,210,'scav2');spawnEnemy(424,640,'scav2');notify('Deux récupérateurs arrivent !');return;}clear[room]=true;if(room==='11'){bossDead=true;notify('Mécha détruit — coffre de boss disponible');}else notify('Salle sécurisée · portes ouvertes');}
 function atDoor(){let r=data(room);if(doorGrace>0)return;if(!doorTransitionArmed){if(!Object.keys(r.doors).some(dir=>heroAtDoor(room,dir,hero.x,hero.y,r)))doorTransitionArmed=true;return;}for(let [dir,p] of Object.entries(r.doors)){if(!heroAtDoor(room,dir,hero.x,hero.y,r))continue;if(isCombat()){if(room==='05'&&power==='console')notify('Active la console avant de sortir');else notify('Portes verrouillées : termine le combat');return;}if(dir==='N'&&room==='11'&&!bossDead)return;loadRoom(p[0],dir);return;}}
-function loot(t,i){let key=room+':'+i;if(chests[key])return;chests[key]=true;let cr=t==='boss'?Math.floor(rand(140,245)):t==='rare'?Math.floor(rand(75,150)):Math.floor(rand(20,70)),co=t==='boss'?7:t==='rare'?4:Math.floor(rand(1,4));credits+=cr;components+=co;bags.push(t+' : '+cr+' crédits, '+co+' composants');notify('Coffre '+t+' · +'+cr+' crédits · +'+co+' composants');}
+// V7.4: butin physique en salle, aspiré uniquement lorsqu'il atteint le Survivant.
+const chestImages={};
+const chestCategory=t=>t==='boss'?'boss':t==='rare'||t==='defense'?'rare':t==='militaire'?'epic':'common';
+for(const grade of ['common','rare','epic','boss'])for(const state of ['closed','opening','open']){
+ const img=new Image();img.src='assets/loot2/chest_'+grade+'_'+state+'.png?v=74';chestImages[grade+'_'+state]=img;
+}
+function freeLootPosition(x,y){
+ const r=data(room),bx=safe(x,45,r.w-45),by=safe(y,45,r.h-45);
+ if(!blocked(bx,by,7))return [bx,by];
+ for(let radius=10;radius<=110;radius+=10)for(let k=0;k<24;k++){
+  const a=k*Math.PI/12,px=safe(bx+Math.cos(a)*radius,45,r.w-45),py=safe(by+Math.sin(a)*radius,45,r.h-45);
+  if(!blocked(px,py,7))return [px,py];
+ }
+ return null;
+}
+function makeDrop(x,y,kind,amount=1,quality='common'){
+ const pos=freeLootPosition(x,y);if(!pos)return;
+ drops.push({x:pos[0],y:pos[1],kind,amount,quality,age:0,phase:Math.random()*6.28});
+}
+function scatterLoot(x,y,kind,amount,quality){
+ // A reward can fall as 1 or more visible pieces, with credits split among them.
+ const count=kind==='credit'?Math.min(4,Math.max(1,Math.ceil(amount/35))):kind==='component'?Math.min(3,amount):1;
+ let rest=amount;
+ for(let k=0;k<count;k++){
+  const v=Math.ceil(rest/(count-k));rest-=v;
+  const a=k*Math.PI*2/count+0.7,dd=23+7*(k%2);
+  makeDrop(x+Math.cos(a)*dd,y+Math.sin(a)*dd,kind,v,quality);
+ }
+}
+function loot(t,i){
+ const key=room+':'+i;if(chests[key]||chestAnimations[key])return;
+ chestAnimations[key]={elapsed:0,duration:t==='boss'?1.4:t==='rare'?1.05:0.85};
+ notify('Ouverture du coffre…');
+}
+function openChest(key,chest){
+ const quality=chestCategory(chest.t);chests[key]=true;
+ const cr=chest.t==='boss'?Math.floor(rand(140,245)):chest.t==='rare'?Math.floor(rand(75,150)):Math.floor(rand(20,70));
+ const co=chest.t==='boss'?7:chest.t==='rare'?4:Math.floor(rand(1,4));
+ scatterLoot(chest.x,chest.y,'credit',cr,quality);
+ scatterLoot(chest.x,chest.y,'component',co,quality);
+ // Equipment preview token: tracked in alpha expedition bag, NOT transferred to main inventory.
+ if(chest.t==='boss'||chest.t==='rare'||chest.t==='militaire')makeDrop(chest.x+26,chest.y+12,'equipment',1,quality);
+ notify('Coffre ouvert : butin au sol !');
+}
+function updateLoot(dt){
+ for(const [key,ani] of Object.entries(chestAnimations)){
+  ani.elapsed+=dt;
+  if(ani.elapsed>=ani.duration){
+   const [rid,idx]=key.split(':');const chest=(fixedChests[rid]||[])[Number(idx)];
+   if(rid===room&&chest)openChest(key,chest);
+   delete chestAnimations[key];
+  }
+ }
+ for(const d of drops){
+  d.age+=dt;const dx=hero.x-d.x,dy=hero.y-d.y,dist=Math.hypot(dx,dy);
+  if(dist<100&&dist>1){const v=Math.min(dist,Math.max(0,280*(1-dist/115))*dt);const nx=d.x+dx/dist*v,ny=d.y+dy/dist*v;
+   if(!blocked(nx,ny,5)){d.x=nx;d.y=ny;}
+  }
+  if(Math.hypot(hero.x-d.x,hero.y-d.y)<19){
+   if(d.kind==='credit')credits+=d.amount;
+   else if(d.kind==='component')components+=d.amount;
+   else if(d.kind==='equipment')bags.push('Équipement '+d.quality+' (alpha)');
+   d.collected=true;
+  }
+ }
+ drops=drops.filter(d=>!d.collected);roomDrops[room]=drops;
+}
+function drawChest(ctx,chest,i){
+ const key=room+':'+i,ani=chestAnimations[key],state=chests[key]?'open':ani?'opening':'closed';
+ const grade=chestCategory(chest.t),img=chestImages[grade+'_'+state];
+ ctx.save();ctx.translate(chest.x,chest.y);
+ const bounce=ani?Math.sin(ani.elapsed*24)*1.2:Math.sin(performance.now()/390+i)*0.7;
+ if(img&&img.complete&&img.naturalWidth)ctx.drawImage(img,-26,-27+bounce,52,52);
+ else {ctx.fillStyle='#d49a4b';ctx.fillRect(-22,-16,44,32);}
+ if(ani){ctx.strokeStyle='#e7f7fb';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,31,-Math.PI/2,-Math.PI/2+2*Math.PI*ani.elapsed/ani.duration);ctx.stroke();}
+ ctx.restore();
+}
+function drawLoot(ctx){
+ for(const d of drops){const t=performance.now()/320+d.phase,up=Math.sin(t)*2;
+  ctx.save();ctx.translate(d.x,d.y+up);
+  ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.ellipse(0,7,10,4,0,0,Math.PI*2);ctx.fill();
+  const c=d.kind==='credit'?'#f2ca60':d.kind==='component'?'#70e5ec':d.quality==='boss'?'#ffbd54':d.quality==='epic'?'#bd7bff':'#58bdf5';
+  ctx.shadowColor=c;ctx.shadowBlur=7;
+  if(d.kind==='credit'){ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(0,0,7,5,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#805324';ctx.lineWidth=1;ctx.stroke();}
+  else if(d.kind==='component'){ctx.fillStyle=c;ctx.fillRect(-5,-5,10,10);ctx.strokeStyle='#163e57';ctx.strokeRect(-5,-5,10,10);}
+  else {ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(8,0);ctx.lineTo(0,9);ctx.lineTo(-8,0);ctx.closePath();ctx.fill();}
+  ctx.restore();
+ }
+}
 function close(){active=false;ui.modal.hidden=true;document.body.style.overflow='';held.clear();}
-function finish(final){let record=JSON.parse(localStorage.getItem('ashfall_fixed_m1_alpha')||'{"world2Unlocked":false,"successfulRuns":0}');if(final){record.world2Unlocked=true;record.successfulRuns=(record.successfulRuns||0)+1;}localStorage.setItem('ashfall_fixed_m1_alpha',JSON.stringify(record));let summary=(final?'VICTOIRE — MÉCHA VAINCU · MONDE 2 DÉBLOQUÉ':'EXTRACTION INTERMÉDIAIRE')+'\n\n'+credits+' crédits · '+components+' composants\n'+bags.length+' coffres ouverts\n\nALPHA INDÉPENDANTE : les ressources et le déblocage ne sont PAS transférés à la sauvegarde principale du jeu.';close();window.alert(summary);}
+function finish(final){let record=JSON.parse(localStorage.getItem('ashfall_fixed_m1_alpha')||'{"world2Unlocked":false,"successfulRuns":0}');if(final){record.world2Unlocked=true;record.successfulRuns=(record.successfulRuns||0)+1;}localStorage.setItem('ashfall_fixed_m1_alpha',JSON.stringify(record));let summary=(final?'VICTOIRE — MÉCHA VAINCU · MONDE 2 DÉBLOQUÉ':'EXTRACTION INTERMÉDIAIRE')+'\n\n'+credits+' crédits · '+components+' composants\n'+bags.length+' équipements ramassés\n\nALPHA INDÉPENDANTE : les ressources et le déblocage ne sont PAS transférés à la sauvegarde principale du jeu.';close();window.alert(summary);}
 function tick(dt){if(!active)return;doorGrace=Math.max(0,doorGrace-dt);let mx=0,my=0;if(held.has('ArrowUp')||held.has('KeyW'))my--;if(held.has('ArrowDown')||held.has('KeyS'))my++;if(held.has('ArrowLeft')||held.has('KeyA'))mx--;if(held.has('ArrowRight')||held.has('KeyD'))mx++;if(joystick){mx+=joystick.dx;my+=joystick.dy;}let len=Math.hypot(mx,my)||1;if(Math.hypot(mx,my)>.1)heroFacing={x:mx/len,y:my/len};move(hero,mx/len*155*dt,my/len*155*dt);atDoor();if(!active)return;
 if(room==='05'&&power==='console'&&Math.hypot(hero.x-360,hero.y-605)<60){power='activated';spawnEnemy(350,260,'drone');notify('Alimentation réactivée — drone de réserve !');}
-for(let [i,c] of (fixedChests[room]||[]).entries()){if((room==='07'||room==='09'||room==='11')&&!clear[room])continue;if(Math.hypot(hero.x-c.x,hero.y-c.y)<54)loot(c.t,i);}
+for(let [i,c] of (fixedChests[room]||[]).entries()){if((room==='07'||room==='09'||room==='11')&&!clear[room])continue;if(Math.hypot(hero.x-c.x,hero.y-c.y)<54)loot(c.t,i);}updateLoot(dt);
 if((room==='08'||room==='12')&& (room!=='12'||bossDead)){let x=180,y=room==='08'?275:330,near=Math.hypot(hero.x-x,hero.y-y)<78;if(extractCountdown>0){extractCountdown-=dt;if(extractCountdown<=0){finish(room==='12');return;}}else{extractFill=safe(extractFill+(near?dt*0.46:-dt*.8),0,1);if(extractFill===1){extractCountdown=8;notify('Extraction activée : 8 secondes');}}}
 let nearest=null,dist=400;for(let e of foes){let d=Math.hypot(e.x-hero.x,e.y-hero.y);if(d<dist){dist=d;nearest=e;}}if(nearest){let d=Math.hypot(nearest.x-hero.x,nearest.y-hero.y)||1;heroFacing={x:(nearest.x-hero.x)/d,y:(nearest.y-hero.y)/d};}hero.fire-=dt;if(nearest&&hero.fire<=0){hero.fire=.33;let d=Math.hypot(nearest.x-hero.x,nearest.y-hero.y)||1;shots.push({x:hero.x,y:hero.y,vx:(nearest.x-hero.x)/d*350,vy:(nearest.y-hero.y)/d*350,from:'hero',ttl:1.6,damage:24});}
 for(let e of foes){e.cool-=dt;let dx=hero.x-e.x,dy=hero.y-e.y,d=Math.hypot(dx,dy)||1;e.fx=dx/d;e.fy=dy/d;if(e.type==='mech'&&!phase2&&e.hp<e.max*.5){phase2=true;notify('PHASE 2 — Surcharge du Mécha !');}
-if(d>(e.type==='mech'?190:105)){move(e,dx/d*e.speed*55*dt,dy/d*e.speed*55*dt,e.type==='mech'?24:13);}if(e.cool<=0){e.cool=e.type==='mech'?(phase2?1.05:1.5):e.type==='heavy'?1.8:rand(1.5,2.5);let speed=e.type==='mech'?225:155;shots.push({x:e.x,y:e.y,vx:dx/d*speed,vy:dy/d*speed,from:'enemy',ttl:2.7,damage:e.damage});if(e.type==='mech')e.alert=.36;}}for(let s of shots){s.x+=s.vx*dt;s.y+=s.vy*dt;s.ttl-=dt;if(s.from==='hero'){for(let e of foes){if(Math.hypot(s.x-e.x,s.y-e.y)<(e.type==='mech'?34:18)){e.hp-=s.damage;s.ttl=0;break;}}}else if(Math.hypot(s.x-hero.x,s.y-hero.y)<14){hero.hp-=s.damage;s.ttl=0;}}shots=shots.filter(s=>s.ttl>0&&s.x>=0&&s.y>=0&&s.x<data(room).w&&s.y<data(room).h);foes=foes.filter(e=>e.hp>0);if(hero.hp<=0){close();window.alert('EXPÉDITION ÉCHOUÉE — ceci est le mode alpha indépendant ; la sauvegarde principale est intacte.');return;}if(isCombat()&&foes.length===0&&!(room==='05'&&power==='console'))nextWave();if(msgSec>0)msgSec-=dt;}
+if(d>(e.type==='mech'?190:105)){move(e,dx/d*e.speed*55*dt,dy/d*e.speed*55*dt,e.type==='mech'?24:13);}if(e.cool<=0){e.cool=e.type==='mech'?(phase2?1.05:1.5):e.type==='heavy'?1.8:rand(1.5,2.5);let speed=e.type==='mech'?225:155;shots.push({x:e.x,y:e.y,vx:dx/d*speed,vy:dy/d*speed,from:'enemy',ttl:2.7,damage:e.damage});if(e.type==='mech')e.alert=.36;}}for(let s of shots){s.x+=s.vx*dt;s.y+=s.vy*dt;s.ttl-=dt;if(s.from==='hero'){for(let e of foes){if(Math.hypot(s.x-e.x,s.y-e.y)<(e.type==='mech'?34:18)){e.hp-=s.damage;s.ttl=0;break;}}}else if(Math.hypot(s.x-hero.x,s.y-hero.y)<14){hero.hp-=s.damage;s.ttl=0;}}shots=shots.filter(s=>s.ttl>0&&s.x>=0&&s.y>=0&&s.x<data(room).w&&s.y<data(room).h);for(const e of foes){if(e.hp<=0&&!e.lootDropped){e.lootDropped=true;scatterLoot(e.x,e.y,'credit',e.type==='mech'?70:e.type==='heavy'?20:8,e.type==='mech'?'boss':'common');if(e.type==='mech'||Math.random()<0.55)scatterLoot(e.x+12,e.y,'component',e.type==='mech'?4:1,'common');}}foes=foes.filter(e=>e.hp>0);if(hero.hp<=0){close();window.alert('EXPÉDITION ÉCHOUÉE — ceci est le mode alpha indépendant ; la sauvegarde principale est intacte.');return;}if(isCombat()&&foes.length===0&&!(room==='05'&&power==='console'))nextWave();if(msgSec>0)msgSec-=dt;}
 function render(){const c=ui.canvas,ctx=c.getContext('2d'),r=data(room);if(!r)return;let cw=c.width,ch=c.height;ctx.fillStyle='#121c23';ctx.fillRect(0,0,cw,ch);let zoom=Math.min(cw/360,ch/650)*.96,camX=safe(hero.x-cw/(2*zoom),0,Math.max(0,r.w-cw/zoom)),camY=safe(hero.y-ch/(2*zoom),0,Math.max(0,r.h-ch/zoom));ctx.save();ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);let bg=backs[room];if(bg?.complete&&bg.naturalWidth)ctx.drawImage(bg,0,0,r.w,r.h);else {ctx.fillStyle='#36454c';ctx.fillRect(0,0,r.w,r.h);}for(let [dir,p] of Object.entries(r.doors))drawDoorMarker(ctx,room,dir,isCombat(),r);
 if(collisionDebug){ctx.save();const m=collisionMasks[room];if(m){ctx.globalAlpha=.38;ctx.drawImage(m.overlay,0,0,r.w,r.h);}else{ctx.strokeStyle='#29a9ff';ctx.lineWidth=2;for(const poly of (r.solids||[])){ctx.beginPath();poly.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.stroke();}}ctx.restore();}
 if(room==='08'||room==='12'){ctx.beginPath();ctx.arc(180,room==='08'?275:330,78,0,Math.PI*2);ctx.strokeStyle=room==='08'?'#66ebdf':'#ffd074';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#dbe7e4';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText(extractCountdown>0?'EXTRACTION '+Math.ceil(extractCountdown)+'s':'EXTRACTION',180,(room==='08'?275:330)-4);if(extractFill>0){ctx.beginPath();ctx.arc(180,room==='08'?275:330,69,-Math.PI/2,-Math.PI/2+extractFill*2*Math.PI);ctx.strokeStyle='#fff';ctx.stroke();}}
 if(room==='05'&&power==='console'){ctx.fillStyle='#9ff5d8';ctx.beginPath();ctx.arc(360,605,23,0,Math.PI*2);ctx.fill();ctx.fillStyle='#22343b';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('ON',360,610);}
-for(let [i,chest] of (fixedChests[room]||[]).entries()){if((room==='07'||room==='09'||room==='11')&&!clear[room])continue;const open=chests[room+':'+i];ctx.fillStyle=open?'#576369':'#b68d4d';ctx.fillRect(chest.x-17,chest.y-13,34,26);ctx.strokeStyle='#fae0a3';ctx.strokeRect(chest.x-17,chest.y-13,34,26);}
+for(let [i,chest] of (fixedChests[room]||[]).entries()){if((room==='07'||room==='09'||room==='11')&&!clear[room])continue;drawChest(ctx,chest,i);}drawLoot(ctx);
 for(let e of foes){if(!drawEnemySprite(ctx,e)){ctx.fillStyle=e.type==='drone'?'#e6b56e':e.type==='mech'?'#bc8267':'#d27669';ctx.beginPath();ctx.arc(e.x,e.y,e.type==='mech'?32:14,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#20252a';ctx.fillRect(e.x-25,e.y-(e.type==='mech'?47:28),50,5);ctx.fillStyle='#f39b88';ctx.fillRect(e.x-25,e.y-(e.type==='mech'?47:28),50*e.hp/e.max,5);}
 for(let s of shots){ctx.fillStyle=s.from==='hero'?'#87f0dd':'#ffbd76';ctx.beginPath();ctx.arc(s.x,s.y,5,0,Math.PI*2);ctx.fill();}
 // Réutilise le vrai Survivant 3.0 de la base 0.9.3.
