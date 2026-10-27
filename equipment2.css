@@ -36,3 +36,25 @@
 #refuge-page-character .tactical-showcase .equip-square small{font-size:8px!important}
 #refuge-page-character .tactical-showcase .eq2-icon{font-size:24px;line-height:1}
 #refuge-page-character .tactical-showcase .survivor-portrait{grid-column:2!important}
+
+/* ASHFALL V9.2.2 — Inventaire lisible sur petit écran */
+#overlay:has(.ash922-bag){overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.ash922-bag{color:#e5f1f5;text-align:left;padding:3px 0 22px;max-width:660px;margin:auto;font-family:inherit}
+.ash922-bag *{box-sizing:border-box}
+.ash922-header{background:linear-gradient(145deg,#152e3e,#0b1a29);padding:16px;border-radius:13px;border:1px solid #345266;margin:7px 0 15px}
+.ash922-kicker{font-size:10px;color:#70d4dc;letter-spacing:1.5px;font-weight:800}
+.ash922-header h2{margin:5px 0 12px;font-size:20px;letter-spacing:.8px;color:#f3f8fc}
+.ash922-capacity{display:flex;align-items:baseline;justify-content:space-between;gap:6px;color:#afc9d3;font-size:12px}
+.ash922-capacity strong{font-size:20px;color:#fff}.ash922-capacity strong span{color:#7995a5}
+.ash922-capacity-track{height:5px;border-radius:9px;background:#273d4f;overflow:hidden;margin-top:7px}.ash922-capacity-track>span{display:block;height:100%;background:#51b9c5;border-radius:9px}
+.ash922-section{margin:15px 0}.ash922-section>h3{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 10px;font-size:12px;letter-spacing:1px;color:#f2f5f5}.ash922-section>h3 span{font-size:10px;letter-spacing:0;color:#9bb6c4;font-weight:500}
+.ash922-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.ash922-slot{position:relative;display:flex;gap:7px;align-items:center;min-width:0;min-height:89px;border:1px solid #3e6272;border-left:3px solid var(--eq2-rarity);border-radius:10px;background:#152b3b;padding:8px 7px}
+.ash922-slot.ash922-worn{background:linear-gradient(135deg,#173c3b,#152c3b);border-top-color:#407d78;border-bottom-color:#407d78}
+.ash922-slot-art{flex:0 0 39px;min-width:0;height:48px;display:flex;justify-content:center;align-items:center;overflow:hidden;background:#091d29;border-radius:7px;color:#a2d9e0;font-size:25px}
+.ash922-slot-art .weapon-art,.ash922-slot-art img{max-width:39px!important;max-height:42px!important;object-fit:contain}
+.ash922-slot-body{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}.ash922-slot-body>small{font-size:9px;color:#a4bbcb;line-height:1.25;overflow-wrap:anywhere}.ash922-slot-body strong{font-size:11px;overflow-wrap:anywhere;line-height:1.15}.ash922-worn-label,.ash922-equipped-badge{color:#8de8bd;font-size:10px;font-weight:800;line-height:1.3}.ash922-empty-label,.ash922-stowed-badge{color:#9aaebb;font-size:10px;line-height:1.3}
+.ash922-help{margin:0 0 9px;color:#9cb7c5;font-size:11px;line-height:1.5}.ash922-bag .eq2-run-list{gap:8px}.ash922-item{background:#152a39!important;border:1px solid #34556a!important;border-left:3px solid var(--eq2-rarity)!important;padding:10px!important;grid-template-columns:53px minmax(0,1fr)!important}.ash922-item-equipped{background:#193a38!important;border-color:#469a85!important}
+.ash922-item .eq2-mini-art{background:#0a1e2a;border-radius:7px;min-height:52px;grid-row:1!important}.ash922-item-details{min-width:0;display:flex;flex-direction:column;gap:4px}.ash922-item-details strong{font-size:13px}.ash922-item-details small{font-size:11px;line-height:1.4}.ash922-item .eq2-run-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px}.ash922-item .eq2-run-actions button{flex:1;min-height:41px;font-weight:750;background:#204d5e;border:1px solid #488c9e;color:#effdff}.ash922-item .eq2-run-actions button.ash922-discard{background:#292c36;border-color:#77585b;color:#edc4c0}.ash922-item .eq2-run-actions button:disabled{opacity:.45}
+.ash922-ground{margin:11px 0;padding:10px;border:1px solid #426475;border-radius:9px;background:#102635}.ash922-ground summary{color:#addce2;font-size:12px;font-weight:800;cursor:pointer;min-height:25px}.ash922-ground-list{display:grid;gap:7px;padding-top:10px}.ash922-ground-list button{min-height:40px;text-align:left}.ash922-empty-note{color:#a3bdc8;font-size:13px}
+@media(max-width:365px){.ash922-slot{gap:5px;padding:7px 5px}.ash922-slot-art{flex-basis:32px}.ash922-slot-art .weapon-art,.ash922-slot-art img{max-width:32px!important}.ash922-slot-body strong{font-size:10px}}
