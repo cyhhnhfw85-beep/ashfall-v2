@@ -2027,63 +2027,86 @@ function ensureMerchant(){
  }
  return m;
 }
-let merchantTab='buy', merchantFilter='all', merchantSort='recommended';
-function merchantOpen(tab='buy'){
- if(data.run){msg('Retourne au refuge pour commercer.');return}
- merchantTab=tab;ensureMerchant();merchantRender();
+// Merchant Reborn 9.4.2 — one UI and one transaction surface.
+let merchantTab='buy', merchantCategory='all', merchantSelected=null;
+const MERCHANT_SLOTS=['all','weapon','armor','boots','module','bag','artifact'];
+function merchantEquipPrice(w){
+ if((w.slot||'weapon')==='weapon')return merchantPrice(w);
+ const rank=MERCHANT_RANK[w.rar]||0;
+ return Math.round((210+Math.max(1,Number(w.level)||1)*65)*(1+rank*.65)/10)*10;
 }
-function merchantScore(w){return (Number(w.dmg)||0)*(Number(w.rate)||0)}
-function merchantRender(){
- const m=ensureMerchant(),stock=m.stock||[],remaining=stock.filter(w=>!w.sold).length;
- const until=Math.max(0,2-(data.runs-m.lastRefreshRun));
- const hint=until===0?'Un nouvel arrivage sera disponible à la prochaine visite du comptoir.':`Prochain arrivage : ${until} expédition${until>1?'s':''} terminée${until>1?'s':''}, ou nouvelle avancée dans K-17.`;
- const mirror=$('merchantRefreshHint');if(mirror)mirror.textContent=hint;
- if($('merchantCreditsMirror'))$('merchantCreditsMirror').textContent=data.credits;
- if($('merchantReserveCount'))$('merchantReserveCount').textContent=data.stash.length;
- if($('merchantOffersCount'))$('merchantOffersCount').textContent=remaining;
- let html=`<div class="merchant-shop ash-commerce"><div class="merchant-tabs ash-commerce-tabs" role="group" aria-label="Opérations du marchand"><button type="button" data-merchant-tab="buy" aria-pressed="${merchantTab==='buy'}" class="${merchantTab==='buy'?'active':''}">${afIcon("merchant")} Acheter</button><button type="button" data-merchant-tab="sell" aria-pressed="${merchantTab==='sell'}" class="${merchantTab==='sell'?'active':''}">${afIcon("credits")} Vendre</button></div>`;
- if(merchantTab==='buy'){
-  const current=data.equipped,base=merchantScore(current||{});
-  const filters=[['all','Toutes'],['available','Achetables'],['upgrade','Plus puissantes']];
-  html+=`<div class="ash-commerce-toolbar"><div class="ash-commerce-filters" role="group" aria-label="Filtrer les armes">${filters.map(([id,label])=>`<button type="button" class="${merchantFilter===id?'selected':''}" data-merchant-filter="${id}" aria-pressed="${merchantFilter===id}">${label}</button>`).join('')}</div><label class="ash-merchant-sort">TRIER <select id="merchantSort" aria-label="Trier les offres"><option value="recommended" ${merchantSort==='recommended'?'selected':''}>Disponibilité</option><option value="price" ${merchantSort==='price'?'selected':''}>Prix croissant</option><option value="power" ${merchantSort==='power'?'selected':''}>Puissance théorique</option></select></label></div>`;
-  // Group identical lots for readability without changing stock quantities or economy.
-  const grouped=new Map();
-  stock.forEach((w,i)=>{
-   const k=[w.name,w.rar,w.dmg,w.rate,w.price].join('|');
-   if(!grouped.has(k))grouped.set(k,{w,i,total:0,remaining:0});
-   const g=grouped.get(k);g.total++;
-   if(!w.sold){if(g.remaining===0){g.w=w;g.i=i;}g.remaining++;}
-  });
-  let offers=[...grouped.values()];
-  if(merchantFilter==='available')offers=offers.filter(g=>g.remaining>0&&data.credits>=g.w.price);
-  else if(merchantFilter==='upgrade')offers=offers.filter(g=>g.remaining>0&&merchantScore(g.w)>base);
-  offers.sort((a,b)=>{
-   if(merchantSort==='price')return a.w.price-b.w.price||a.i-b.i;
-   if(merchantSort==='power')return merchantScore(b.w)-merchantScore(a.w)||a.i-b.i;
-   return Number(a.remaining===0)-Number(b.remaining===0)||Number(data.credits<b.w.price)-Number(data.credits<a.w.price)||a.i-b.i;
-  });
-  html+=`<p class="ash-merchant-explainer">${remaining} offre${remaining!==1?'s':''} en stock · Achat avec confirmation · Puissance indicative hors bonus.</p>`;
-  html+='<div class="ash-offer-list">';
-  html+=offers.map(({w,i,remaining:copies,total})=>{
-   const sold=copies===0,power=merchantScore(w),delta=Math.round((power-base)*10)/10,ok=power>base,affordable=data.credits>=w.price;
-   return `<article class="ui-weapon merchant-offer ash-merchant-offer ${sold?'ash-offer-sold':''}" style="--item-rarity:${tint(w)}"><div class="ash-merchant-offer-head"><span class="ash-offer-picture">${weaponArt(w)}</span><div class="ash-offer-copy"><span class="rarity">${uiSafe(w.rar)}</span><b>${uiSafe(w.name)}</b><span class="ash-offer-traits">${afIcon("damage")} ${Number(w.dmg)} DGT <span aria-hidden="true">·</span> ${afIcon("rate")} ${Number(w.rate)} tirs/s</span><span class="ash-offer-stock">${copies?copies+" en stock": "Épuisé"}${total>1?" · lot de "+total:""}</span></div><span class="ash-price-chip">${w.price} ¤</span></div><div class="ash-offer-comparison"><span>Puissance théorique : <strong>${power.toFixed(1)}</strong></span><span class="${ok?'ui-up':delta<0?'ui-down':''}">${base?((delta>0?'+':'')+delta.toFixed(1)+' vs équipée'):'Sans comparaison'}</span></div><button type="button" data-merchant-buy="${i}" ${sold||!affordable?'disabled':''}>${sold?'DÉJÀ VENDUE':!affordable?'IL MANQUE '+(w.price-data.credits)+' ¤':'ACHETER · '+w.price+' ¤'}</button></article>`;
-  }).join('');
-  if(!offers.length)html+='<div class="ash-merchant-empty">Aucune arme pour ce filtre. Essaie « Toutes » ou reviens après un nouvel arrivage.</div>';
-  html+='</div>';
- }else{
-  html+='<div class="ash-merchant-explainer">Les ventes sont définitives. Le prix de rachat est inférieur au prix marchand ; une arme achetée est reprise au maximum à 25 % de son coût. Ton arme équipée ne figure pas dans la réserve.</div>';
-  const items=data.stash.map((w,i)=>({w,i})).sort((a,b)=>salvagePrice(b.w)-salvagePrice(a.w)||a.i-b.i);
-  html+='<div class="ash-offer-list">';
-  html+=items.map(({w,i})=>{
-   const locked=w.id===data.insured;
-   return `<article class="ui-weapon merchant-offer ash-merchant-offer" style="--item-rarity:${tint(w)}"><div class="ash-merchant-offer-head"><span class="ash-offer-picture">${weaponArt(w)}</span><div class="ash-offer-copy"><span class="rarity">${uiSafe(w.rar)}</span><b>${uiSafe(w.name)}</b><span class="ash-offer-traits">${afIcon("damage")} ${Number(w.dmg)||0} DGT · ${afIcon("rate")} ${Number(w.rate)||0} tirs/s</span></div><span class="ash-price-chip">+${salvagePrice(w)} ¤</span></div><button type="button" data-merchant-sell="${i}" ${locked?'disabled':''}>${locked?'OBJET ASSURÉ — VENTE BLOQUÉE':'VENDRE · +'+salvagePrice(w)+' ¤'}</button></article>`;
-  }).join('');
-  if(!items.length)html+='<div class="ash-merchant-empty">Réserve vide. Rapporte des armes lors d’une extraction pour pouvoir les revendre.</div>';
-  html+='</div>';
+function merchantEquipSale(w){
+ if((w.slot||'weapon')==='weapon')return salvagePrice(w);
+ return Math.min(220,Math.max(12,15*E2.rarityYield(w)));
+}
+function merchantRebornStock(){
+ const m=ensureMerchant();
+ if(!data.eq2||!E2)return m;
+ // Existing legacy offers are preserved. The extra gear is generated once per
+ // existing refresh cycle and persisted, never regenerated by opening a tab.
+ const tag='gear-cycle-'+m.cycle;
+ if(m.rebornGearCycle!==tag){
+  m.stock=m.stock.filter(w=>!w.rebornGear);
+  for(const slot of ['armor','boots','module','bag','artifact']){
+   const w=E2.generate(slot,merchantTier());
+   m.stock.push({...w,id:undefined,offerId:tag+'-'+slot,price:merchantEquipPrice(w),origin:'merchant',sold:false,rebornGear:true});
+  }
+  m.rebornGearCycle=tag;
+  persist();
  }
- html+=`<details class="ash-refuge-drawer ash-trader-footnote"><summary>Fonctionnement du comptoir</summary><p>Le stock change après deux expéditions terminées ou une nouvelle progression de secteur. Les armes plus rares apparaissent au fil de l'exploration. Les achats restent dans la réserve jusqu'à leur équipement.</p></details></div>`;
- const host=$('merchantPageContent');if(host)host.innerHTML=html;
- else tool('¤ LE COMPTOIR — MARCHAND',html);
+ return m;
+}
+function merchantOpen(tab='buy'){
+ if(data.run){msg('Retourne au refuge pour commercer.');return;}
+ merchantTab=tab;merchantSelected=null;merchantRebornStock();merchantRender();
+}
+function merchantAllSellable(){
+ if(data.eq2&&E2)return E2.owned(data).filter(w=>!Object.values(data.eq2.slots||{}).includes(w.id));
+ return data.stash.filter(w=>w.id!==data.insured);
+}
+function merchantCards(){
+ if(merchantTab==='buy')return merchantRebornStock().stock.map((w,i)=>({...w,_ref:i,_sell:false}));
+ return merchantAllSellable().map(w=>({...w,_ref:w.id,_sell:true}));
+}
+function merchantRender(){
+ const host=$('merchantPageContent');if(!host)return;
+ let items=merchantCards().filter(w=>merchantCategory==='all'||(w.slot||'weapon')===merchantCategory);
+ const available=merchantTab==='buy'?items.filter(w=>!w.sold).length:items.length;
+ const selected=items.find(w=>String(w._ref)===String(merchantSelected));
+ const tab=(name,label)=>`<button type="button" data-merchant-tab="${name}" class="${merchantTab===name?'on':''}" aria-pressed="${merchantTab===name}">${label}</button>`;
+ const iconCard=w=>`<button type="button" class="mr-item ${selected&&String(selected._ref)===String(w._ref)?'mr-selected':''} ${w.sold?'mr-sold':''}" data-mr-view="${uiSafe(String(w._ref))}" aria-label="Voir ${uiSafe(w.name)}" style="--mr-rarity:${tint(w)}"><span class="mr-art">${e2ItemArt(w)}</span><span class="mr-name">${uiSafe(w.name)}</span><span class="mr-cost">${w.sold?'ÉPUISÉ':(w._sell?'+':'')+Number(w._sell?merchantEquipSale(w):w.price)+' CR'}</span></button>`;
+ let html=`<div class="mr-shell"><div class="mr-top"><strong>MARCHAND</strong><span class="mr-money">${afIcon('credits')} ${data.credits} CR</span></div><div class="mr-tabs">${tab('buy','ACHETER')}${tab('sell','VENDRE')}</div><div class="mr-categories" aria-label="Types d’équipement">${MERCHANT_SLOTS.map(slot=>`<button type="button" data-mr-category="${slot}" class="${merchantCategory===slot?'on':''}">${slot==='all'?'Tout':e2SlotName(slot)}</button>`).join('')}</div><div class="mr-subtitle">${available} objet${available!==1?'s':''} ${merchantTab==='buy'?'disponibles':'à vendre'}</div><div class="mr-grid">${items.map(iconCard).join('')||'<p class="mr-empty">Aucun objet dans cette catégorie.</p>'}</div>`;
+ if(selected){
+  const buy=merchantTab==='buy',value=buy?selected.price:merchantEquipSale(selected),locked=buy&&(selected.sold||data.credits<value);
+  html+=`<section class="mr-detail" aria-label="Détail de l’objet"><button type="button" class="mr-close" data-mr-close aria-label="Fermer">✕</button><div class="mr-detail-head"><div class="mr-detail-icon">${e2ItemArt(selected)}</div><div><small>${e2SlotName(selected.slot||'weapon')} · ${uiSafe(selected.rar)}</small><h3>${uiSafe(selected.name)}</h3><strong>${buy?'−':'+'}${value} CR</strong></div></div><p>${uiSafe(e2ItemStats(selected)||'Équipement tactique')}</p><button type="button" class="mr-confirm" data-mr-confirm ${locked?'disabled':''}>${buy?(selected.sold?'INDISPONIBLE':data.credits<value?'CRÉDITS INSUFFISANTS':'ACHETER CET OBJET'):'VENDRE CET OBJET'}</button></section>`;
+ }
+ html+='</div>';host.innerHTML=html;
+}
+function merchantTransaction(){
+ if(data.run||merchantSelected===null)return;
+ const w=merchantCards().find(x=>String(x._ref)===String(merchantSelected));if(!w)return;
+ if(merchantTab==='buy'){
+  const m=merchantRebornStock(),offer=m.stock[w._ref];
+  if(!offer||offer.sold||!Number.isFinite(offer.price)||data.credits<offer.price)return;
+  if(!confirm(`Acheter ${offer.name} pour ${offer.price} crédits ?`))return;
+  const snapshot=JSON.stringify(data);
+  const item={...offer,id:uid(),origin:'merchant',purchasePrice:offer.price};
+  delete item.offerId;delete item.price;delete item.sold;delete item.rebornGear;
+  if((item.slot||'weapon')==='weapon'){data.stash.push(item)}
+  else {if(!data.eq2||!E2){msg('Équipements 2.0 indisponibles.');return;}data.eq2.gear.push(item);}
+  data.credits-=offer.price;offer.sold=true;
+  if((data.eq2&&!E2.validate(data))||!persist()){data=JSON.parse(snapshot);msg('Achat annulé : sauvegarde ou équipement invalide.');return;}
+  msg(`${item.name} acheté.`);
+ }else{
+  const id=w.id,owned=merchantAllSellable().find(x=>x.id===id);if(!owned)return;
+  if(!confirm(`Vendre définitivement ${owned.name} pour ${merchantEquipSale(owned)} crédits ?`))return;
+  const snapshot=JSON.stringify(data);
+  if(data.eq2){if(E2.sell(data,id,salvagePrice)===null)return;}
+  else{const i=data.stash.findIndex(x=>x.id===id);if(i<0)return;data.stash.splice(i,1);data.credits+=salvagePrice(owned);}
+  if((data.eq2&&!E2.validate(data))||!persist()){data=JSON.parse(snapshot);msg('Vente annulée : sauvegarde ou équipement invalide.');return;}
+  msg(`${owned.name} vendu.`);
+ }
+ merchantSelected=null;render();merchantRender();
 }
 let selectedInventoryId=null;
 let inventoryPage=0;
@@ -2190,22 +2213,8 @@ function renderRefugeProgress(){
   if(state)state.textContent=beacon?'✓ Découvert · balise activée':seen?'✓ Secteur découvert':'◇ Pas encore découvert';
  });
 }
-function merchantBuy(i){
- if(data.run)return;const w=ensureMerchant().stock[i];
- if(!w||w.sold||!Number.isFinite(w.price)||data.credits<w.price)return;
- if(!confirm(`Acheter ${w.name} (${w.rar}) pour ${w.price} crédits ?`))return;
- // Atomic state transition, persisted together: money, stock, item ownership.
- const item={id:uid(),name:w.name,rar:w.rar,dmg:w.dmg,rate:w.rate,purchasePrice:w.price,origin:"merchant"};
- data.credits-=w.price;data.stash.push(item);w.sold=true;
- persist();render();merchantRender();msg(`${item.name} acheté et placé dans la réserve.`);
-}
-function merchantSell(i){
-  if(data.run)return;const w=data.stash[i];if(!w)return;if(data.eq2){e2GearAction('sell',w.id);merchantRender();return;}
- if(w.id===data.insured){msg('Cet objet est assuré. Annule d’abord son assurance.');return}
- const price=salvagePrice(w);
- if(!confirm(`Vendre définitivement ${w.name} pour ${price} crédits ?`))return;
- data.stash.splice(i,1);data.credits+=price;persist();render();merchantRender();msg(`${w.name} vendu · +${price} crédits.`);
-}
+function merchantBuy(i){merchantTab='buy';merchantSelected=i;merchantTransaction();}
+function merchantSell(i){const w=data.stash[i];if(!w)return;merchantTab='sell';merchantSelected=w.id;merchantTransaction();}
 
 function upgrade(t){let lv=t==='hp'?data.hpLv:data.dmgLv,cost=4+lv*4;if(lv>=8||data.research<cost)return;data.research-=cost;if(t==='hp')data.hpLv++;else data.dmgLv++;persist();render()}
 function insure(){if(data.eq2){msg('Les équipements acquis sont désormais conservés définitivement.');return;}if(!data.equipped||data.insured===data.equipped.id||data.credits<premium())return;data.credits-=premium();data.insured=data.equipped.id;persist();render();msg('Objet assuré pour la prochaine expédition.')}
@@ -2302,7 +2311,13 @@ $('overlay').addEventListener('click',e=>{
   const action=e.target.closest('[data-e2-run-equip],[data-e2-run-drop],[data-e2-secure],[data-e2-transfer],[data-e2-replace],[data-e2-dismiss],[data-e2-inspect]');
   if(action){const ops={'data-e2-run-equip':'equip','data-e2-run-drop':'drop','data-e2-secure':'secure','data-e2-transfer':'transfer','data-e2-replace':'replace','data-e2-dismiss':'dismiss','data-e2-inspect':'inspect'};for(const [attr,op] of Object.entries(ops))if(action.hasAttribute(attr)){e2RunAction(op,action.getAttribute(attr));return;}}
   let b=e.target.closest('[data-op]');if(!b)return;let op=b.dataset.op,idx=Number(b.dataset.idx);if(op==='choosePerk')choosePerk(b.dataset.perk);else if(op==='close'||op==='resume')closeOverlay();else if(op==='equipBag')equipBag(idx);else if(op==='drop')drop(idx);else if(op==='bag'){overlayReturn='pause';openOverlay('bag')}else if(op==='map'){overlayReturn='pause';openOverlay('map')}else if(op==='backPause')openOverlay('pause');else if(op==='retreat')openOverlay('retreatConfirm');else if(op==='confirmRetreat')finish(false,'abandon')});
-function merchantClickHandler(e){let b=e.target.closest('[data-merchant-tab],[data-merchant-filter],[data-merchant-buy],[data-merchant-sell]');if(!b)return;if(b.hasAttribute('data-merchant-tab')){merchantTab=b.dataset.merchantTab;merchantRender()}else if(b.hasAttribute('data-merchant-filter')){merchantFilter=b.dataset.merchantFilter;merchantRender()}else if(b.hasAttribute('data-merchant-buy'))merchantBuy(Number(b.dataset.merchantBuy));else if(b.hasAttribute('data-merchant-sell'))merchantSell(Number(b.dataset.merchantSell));}
+function merchantClickHandler(e){const b=e.target.closest('[data-merchant-tab],[data-mr-category],[data-mr-view],[data-mr-close],[data-mr-confirm]');if(!b)return;
+ if(b.hasAttribute('data-merchant-tab')){merchantTab=b.dataset.merchantTab;merchantSelected=null;}
+ else if(b.hasAttribute('data-mr-category')){merchantCategory=b.dataset.mrCategory;merchantSelected=null;}
+ else if(b.hasAttribute('data-mr-view'))merchantSelected=b.dataset.mrView;
+ else if(b.hasAttribute('data-mr-close'))merchantSelected=null;
+ else if(b.hasAttribute('data-mr-confirm')){merchantTransaction();return;}
+ merchantRender();}
 $('runDebrief').addEventListener('click',e=>{if(e.target.closest('[data-end-action=return]'))closeRunDebrief();});
 $('toolsBody').addEventListener('click',merchantClickHandler);if($('merchantPageContent'))$('merchantPageContent').addEventListener('click',merchantClickHandler);
 if($('merchantPageContent'))$('merchantPageContent').addEventListener('change',e=>{if(e.target.id==='merchantSort'){merchantSort=e.target.value;merchantRender();}});

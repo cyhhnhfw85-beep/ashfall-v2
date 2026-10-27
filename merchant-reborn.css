@@ -1,0 +1,27 @@
+/* ASHFALL V9.4.2 — Merchant Reborn. Scoped UI, no old merchant markup. */
+#refuge-page-merchant .mr-shell{color:#e2eff5;padding:8px 0 28px;font-family:inherit}
+#refuge-page-merchant .mr-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 16px;font-size:19px;letter-spacing:.11em}
+#refuge-page-merchant .mr-money{font-size:13px;letter-spacing:0;color:#f3bc71;white-space:nowrap}
+#refuge-page-merchant .mr-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+#refuge-page-merchant .mr-tabs button{padding:14px 8px;color:#97b2c0;background:#122938;border:1px solid #325268;border-radius:12px;font-weight:800;letter-spacing:.08em}
+#refuge-page-merchant .mr-tabs button.on{background:#223f50;border-color:#75d8db;color:#eaffff}
+#refuge-page-merchant .mr-categories{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:13px;padding-bottom:4px}
+#refuge-page-merchant .mr-categories button{white-space:nowrap;padding:8px 12px;border:1px solid #2d5264;border-radius:20px;background:#0a202e;color:#b3cbd5;font-size:12px}
+#refuge-page-merchant .mr-categories button.on{border-color:#6ee1e7;background:#19475a;color:white}
+#refuge-page-merchant .mr-subtitle{color:#a0b5be;font-size:12px;margin-bottom:10px}
+#refuge-page-merchant .mr-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#refuge-page-merchant .mr-item{min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:139px;padding:12px 5px 9px;background:linear-gradient(145deg,#172b3b,#0a1a28);border:1px solid #315064;border-bottom:2px solid var(--mr-rarity,#65cbd8);border-radius:13px;color:#e6f2f6}
+#refuge-page-merchant .mr-item.mr-selected{border-color:#85e6ec;box-shadow:0 0 0 1px #75ced7}
+#refuge-page-merchant .mr-item.mr-sold{opacity:.48}
+#refuge-page-merchant .mr-art{display:flex;align-items:center;justify-content:center;width:64px;height:64px;max-width:100%}
+#refuge-page-merchant .mr-art svg{width:100%;height:100%;max-height:64px}
+#refuge-page-merchant .mr-name{font-weight:700;font-size:11px;line-height:1.2;text-align:center;overflow-wrap:anywhere}
+#refuge-page-merchant .mr-cost{font-size:11px;color:#e8bd7f;font-weight:800}
+#refuge-page-merchant .mr-detail{position:relative;margin-top:14px;padding:18px 12px;background:#0b2230;border:1px solid #63b6c6;border-radius:14px}
+#refuge-page-merchant .mr-detail-head{display:flex;align-items:center;gap:15px;padding-right:22px}
+#refuge-page-merchant .mr-detail-icon{width:80px;flex-shrink:0}#refuge-page-merchant .mr-detail-icon svg{width:80px;height:80px}
+#refuge-page-merchant .mr-detail h3{font-size:17px;line-height:1.25;margin:6px 0}#refuge-page-merchant .mr-detail small{color:#abc5d1}#refuge-page-merchant .mr-detail strong{color:#f4c188}
+#refuge-page-merchant .mr-detail p{font-size:13px;color:#bdd5de;margin:14px 0}
+#refuge-page-merchant .mr-close{position:absolute;top:8px;right:8px;background:transparent;color:#ddeaf0;border:0;padding:7px;font-size:20px}
+#refuge-page-merchant .mr-confirm{width:100%;padding:14px;border-radius:10px;background:#d5ae72;color:#14212c;font-weight:900;border:0}#refuge-page-merchant .mr-confirm:disabled{opacity:.45}
+#refuge-page-merchant .mr-empty{grid-column:1/-1;text-align:center;padding:24px;color:#aabfc8}
