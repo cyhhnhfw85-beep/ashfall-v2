@@ -1,0 +1,116 @@
+/* ASHFALL V9.3.4 — HUD rebuild, intentional override of legacy HUD rules. */
+body.ashfall-expedition #game .gamebar.ash-premium-hud{
+  position:absolute!important;z-index:26!important;top:0!important;left:0!important;right:0!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr) 122px!important;
+  grid-template-rows:auto!important;align-items:start!important;gap:7px!important;
+  min-height:0!important;height:auto!important;margin:0!important;
+  padding:calc(env(safe-area-inset-top,0px) + 6px) 9px 6px!important;
+  background:linear-gradient(180deg,#091622f8 0%,#0b1824f5 86%,#0b1824dd 100%)!important;
+  border-bottom:1px solid #365269!important;box-shadow:0 5px 15px #0008!important;
+  pointer-events:none!important;
+}
+body.ashfall-expedition #game .gamebar>*{pointer-events:auto!important;min-width:0!important}
+body.ashfall-expedition .gamebar .ash-hud-left{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important;align-self:start!important}
+body.ashfall-expedition .gamebar .ash-survivor-readout{display:block!important;height:auto!important;min-height:0!important}
+body.ashfall-expedition .gamebar .hud-main{
+ display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;
+ gap:10px!important;padding:0!important;background:none!important;border:0!important;
+ border-radius:0!important;box-shadow:none!important;height:59px!important;min-height:0!important;
+}
+body.ashfall-expedition .gamebar .hud-topline{display:none!important}
+body.ashfall-expedition .gamebar .ash-health-group,
+body.ashfall-expedition .gamebar .ash-experience-group{
+ display:block!important;position:relative!important;flex:0 0 55px!important;width:55px!important;height:55px!important;
+ margin:0!important;padding:0!important;overflow:hidden!important;border:2px solid transparent!important;
+ filter:drop-shadow(0 2px 3px #0008);isolation:isolate;
+}
+body.ashfall-expedition .gamebar .ash-health-group{clip-path:polygon(50% 94%,15% 61%,5% 39%,5% 21%,15% 8%,32% 6%,50% 21%,68% 6%,85% 8%,95% 21%,95% 39%,85% 61%);background:#49252d!important}
+body.ashfall-expedition .gamebar .ash-experience-group{clip-path:polygon(50% 2%,94% 25%,94% 75%,50% 98%,6% 75%,6% 25%);background:#183442!important}
+body.ashfall-expedition .gamebar .ash-vital-track,
+body.ashfall-expedition .gamebar .ash-xp-track{
+ position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;
+ margin:0!important;border:0!important;background:transparent!important;border-radius:0!important;overflow:hidden!important;
+}
+body.ashfall-expedition .gamebar #hpFill,
+body.ashfall-expedition .gamebar #xpFill{
+ position:absolute!important;bottom:0!important;top:auto!important;left:0!important;right:0!important;
+ width:100%!important;border-radius:0!important;transition:height .18s ease!important;
+}
+body.ashfall-expedition .gamebar #hpFill{background:#e04e63!important}
+body.ashfall-expedition .gamebar #xpFill{background:#36abd1!important}
+body.ashfall-expedition .gamebar .ash-vital-line,
+body.ashfall-expedition .gamebar .ash-xp-line{
+ position:absolute!important;z-index:3!important;inset:0!important;display:flex!important;flex-direction:column!important;
+ align-items:center!important;justify-content:center!important;gap:0!important;padding:0!important;pointer-events:none!important;
+}
+body.ashfall-expedition .gamebar .ash-vital-name,
+body.ashfall-expedition .gamebar .ash-xp-name{display:block!important;font-size:8px!important;line-height:1.1!important;color:#edf7ff!important;letter-spacing:.1em!important;font-weight:800!important}
+body.ashfall-expedition .gamebar #hpText,
+body.ashfall-expedition .gamebar #xpDisplay{
+ display:block!important;font-size:16px!important;line-height:1.1!important;font-weight:900!important;color:white!important;
+ letter-spacing:0!important;margin:0!important;white-space:nowrap!important;text-shadow:0 1px 3px #09101d,0 0 4px #09101d!important;
+}
+body.ashfall-expedition .gamebar .ash-hud-right{
+ display:grid!important;grid-template-columns:73px 43px!important;grid-template-rows:76px!important;
+ align-items:start!important;gap:5px!important;width:121px!important;min-width:121px!important;max-width:121px!important;
+}
+body.ashfall-expedition .gamebar #mapBtn.ash-minimap-button{
+ display:flex!important;flex-direction:column!important;gap:0!important;justify-content:center!important;
+ width:73px!important;min-width:73px!important;max-width:73px!important;
+ height:76px!important;min-height:76px!important;max-height:76px!important;
+ padding:3px!important;margin:0!important;grid-column:1!important;grid-row:1!important;
+ background:#0e2333!important;border:1px solid #497588!important;border-radius:11px!important;overflow:hidden!important;
+}
+body.ashfall-expedition .gamebar .ash-minimap-image{display:block!important;height:61px!important;width:100%!important;margin:0!important;flex:1!important;overflow:hidden!important}
+body.ashfall-expedition .gamebar .ash-minimap-image svg{height:100%!important;width:100%!important;object-fit:contain!important}
+body.ashfall-expedition .gamebar .ash-minimap-topline{display:block!important;font-size:9px!important;line-height:11px!important;height:11px!important;min-height:11px!important;padding:0!important;color:#bdebf2!important;text-align:center!important}
+body.ashfall-expedition .gamebar .hud-actions{
+ display:flex!important;flex-direction:column!important;gap:5px!important;
+ grid-column:2!important;grid-row:1!important;min-width:0!important;align-items:stretch!important;
+}
+body.ashfall-expedition .gamebar .hud-actions button{
+ box-sizing:border-box!important;width:43px!important;min-width:43px!important;max-width:43px!important;
+ height:35px!important;min-height:35px!important;max-height:35px!important;
+ padding:3px!important;margin:0!important;display:flex!important;justify-content:center!important;align-items:center!important;
+ background:#142b3b!important;border:1px solid #52768a!important;border-radius:9px!important;
+}
+body.ashfall-expedition .gamebar .hud-actions .ash-bag-label{display:none!important}
+body.ashfall-expedition .gamebar .hud-actions #bagBtn{flex-direction:column!important;gap:1px!important}
+body.ashfall-expedition .gamebar .hud-actions #bagBtn svg{height:15px!important;width:15px!important;flex:none!important}
+body.ashfall-expedition .gamebar .hud-actions #bagCount{font-size:10px!important;line-height:10px!important}
+body.ashfall-expedition .gamebar #ashContractHud:not([hidden]){
+ display:flex!important;flex-direction:column!important;gap:2px!important;
+ width:100%!important;min-height:0!important;max-height:47px!important;overflow:hidden!important;
+ margin:0!important;padding:4px 7px!important;border-radius:8px!important;
+ border:1px solid #896e43!important;background:#0d202e!important;font-size:9px!important;line-height:1.1!important;
+}
+body.ashfall-expedition .gamebar #ashContractHud .ash-contract-caption{
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ min-height:12px!important;height:12px!important;white-space:nowrap!important;gap:4px!important;
+}
+body.ashfall-expedition .gamebar #ashContractHud .ash-contract-name{font-size:9px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+body.ashfall-expedition .gamebar #ashContractHud .ash-contract-tag{display:none!important}
+body.ashfall-expedition .gamebar #ashContractHud .ash-contract-progress{font-size:9px!important;flex-shrink:0!important}
+body.ashfall-expedition .ui-mission{display:none!important}
+body.ashfall-expedition.ash25-fullscreen #stage #canvas{
+ position:absolute!important;top:var(--ash25-play-top,125px)!important;left:0!important;
+ transform:none!important;width:100%!important;
+ height:calc(100% - var(--ash25-play-top,125px) - var(--ash934-controls,158px))!important;
+ min-height:0!important;max-height:none!important;aspect-ratio:auto!important;
+}
+body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{
+ box-sizing:border-box!important;position:absolute!important;top:auto!important;left:50%!important;right:auto!important;
+ bottom:0!important;transform:translateX(-50%)!important;width:100%!important;max-width:none!important;
+ height:var(--ash934-controls,158px)!important;min-height:0!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ background:linear-gradient(180deg,#0b1a28 0%,#0a1826 100%)!important;
+ border-radius:0!important;border-top:1px solid #335368!important;opacity:1!important;z-index:9!important;touch-action:none!important;
+}
+body.ashfall-expedition.ash25-fullscreen #stage #joyBase{
+ width:92px!important;height:92px!important;opacity:1!important;
+ background:radial-gradient(circle,#1e475e,#0c2636)!important;
+ border:2px solid #518fa6!important;box-shadow:0 0 0 9px #264e603f,0 0 0 18px #1e455334!important;
+}
+body.ashfall-expedition.ash25-fullscreen #stage #joyKnob{background:#c79c61!important;width:46px!important;height:46px!important}
+@media(max-width:355px){body.ashfall-expedition #game .gamebar.ash-premium-hud{grid-template-columns:minmax(0,1fr) 109px!important;gap:4px!important;padding-left:6px!important;padding-right:6px!important}body.ashfall-expedition .gamebar .ash-hud-right{transform:scale(.88);transform-origin:top right!important}body.ashfall-expedition .gamebar .hud-main{gap:3px!important}body.ashfall-expedition .gamebar .ash-health-group,body.ashfall-expedition .gamebar .ash-experience-group{flex-basis:49px!important;width:49px!important;height:49px!important}}
+@media(orientation:landscape){body.ashfall-expedition #game .gamebar.ash-premium-hud{padding-top:4px!important}body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{height:95px!important;width:160px!important;left:50%!important;border-radius:55px!important}body.ashfall-expedition.ash25-fullscreen #stage #canvas{height:calc(100% - var(--ash25-play-top,95px) - 95px)!important}}
