@@ -12,3 +12,8 @@ Version de jeu complète, basée exclusivement sur ASHFALL 0.9.0-beta.1 Équipem
 Lire `CHANGELOG_GRAPHICS_P1_1.md`, `RAPPORT_GRAPHICS_P1_1.md`, `VALIDATION_GRAPHICS_P1_1.md` et `INSTALLATION_IPHONE_GRAPHICS_P1_1.md` avant déploiement.
 
 **Sauvegardes** : conserver un export. L'installation remplace les fichiers du site, pas les données de progression. Les tests Safari iPhone doivent encore être réalisés par le propriétaire.
+
+
+## Correctif publication/cache V9.2.8.1
+Identifiant unique : 0.9.3-procedural-equipment-v9.2.8.1
+Synchronisation index.html, game.js, service-worker.js sans reinitialisation des sauvegardes. Deployer tous les fichiers.
