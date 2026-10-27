@@ -273,9 +273,15 @@ function ashContractPayout(r,won){
 function ashRenderContractSelection(){
  const host=$('ashContractPicker');if(!host||data.run)return;
  const selected=ashSelectedContracts();
- const groups=[['rooms','EXPLORATION','SALLES'],['kills','COMBAT','ENNEMIS'],['quality','EXTRACTION DE MATÉRIEL','']];
- host.innerHTML=`<div class="ash-contract-heading"><span>CONTRATS 3.0</span><small>3 contrats simultanés · Primes indépendantes à l’extraction</small></div>${groups.map(([key,title,unit],i)=>`<div class="ash-contract-tier-title">${title}</div><div class="ash-contract-options ash-contract-tiers" role="group" aria-label="Contrats ${title}">${ASH_CONTRACTS.filter(c=>c.group===key).map(c=>`<button class="ash-contract-option ${selected[i].id===c.id?'active':''}" type="button" data-contract-choice="${c.id}" aria-pressed="${selected[i].id===c.id}"><span class="ash-contract-label">${key==='quality'?uiSafe(c.name):c.target+' '+unit}</span><span class="ash-contract-mini">+${c.credits} CR · +${c.research} RECH.</span></button>`).join('')}</div>`).join('')}<details class="home-contract-details"><summary>Voir les trois objectifs ⌄</summary><div class="ash-contract-description">${selected.map(c=>`<p><strong>${uiSafe(c.name)}</strong> — ${uiSafe(c.detail)}</p>`).join('')}<small>Les objets trouvés pendant l’expédition comptent. Chaque prime est versée une fois, après extraction réussie.</small></div></details>`;
+ const groups=[
+  {key:'rooms',name:'EXPLORATION',hint:'Parcourir les salles',glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>'},
+  {key:'kills',name:'COMBAT',hint:'Éliminer les menaces',glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/></svg>'},
+  {key:'quality',name:'MATÉRIEL',hint:'Extraire du butin rare',glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 6-10 11L2 10zM2 10h20M9 4l3 6 3-6"/></svg>'}
+ ];
+ host.innerHTML='<div class="home953-heading"><div><span class="home953-eyebrow">PRÉPARATION DE MISSION</span><h3>MES CONTRATS</h3></div><span class="home953-count">3 ACTIFS</span></div><p class="home953-intro">Choisis un objectif dans chaque catégorie. Les primes sont indépendantes et obtenues après extraction.</p>'+
+ groups.map((g,i)=>'<section class="home953-contract home953-'+g.key+'" aria-label="'+g.name+'"><div class="home953-contract-head"><span class="home953-glyph">'+g.glyph+'</span><div><h4>'+g.name+'</h4><small>'+g.hint+'</small></div><span class="home953-selected">'+(selected[i].target||1)+' '+(g.key==='rooms'?'salles':g.key==='kills'?'ennemis':'objet(s)')+'</span></div><div class="home953-options" role="group" aria-label="Choix '+g.name+'">'+ASH_CONTRACTS.filter(c=>c.group===g.key).map(c=>'<button type="button" class="home953-option '+(selected[i].id===c.id?'is-active':'')+'" data-contract-choice="'+c.id+'" aria-pressed="'+(selected[i].id===c.id)+'"><strong>'+(g.key==='quality'?uiSafe(c.rar)+' ×'+c.target:c.target)+'</strong><span class="home953-rewards"><b>+'+c.credits+' CR</b><small>+'+c.research+' RECH.</small></span></button>').join('')+'</div></section>').join('')+'<div class="home953-footnote">Les trois objectifs sont suivis pendant l’expédition.</div>';
 }
+
 function ashSelectContract(id){
  if(data.run||data.pendingDebrief||data.chestPending)return;
  const c=ashFindContract(id);if(!c||!c.group)return;
@@ -1714,7 +1720,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.5.1-survivant-inventaire-unifie';
+const ASHFALL_RUNTIME_VERSION='0.9.5.3-accueil-reborn';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
