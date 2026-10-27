@@ -1604,14 +1604,14 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.3-peripherie-gfx-test1';
+const ASHFALL_RUNTIME_VERSION='0.9.3-procedural-clean-v9.1';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
  if(el&&String(el.textContent||'').trim()!==ASHFALL_RUNTIME_VERSION){
   const banner=document.createElement('div');banner.className='ash-version-mismatch';
   banner.setAttribute('role','alert');
-  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-peripherie-gfx-test1, puis recharge la page.';
+  banner.textContent='Mise à jour incomplète : certains fichiers du jeu sont encore en cache. Réinstalle tous les fichiers de la version 0.9.3-procedural-clean-v9.1, puis recharge la page.';
   document.body.prepend(banner);
  }
 })();
@@ -3432,7 +3432,7 @@ window.addEventListener('keydown',e=>{if(e.target.tagName==='TEXTAREA')return;ke
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(data.run&&!overlay)openOverlay('pause');persist(false)}});
 window.addEventListener('pagehide',()=>persist());
 window.addEventListener('freeze',()=>persist());
-if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});
+if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js?v=pc91',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});
 if(data.run){runProgress();data.run.exitWave=data.run.exitWave||(data.run.exitStarted?1:0);if(data.run.exitStarted&&!Number.isInteger(data.run.exitRoom))data.run.exitRoom=data.run.current;setPlayer();if(data.run.exitStarted&&!isExit(data.run.current,data.run))cancelExtraction(data.run,'tu as quitté la salle');sanitizeEnemyPositions(data.run.rooms[data.run.current]);if(isArena(data.run.current,data.run))enforceArena();else{let cr=data.run.rooms[data.run.current];if(cr&&cr.spawned&&!isBoss(data.run.current,data.run))autoSecure(cr)}if(!player||!data.run.rooms[data.run.current]){data.run=null;data.equipped=data.equipped||starter();msg('Ancienne expédition incompatible : refuge récupéré.')}else{openOverlay('pause');msg('Expédition retrouvée : appuie sur Reprendre.')}}
 
 // Initial training: self-contained guide. The flag is intentionally separate from ashfall_pwa_v1.
