@@ -1,2 +1,10 @@
 /* ASHFALL V9.5.2 — unified equipment sprites */
 .ash952-gear-img{display:block;object-fit:contain;width:100%;max-width:130px;height:74px;margin:auto;filter:drop-shadow(0 6px 7px rgba(0,0,0,.35))}.eq2-icon .ash952-gear-img,[data-eq2-portrait-slot] .ash952-gear-img{height:68px;max-width:84px}.merchant-item .ash952-gear-img{height:74px}
+
+/* V9.5.4: source PNG alpha margins removed; keep responsive, undistorted sprites. */
+#survivor-panel-equipment .sv-grid .inventory-symbol img.weapon-art-img{width:100%!important;max-width:98%!important;max-height:58px!important;height:58px!important;object-fit:contain!important}
+#survivor-panel-equipment .sv-grid .sv-gear-art img.ash952-gear-img{width:94%!important;max-width:94%!important;height:58px!important;max-height:58px!important;object-fit:contain!important}
+#survivor-panel-equipment .tactical-showcase .equip-square{justify-content:center!important;gap:2px!important;overflow:hidden!important}
+#survivor-panel-equipment .tactical-showcase .equip-square > span{display:flex!important;align-items:center!important;justify-content:center!important;flex:1 1 auto!important;width:100%!important;min-height:0!important;overflow:hidden!important}
+#survivor-panel-equipment .tactical-showcase .equip-square .ash952-gear-img,#survivor-panel-equipment .tactical-showcase .equip-square .weapon-art-img{display:block!important;width:96%!important;max-width:96%!important;height:39px!important;max-height:39px!important;object-fit:contain!important;margin:auto!important}
+#survivor-panel-equipment .tactical-showcase .equip-square small{display:block!important;flex:0 0 auto!important;position:static!important;margin:0!important;line-height:1!important;font-size:8px!important;text-align:center!important;white-space:nowrap!important}
