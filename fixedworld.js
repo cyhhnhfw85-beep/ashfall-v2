@@ -106,7 +106,7 @@ function loadCollisionMask(id,r){
   }
   octx.putImageData(idata,0,0);collisionMasks[id]={width:r.w,height:r.h,pixels:solid,overlay};
  };im.onerror=()=>console.warn('Collision mask unavailable for room',id);
- im.src=RURL+'masks/'+id+'.png?v=mask64';
+ im.src=RURL+'masks/'+id+'.png?v=mask65';
 }
 fetch(RURL+'rooms.json').then(x=>x.json()).then(v=>{rooms=v;for(const [id,r] of Object.entries(v))loadCollisionMask(id,r);for(const k of Object.keys(v)){let im=new Image();im.src=RURL+k+'.webp?v=room06-v63';backs[k]=im;}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();}).catch(e=>console.error('Fixed world alpha failed:',e));
 })();
