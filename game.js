@@ -113,11 +113,42 @@ function e2GearGlyph(slot,modelId){
  const [accent,shapes]=models[modelId]||models[fallback[slot]]||models['artifact-resonance'];
  return `<svg class="ash928-illustration" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="metal-${modelId||slot}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6a7983"/><stop offset="0.5" stop-color="#29343d"/><stop offset="1" stop-color="#121c26"/></linearGradient></defs><ellipse cx="32" cy="57" rx="23" ry="4" fill="#03090f" opacity=".5"/><g fill="url(#metal-${modelId||slot})" stroke="${accent}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">${shapes}</g><path d="M17 21 22 13" stroke="#edf8fa" stroke-width="2" opacity=".35"/></svg>`;
 }
+// Equipment Pack V1.0: visual-only bridge. Legacy and existing model IDs remain unchanged.
+// The 18 image families do not change Equipment2's models, stats, drops or saved data.
+const ASH_EQUIPMENT_V1_IMAGES=Object.freeze({
+ "armor-bastion": "BASTION-X",
+ "armor-predator": "REACTOR",
+ "armor-regenerator": "SENTINELLE",
+ "boots-scout": "VELOCIS",
+ "boots-spectre": "IMPULSION",
+ "boots-anchor": "ANCRAGE",
+ "module-tesla": "AMPLIFICATEUR",
+ "module-aegis": "STABILISATEUR",
+ "module-medic": "REGENERATEUR",
+ "bag-prospector": "SCOUT",
+ "bag-reclaimer": "RAVEN",
+ "bag-securizer": "DASTION",
+ "artifact-resonance": "OEIL_DU_VIDE",
+ "artifact-vitality": "COEUR_DE_CENDRE",
+ "artifact-frenzy": "NOYAU_INSTABLE",
+ "helmet-scout": "VELOCIS",
+ "helmet-guard": "BASTION-X",
+ "helmet-vital": "FANTOME",
+ "module-rate": "CADENCE",
+ "module-power": "AMPLIFICATEUR",
+ "module-xp": "FRAGMENT_ETHER"
+});
+const ASH_EQUIPMENT_V1_RARITIES=Object.freeze({
+ 'Commun':'Commun','Inhabituel':'Inhabituel','Rare':'Rare',
+ 'Épique':'Epique','Légendaire':'Legendaire','Mythique':'Mythique'
+});
 function e2ItemArt(w){
  if(e2PickWeapon(w))return weaponArt(w);
  const key=String(w?.model||'').replace(/[^a-zA-Z0-9-]/g,'');
- const models=new Set(['armor-bastion','armor-predator','armor-regenerator','boots-scout','boots-spectre','boots-anchor','module-tesla','module-aegis','module-medic','bag-prospector','bag-reclaimer','bag-securizer','artifact-resonance','artifact-vitality','artifact-frenzy','helmet-scout','helmet-guard','helmet-vital','module-rate','module-power','module-xp']);
- return models.has(key)?`<img class="ash952-gear-img" src="assets/inventory_v952/${key}.png" aria-hidden="true" alt="" loading="lazy">`:`<span class="ash925-gear-art" aria-hidden="true">${e2GearGlyph(w.slot,w.model)}</span>`;
+ const visual=ASH_EQUIPMENT_V1_IMAGES[key];
+ const rarity=ASH_EQUIPMENT_V1_RARITIES[w?.rar]||'Commun';
+ if(visual)return `<img class="ash952-gear-img" src="assets/equipment_v1/${visual}_${rarity}.png" aria-hidden="true" alt="" loading="lazy">`;
+ return `<span class="ash925-gear-art" aria-hidden="true">${e2GearGlyph(w.slot,w.model)}</span>`;
 }
 
 function e2SlotName(slot){return ({weapon:'Arme',armor:'Armure',boots:'Bottes',module:'Module',bag:'Sac tactique',artifact:'Artefact'})[slot]||slot;}
