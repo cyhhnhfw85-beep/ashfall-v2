@@ -837,7 +837,7 @@ function makeMap25(){
  const m=window.AshGenerator25.generate(seed,25);window.AshGenerator25.validate(m);
  const rooms=m.rooms.map(n=>({id:n.id,gx:n.x,gy:n.y,shape:n.shape,depth:n.depth,sector:n.sector,kind:n.kind,
   seen:n.id===0,spawned:false,enemies:[],chest:n.kind==='start'||n.kind==='exit'||n.kind==='boss'?'none':Math.random()<.63?'closed':'none',
-  activated:false,cleared:false,arenaWave:0,arenaReward:false,solidDecorV42:true}));
+  activated:false,cleared:false,arenaWave:0,arenaReward:false,solidDecorV42:true,envArchitectureV4:true}));
  const arenaIds=[],exitIds=m.exitIds.slice(),outpostIds=[];
  // Rebalance encounter density for fewer, bigger rooms.
  for(const r of rooms){if(r.kind==='boss'||r.kind==='exit'||r.kind==='start')continue;
@@ -886,7 +886,7 @@ function makeLargeMap(){
  }
  // Fixed V9.3.1 room dimensions; 33 ordinary (including entry), 10 designated specials, 7 major encounters.
  chooseShapesV931(rooms);
- for(const room of rooms)room.solidDecorV42=true;
+ for(const room of rooms){room.solidDecorV42=true;room.envArchitectureV4=true;}
  return {rooms,edges,arenaIds,exitIds,bossId,outpostIds,geometryVersion:31};
 }
 const SECTORS=[{name:'PÉRIPHÉRIE',bg:'#202f31',grid:'#354846',accent:'#83d9b0',enemy:'mutant',hazard:'Débris et mutants rapides'},{name:'LABORATOIRES',bg:'#152d3c',grid:'#26516a',accent:'#60cef4',enemy:'drone',hazard:'Rayons de sécurité'},{name:'FONDERIE',bg:'#372921',grid:'#65402b',accent:'#ffae62',enemy:'brute',hazard:'Évents thermiques'},{name:'CITADELLE',bg:'#292334',grid:'#50374e',accent:'#e898de',enemy:'sentinel',hazard:'Défenses renforcées'}];
@@ -2656,7 +2656,67 @@ function roomObstacles(room){
    base.push([x+55,y+76,52,32],[x+245,y+277,57,37]);
   }
  }
- return base;
+ return base.concat(envV4Architecture(room,base));
+}
+
+// ENV V4: deterministic physically-solid industrial architecture.
+// Only new expeditions opt in. Existing saves keep their original collision layout.
+// Candidates occupy corner work-zones; all paths are checked on a radius-expanded grid.
+function envV4Hash(a,b,c){let n=(Math.imul(a|0,374761393)^Math.imul(b|0,668265263)^Math.imul(c|0,1274126177))|0;n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;}
+function envV4Intersects(a,b,pad=0){return a[0]<b[0]+b[2]+pad&&a[0]+a[2]+pad>b[0]&&a[1]<b[1]+b[3]+pad&&a[1]+a[3]+pad>b[1];}
+function envV4Reachable(room,rects){
+ const geom=roomGeom(room),step=12,cols=Math.ceil(geom.w/step),rows=Math.ceil(geom.h/step),rad=17;
+ const blocked=new Uint8Array(cols*rows);
+ for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
+  const x=(i+.5)*step,y=(j+.5)*step;
+  if(!geom.cells.some(([tx,ty])=>x>=tx*CELL_W+rad&&x<=(tx+1)*CELL_W-rad&&y>=ty*CELL_H+rad&&y<=(ty+1)*CELL_H-rad)||
+     rects.some(r=>x>=r[0]-rad&&x<=r[0]+r[2]+rad&&y>=r[1]-rad&&y<=r[1]+r[3]+rad))blocked[j*cols+i]=1;
+ }
+ const targets=[[180,195]];
+ // All existing playable door portals remain reachable from room centre.
+ for(const [tx,ty] of geom.cells){
+  const x=tx*CELL_W,y=ty*CELL_H;
+  targets.push([x+180,y+195]);
+ }
+ // Main corridors and mandatory interactions remain clear.
+ const pts=targets.map(([x,y])=>[Math.max(0,Math.min(cols-1,Math.floor(x/step))),Math.max(0,Math.min(rows-1,Math.floor(y/step)))]);
+ const start=pts[0][1]*cols+pts[0][0];if(blocked[start])return false;
+ const seen=new Uint8Array(cols*rows),queue=[start];seen[start]=1;
+ for(let k=0;k<queue.length;k++){
+  const v=queue[k],i=v%cols,j=Math.floor(v/cols);
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+   const nx=i+dx,ny=j+dy;if(nx<0||ny<0||nx>=cols||ny>=rows)continue;
+   const ni=ny*cols+nx;if(!blocked[ni]&&!seen[ni]){seen[ni]=1;queue.push(ni);}
+  }
+ }
+ return pts.every(([i,j])=>seen[j*cols+i]);
+}
+const envV4Cache=new WeakMap();
+function envV4Architecture(room,base){
+ if(!room?.envArchitectureV4||!room.solidDecorV42||!['standard','guarded','secret'].includes(room.kind))return [];
+ if(envV4Cache.has(room))return envV4Cache.get(room);
+ const geom=roomGeom(room),added=[],id=Number(room.id)||0,sector=sectorOf(room);
+ // Limited to low-density groups in peripheral corners, away from main routes.
+ for(const [tx,ty] of geom.cells){
+  const x=tx*CELL_W,y=ty*CELL_H,seed=id+tx*43+ty*107+sector*271;
+  const options=[
+   [x+38,y+57,60,39],[x+250,y+65,66,43],
+   [x+42,y+302,72,40],[x+247,y+296,68,44]
+  ];
+  const count=2+Math.floor(envV4Hash(seed,6,19)*2);
+  const order=[0,1,2,3].sort((a,b)=>envV4Hash(seed,a,61)-envV4Hash(seed,b,61));
+  let placed=0;
+  for(const idx of order){
+   if(placed>=count)break;
+   const r=options[idx];
+   // Keep existing collision objects, interaction targets and large passages free.
+   if(base.concat(added).some(o=>envV4Intersects(r,o,23)))continue;
+   if((room.interactables||[]).some(o=>o.state!=='spent'&&Math.hypot(o.x-(r[0]+r[2]/2),o.y-(r[1]+r[3]/2))<(o.radius||20)+75))continue;
+   if(!envV4Reachable(room,base.concat(added,[r])))continue;
+   added.push(r);placed++;
+  }
+ }
+ envV4Cache.set(room,added);return added;
 }
 function collidesSolid(x,y,radius,room){
  const g=roomGeom(room);

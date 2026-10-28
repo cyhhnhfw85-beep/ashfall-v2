@@ -96,6 +96,48 @@
   });
  }
 
+
+ function architecturalZones(c,room,W,H,seed,p){
+  const mode=Math.floor(hash(23,91,seed)*6),tile=90;
+  c.save();
+  // Vary architecture with strong, recognizable floor plans, not random clutter.
+  for(let y=0;y<H;y+=tile)for(let x=0;x<W;x+=tile){
+   const v=hash(Math.floor(x/tile),Math.floor(y/tile),seed);
+   if(v<.52)continue;
+   const a=Math.min(1,(v-.52)*2);
+   c.globalAlpha=.10+a*.15;
+   if(mode===0){ // maintenance: conduit channels
+    fill(c,x+12,y+20,tile-24,8,'#07131b');
+    line(c,x+16,y+23,x+tile-16,y+23,p[2],2);
+   }else if(mode===1){ // cargo: stacked-floor parking footprints
+    c.strokeStyle='#bd9662';c.lineWidth=2;c.strokeRect(x+14,y+15,tile-28,tile-30);
+    line(c,x+18,y+20,x+tile-18,y+tile-20,'#bd9662',2);
+   }else if(mode===2){ // security: network floor panels
+    fill(c,x+12,y+14,tile-24,tile-28,'#081720');
+    for(let k=0;k<3;k++)line(c,x+20,y+24+k*13,x+tile-20,y+24+k*13,p[2],2);
+   }else if(mode===3){ // power: high voltage ducts
+    fill(c,x+20,y+12,tile-40,tile-24,'#0a151b');
+    for(let k=0;k<3;k++)line(c,x+27+k*12,y+19,x+27+k*12,y+tile-19,'#d2a263',3);
+   }else if(mode===4){ // abandoned: damaged patched plates
+    fill(c,x+14,y+15,tile-28,tile-30,'#10252a');
+    line(c,x+16,y+18,x+tile-16,y+tile-20,'#9c8980',2);
+   }else{ // research: isolated specimen service bays
+    c.strokeStyle=p[2];c.lineWidth=2;c.strokeRect(x+15,y+17,tile-30,tile-34);
+    fill(c,x+20,y+20,tile-40,4,p[2]);
+   }
+  }
+  c.globalAlpha=1;
+  // Architectural cross-bracing at the room's perimeter (flat, walkable).
+  for(let y=42;y<H-25;y+=170){
+   for(const x of [21,W-35]){
+    fill(c,x,y,14,95,'rgba(4,14,20,.34)');
+    line(c,x+3,y+7,x+10,y+86,'rgba(141,178,178,.18)',3);
+    line(c,x+10,y+7,x+3,y+86,'rgba(141,178,178,.13)',3);
+   }
+  }
+  c.restore();
+ }
+
  function floor(c,room,obstacles){room=room&&typeof room==='object'&&!Array.isArray(room)?room:{kind:'standard'};obstacles=Array.isArray(obstacles)?obstacles:[];
   const W=c.canvas.width,H=c.canvas.height,s=seedOf(room),p=paletteFor(room);c.save();
   const grad=c.createLinearGradient(0,0,W,H);grad.addColorStop(0,p[1]);grad.addColorStop(.52,p[0]);grad.addColorStop(1,'#101a21');fill(c,0,0,W,H,grad);
@@ -109,6 +151,7 @@
    if(h<.075){line(c,x+27,y+step*.5,x+step-27,y+step*.5,'rgba(207,161,82,.22)',3);}
   }
   floorFeatures(c,W,H,s,p,room);
+  architecturalZones(c,room,W,H,s,p);
   // Structural edge shadow and restrained hazard accents.
   const edge=c.createLinearGradient(0,0,0,42);edge.addColorStop(0,'rgba(0,5,9,.58)');edge.addColorStop(1,'rgba(0,5,9,0)');fill(c,0,0,W,42,edge);
   c.save();c.translate(W,H);c.rotate(Math.PI);fill(c,0,0,W,40,edge);c.restore();
@@ -165,6 +208,13 @@
     line(c,cx,cy,cx+Math.cos(a)*rad*.85,cy+Math.sin(a)*rad*.85,'#48646d',3);}
    fill(c,x+w*.76,y+7,Math.max(3,w*.09),h-14,'#0d222b');
    for(let k=0;k<4;k++)fill(c,x+w*.77,y+11+k*(h-22)/4,Math.max(2,w*.07),2,k===0?p[2]:'#476a70');
+  }
+  // Industrial massing: reinforced chassis, depth, serial indicators.
+  if(w>40&&h>27){
+   fill(c,x+4,y+h-10,w-8,6,"rgba(2,10,15,.55)");
+   line(c,x+7,y+5,x+w-7,y+5,"rgba(194,221,218,.36)",2);
+   fill(c,x+w-16,y+8,8,3,p[2]);
+   for(let k=0;k<3;k++)fill(c,x+8+k*7,y+h-9,4,2,k===0?"#d9a96a":"#78979c");
   }
   if(!small){
    for(const xx of [x+7,x+w-9])for(const yy of [y+7,y+h-9])
