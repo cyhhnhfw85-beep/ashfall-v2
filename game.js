@@ -3811,7 +3811,7 @@ lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.e
  if(latest){aimX=latest.vx;aimY=latest.vy;}
  else if(room.enemies?.length){const seen=room.enemies.filter(e=>hasLineOfSight(player.x,player.y,e.x,e.y,room));const tactical=tacticalObjectToTarget(room,seen);const target=tactical||(seen.length?seen.reduce((a,b)=>length(player,a)<length(player,b)?a:b):null);if(target){aimX=target.x-player.x;aimY=target.y-player.y;}}
  const mag=Math.hypot(aimX,aimY)||1;aimX/=mag;aimY/=mag;
- const drawn=window.AshTopDownSurvivor?.draw(cx,{x:player.x,y:player.y,fx:aimX,fy:aimY})||false;
+ const drawn=(window.AshSurvivor3D?.draw(cx,{x:player.x,y:player.y,fx:aimX,fy:aimY})||false)||(window.AshTopDownSurvivor?.draw(cx,{x:player.x,y:player.y,fx:aimX,fy:aimY})||false);
  if(!drawn){ // Cold-start emergency silhouette in NEW skin family, never old visual.
   cx.save();cx.translate(player.x,player.y);cx.fillStyle='#0a1720';cx.beginPath();cx.ellipse(0,19,13,4,0,0,Math.PI*2);cx.fill();
   cx.fillStyle='#354556';cx.fillRect(-8,-20,16,24);cx.fillStyle='#242d40';cx.beginPath();cx.moveTo(-11,-22);cx.lineTo(-8,-35);cx.lineTo(0,-40);cx.lineTo(8,-35);cx.lineTo(11,-22);cx.closePath();cx.fill();
