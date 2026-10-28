@@ -480,10 +480,40 @@ function ashRenderSurvivorProgress(){
  const root=$('ashSurvivorProgress');if(!root)return;
  const p=ashSurvivorProgress(),needed=ashSurvivorThreshold(p.level),max=p.level>=50;
  const percent=max?100:Math.min(100,100*p.xp/needed);
- root.innerHTML=`<div class="ash-sp-head"><strong>SURVIVANT · NIVEAU ${p.level} / 50</strong><span>${max?'NIVEAU MAX':p.xp.toLocaleString('fr-FR')+' / '+needed.toLocaleString('fr-FR')+' XP'}</span></div><div class="ash-sp-track"><div style="width:${percent}%"></div></div>`;
-
+ const grade=p.level>=50?'LÉGENDE':p.level>=40?'ÉLITE':p.level>=30?'VÉTÉRAN':p.level>=20?'TRAQUEUR':p.level>=10?'ÉCLAIREUR':'RECRUE';
+ root.innerHTML=`<div class="ash-sp-head"><strong>NIVEAU ${p.level} — ${grade}</strong><span>${max?'NIVEAU MAX':p.xp.toLocaleString('fr-FR')+' / '+needed.toLocaleString('fr-FR')+' XP'}</span></div><div class="ash-sp-track"><div style="width:${percent}%"></div></div>`;
 }
+function ashHomeUpdate(){
+ const p=typeof data.playerPseudo==='string'?data.playerPseudo:'';
+ const btn=$('ashHomePseudoButton');if(btn){btn.textContent=p||'CHOISIS TON PSEUDO';btn.disabled=!!p;btn.classList.toggle('is-locked',!!p)}
+ const hint=$('ashHomePseudoHint');if(hint)hint.textContent=p?'IDENTITÉ VALIDÉE':'Appuie pour choisir ton identité';
+ const s=data.ashHomeStats||{};const n=k=>Math.max(0,Math.floor(Number(s[k])||0));
+ if($('ashHomeBosses'))$('ashHomeBosses').textContent=n('bosses').toLocaleString('fr-FR');
+ if($('ashHomeKills'))$('ashHomeKills').textContent=n('kills').toLocaleString('fr-FR');
+ if($('ashHomeRecord'))$('ashHomeRecord').textContent=n('record').toLocaleString('fr-FR');
+ const finished=(Number(data.stats?.extractions)||0)+(Number(data.stats?.deaths)||0);
+ if($('ashHomeSurvival'))$('ashHomeSurvival').textContent=finished?Math.round(100*(Number(data.stats?.extractions)||0)/finished)+' %':'—';
+}
+function ashHomeInit(){
+ const btn=$('ashHomePseudoButton');if(!btn||btn.dataset.bound)return;btn.dataset.bound='1';
+ const overlay=$('ashPseudoOverlay'),input=$('ashPseudoInput'),error=$('ashPseudoError');
+ btn.addEventListener('click',()=>{if(data.playerPseudo)return;overlay.hidden=false;input.value='';error.textContent='';input.focus()});
+ $('ashPseudoCancel').addEventListener('click',()=>overlay.hidden=true);
+ $('ashPseudoConfirm').addEventListener('click',()=>{
+  if(data.playerPseudo){overlay.hidden=true;return}
+  const value=input.value.trim();if(!/^[A-Za-z0-9_-]{3,16}$/.test(value)){error.textContent='Pseudo invalide : 3 à 16 caractères autorisés.';return}
+  if(!window.confirm('Valider définitivement le pseudo « '+value+' » ? Il ne pourra plus être modifié.'))return;
+  data.playerPseudo=value;persist();overlay.hidden=true;ashHomeUpdate();
+ });
+}
+
 function ashRegisterCareer(summary){
+ if(!data.ashHomeStats||typeof data.ashHomeStats!=='object')data.ashHomeStats={kills:0,record:0,bosses:0};
+ if(Number.isFinite(summary.kills)){
+  const k=Math.max(0,Math.floor(summary.kills));data.ashHomeStats.kills=(Number(data.ashHomeStats.kills)||0)+k;
+  data.ashHomeStats.record=Math.max(Number(data.ashHomeStats.record)||0,k);
+ }
+
  // Seulement les expéditions achevées à partir de cette version.
  if(!data.career||typeof data.career!=='object')data.career={history:[],totalCredits:0,totalResearch:0,contracts:0};
  const career=data.career;
@@ -2656,6 +2686,7 @@ function renderRefugeCharacter(){
  // Accueil : résumé dynamique de l'équipement, lecture seule.
  if($('homeWeaponArt'))$('homeWeaponArt').innerHTML=weaponArt(data.equipped);
  if($('homeWeaponName'))$('homeWeaponName').textContent=data.equipped?.name||'Aucune arme';
+ ashHomeInit();ashHomeUpdate();
  if($('homeWeaponMeta'))$('homeWeaponMeta').textContent=data.equipped?`${data.equipped.rar} · ${data.equipped.dmg+data.dmgLv*3} DGT · ${data.equipped.rate} tirs/s`:'Équipement à préparer';
  if($('homeInsuranceState'))$('homeInsuranceState').textContent=data.eq2?'Équipement acquis':data.equipped&&data.insured===data.equipped.id?'◆ Arme assurée':'Sans assurance';
  if($('homeStashState'))$('homeStashState').textContent=`Réserve : ${data.stash.length}`;
