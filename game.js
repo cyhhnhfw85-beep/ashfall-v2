@@ -1254,9 +1254,44 @@ function lootSpawn(room,kind,x,y,item=null,amount=1){
    else item={...E2.normalizeWeapon(item),level:sectorOf(room)+1};
  }
  const drops=ground(room);let theta=Math.random()*Math.PI*2,rad=10+Math.random()*17;
- let px=clamp(x+Math.cos(theta)*rad,32,328),py=clamp(y+Math.sin(theta)*rad,40,358);
- // Éviter de laisser un objet à l'intérieur d'un décor solide.
- if(collidesSolid(px,py,8,room)){px=clamp(x,32,328);py=clamp(y,40,358)}
+ // Placement relatif au point de mort, dans la géométrie réelle de la salle.
+ // Ne jamais rabattre les drops vers les bornes d'une salle 360x400.
+ const geom=roomGeom(room),margin=9;
+ const valid=(px,py)=>Number.isFinite(px)&&Number.isFinite(py)&&
+   px>=margin&&py>=margin&&px<=geom.w-margin&&py<=geom.h-margin&&
+   !collidesSolid(px,py,margin,room);
+ let px=x+Math.cos(theta)*rad,py=y+Math.sin(theta)*rad;
+ if(!valid(px,py)){
+   // Priorité au point exact de mort, puis recherche locale en cercles.
+   if(valid(x,y)){px=x;py=y;}
+   else {
+     let found=false;
+     for(let r=6;r<=90&&!found;r+=6){
+       for(let i=0;i<24;i++){
+         const a=theta+i*Math.PI/12;
+         const nx=x+Math.cos(a)*r,ny=y+Math.sin(a)*r;
+         if(valid(nx,ny)){px=nx;py=ny;found=true;break;}
+       }
+     }
+     // En dernier recours, rechercher une cellule jouable, sans traverser
+     // les ailes absentes des salles en L.
+     if(!found){
+       let best=Infinity;
+       for(const [tx,ty] of geom.cells){
+         for(let yy=24;yy<CELL_H-24;yy+=24){
+           for(let xx=24;xx<CELL_W-24;xx+=24){
+             const nx=tx*CELL_W+xx,ny=ty*CELL_H+yy;
+             const d=(nx-x)**2+(ny-y)**2;
+             if(d<best&&valid(nx,ny)){best=d;px=nx;py=ny;found=true;}
+           }
+         }
+       }
+     }
+     // Les positions de mort normales sont jouables ; cette sécurité évite
+     // tout retour aux coordonnées fixes historiques en cas de données atypiques.
+     if(!found){px=x;py=y;}
+   }
+ }
  drops.push({id:uid(),kind,item,amount,x:px,y:py,age:0,bounce:.32,got:false});
 }
 let ashLootToastTimer=null;
