@@ -2470,7 +2470,7 @@ function renderRefugeCharacter(){
 }
  // Accueil : résumé dynamique de l'équipement, lecture seule.
  if($('homeWeaponArt'))$('homeWeaponArt').innerHTML=weaponArt(data.equipped);
- if($('homeWeaponName'))$('homeWeaponName').textContent=data.equipped?.name||'Aucune arme';
+ if($('homePlayerName'))$('homePlayerName').textContent=ashPlayerNickname();
  if($('homeWeaponMeta'))$('homeWeaponMeta').textContent=data.equipped?`${data.equipped.rar} · ${data.equipped.dmg+data.dmgLv*3} DGT · ${data.equipped.rate} tirs/s`:'Équipement à préparer';
  if($('homeInsuranceState'))$('homeInsuranceState').textContent=data.eq2?'Équipement acquis':data.equipped&&data.insured===data.equipped.id?'◆ Arme assurée':'Sans assurance';
  if($('homeStashState'))$('homeStashState').textContent=`Réserve : ${data.stash.length}`;
@@ -4214,4 +4214,31 @@ $('toolsClose').addEventListener('click',()=>{if(refugeActivePage==='merchant')r
 if(!data.run)labMigrate();
 $('labK17Root')?.addEventListener('click',e=>{const branch=e.target.closest('[data-lab-branch]');if(branch){labSelected=branch.dataset.labBranch;labRender();return;}const buy=e.target.closest('[data-lab-buy]');if(buy)labBuy(buy.dataset.labBuy);});
 if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();if(!data.run)ashEquipmentCatalogMigration();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
+})();
+
+/* ASHFALL V2.4.2 — Pseudo local du survivant, indépendant de l'arme équipée. */
+(function(){
+ const KEY='ashfall.player.nickname.v1';
+ function validName(raw){
+  const value=String(raw||'').trim();
+  return /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_-]{3,16}$/.test(value)?value:null;
+ }
+ window.ashPlayerNickname=function(){
+  try{return validName(localStorage.getItem(KEY))||'NOMADE';}catch(e){return 'NOMADE';}
+ };
+ function refresh(){const el=document.getElementById('homePlayerName');if(el)el.textContent=window.ashPlayerNickname();}
+ function setup(){
+  const btn=document.getElementById('homePlayerNameEdit');if(!btn||btn.dataset.nicknameBound)return;
+  btn.dataset.nicknameBound='1';
+  btn.addEventListener('click',function(){
+   const input=window.prompt('Choisis ton pseudo (3 à 16 caractères : lettres, chiffres, _ ou -)',window.ashPlayerNickname());
+   if(input===null)return;
+   const next=validName(input);
+   if(!next){window.alert('Pseudo invalide : utilise 3 à 16 caractères (lettres, chiffres, _ ou -).');return;}
+   try{localStorage.setItem(KEY,next);}catch(e){window.alert('Impossible d’enregistrer le pseudo sur cet appareil.');return;}
+   refresh();
+  });
+  refresh();
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();
