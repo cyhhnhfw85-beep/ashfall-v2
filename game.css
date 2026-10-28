@@ -1107,3 +1107,17 @@ body.ash-prep-open{overflow:hidden}#refuge-page-home .ash-sp-home{display:block;
 .ash-prep-actions{margin-top:17px;gap:10px}
 .ash-prep-actions button{min-height:52px}
 @media(max-width:390px){.ash-prep-card{padding:16px 12px}.ash-prep-header h2{font-size:21px}}
+
+/* ASHFALL difficulty selection — premium refuge palette */
+#ashDifficultyOverlay[hidden]{display:none!important}
+.ash-difficulty-card{max-width:520px}
+.ash-difficulty-options{display:grid;gap:9px;margin:15px 0 4px}
+.ash-difficulty-option{display:flex;align-items:center;gap:13px;padding:12px;border:1px solid rgba(105,151,168,.22);border-radius:12px;background:rgba(15,39,54,.75);color:#dcebf1}
+.ash-difficulty-option.selected{border-color:rgba(235,193,138,.75);background:linear-gradient(115deg,rgba(37,64,69,.96),rgba(18,42,54,.96))}
+.ash-difficulty-option.locked{opacity:.54}
+.ash-difficulty-roman{width:42px;height:42px;flex-shrink:0;display:grid;place-items:center;border-radius:9px;background:#243e4d;color:#adc6d1;font-size:20px;font-weight:800}
+.selected .ash-difficulty-roman{background:#e9c18a;color:#142736}
+.ash-difficulty-option>div{flex:1;display:grid;gap:4px}
+.ash-difficulty-option strong{font-size:13px;letter-spacing:.05em}
+.ash-difficulty-option small{font-size:11px;color:#9fb8c5;line-height:1.3}
+.ash-difficulty-check{color:#e9c18a;font-size:20px}
