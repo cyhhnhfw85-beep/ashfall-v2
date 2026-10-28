@@ -4216,29 +4216,96 @@ $('labK17Root')?.addEventListener('click',e=>{const branch=e.target.closest('[da
 if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();if(!data.run)ashEquipmentCatalogMigration();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 })();
 
-/* ASHFALL V2.4.2 — Pseudo local du survivant, indépendant de l'arme équipée. */
+
+/* ASHFALL V2.4.3 — Identite du survivant : demande au premier lancement. */
 (function(){
  const KEY='ashfall.player.nickname.v1';
  function validName(raw){
   const value=String(raw||'').trim();
   return /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_-]{3,16}$/.test(value)?value:null;
  }
- window.ashPlayerNickname=function(){
-  try{return validName(localStorage.getItem(KEY))||'NOMADE';}catch(e){return 'NOMADE';}
- };
- function refresh(){const el=document.getElementById('homePlayerName');if(el)el.textContent=window.ashPlayerNickname();}
- function setup(){
-  const btn=document.getElementById('homePlayerNameEdit');if(!btn||btn.dataset.nicknameBound)return;
-  btn.dataset.nicknameBound='1';
-  btn.addEventListener('click',function(){
-   const input=window.prompt('Choisis ton pseudo (3 à 16 caractères : lettres, chiffres, _ ou -)',window.ashPlayerNickname());
-   if(input===null)return;
-   const next=validName(input);
-   if(!next){window.alert('Pseudo invalide : utilise 3 à 16 caractères (lettres, chiffres, _ ou -).');return;}
-   try{localStorage.setItem(KEY,next);}catch(e){window.alert('Impossible d’enregistrer le pseudo sur cet appareil.');return;}
-   refresh();
-  });
-  refresh();
+ function savedName(){
+  try{return validName(localStorage.getItem(KEY));}catch(e){return null;}
  }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+ window.ashPlayerNickname=function(){return savedName()||'NOMADE';};
+ function refresh(){
+  const el=document.getElementById('homePlayerName');
+  if(el)el.textContent=window.ashPlayerNickname();
+ }
+ function openEditor(firstLaunch){
+  if(document.getElementById('ash-nickname-overlay'))return;
+  const overlay=document.createElement('div');
+  overlay.id='ash-nickname-overlay';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label','Choisir son nom de survivant');
+  overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(2,12,20,.94);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;overflow-y:auto';
+  const panel=document.createElement('div');
+  panel.style.cssText='width:min(100%,420px);background:linear-gradient(155deg,#183645,#0b1a28);border:1px solid #477587;border-radius:20px;padding:28px 22px;box-shadow:0 20px 70px #000a;color:#eef5f7;font-family:inherit;box-sizing:border-box';
+  const kicker=document.createElement('div');
+  kicker.textContent='K-17  /  IDENTIFICATION';
+  kicker.style.cssText='color:#f1b972;font-weight:800;font-size:12px;letter-spacing:2px;margin-bottom:14px';
+  const title=document.createElement('h2');
+  title.textContent=firstLaunch?'BIENVENUE, SURVIVANT':'MODIFIER TON PSEUDO';
+  title.style.cssText='font-size:25px;line-height:1.2;margin:0 0 12px;color:#fff';
+  const desc=document.createElement('p');
+  desc.textContent=firstLaunch?'Choisis ton nom de survivant avant de rejoindre le refuge. Ce choix sera conserve sur cet appareil.':'Choisis un nouveau nom pour ton survivant.';
+  desc.style.cssText='color:#b1cad4;font-size:14px;line-height:1.5;margin:0 0 20px';
+  const label=document.createElement('label');
+  label.textContent='NOM DU SURVIVANT';
+  label.htmlFor='ash-nickname-input';
+  label.style.cssText='display:block;color:#9fdbe6;font-size:12px;letter-spacing:1px;font-weight:700;margin-bottom:8px';
+  const input=document.createElement('input');
+  input.id='ash-nickname-input';
+  input.type='text';
+  input.maxLength=16;
+  input.autocomplete='off';
+  input.spellcheck=false;
+  input.placeholder='Ex. NOMADE';
+  input.value=firstLaunch?'':window.ashPlayerNickname();
+  input.style.cssText='display:block;width:100%;box-sizing:border-box;background:#0b2331;border:1px solid #4d8292;border-radius:10px;color:white;font-size:19px;padding:13px 14px;outline:none';
+  const hint=document.createElement('p');
+  hint.textContent='3 a 16 caracteres : lettres, chiffres, _ ou -';
+  hint.style.cssText='font-size:12px;color:#9db6c1;margin:9px 0 16px';
+  const error=document.createElement('p');
+  error.setAttribute('role','alert');
+  error.style.cssText='font-size:13px;color:#ff9c9c;min-height:18px;margin:0 0 10px';
+  const save=document.createElement('button');
+  save.type='button';
+  save.textContent=firstLaunch?'CONFIRMER MON IDENTITE':'ENREGISTRER';
+  save.style.cssText='width:100%;border:0;border-radius:10px;background:#efba76;color:#10202c;font-weight:900;font-size:14px;letter-spacing:.5px;padding:15px;cursor:pointer';
+  function submit(){
+   const next=validName(input.value);
+   if(!next){error.textContent='Entre un pseudo valide de 3 a 16 caracteres.';return;}
+   try{localStorage.setItem(KEY,next);}
+   catch(e){error.textContent='Impossible de sauvegarder le pseudo. Verifie le stockage du navigateur.';return;}
+   if(savedName()!==next){error.textContent='Le pseudo n’a pas pu etre conserve.';return;}
+   refresh();overlay.remove();
+  }
+  save.addEventListener('click',submit);
+  input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();submit();}});
+  input.addEventListener('input',function(){error.textContent='';});
+  panel.append(kicker,title,desc,label,input,hint,error,save);
+  if(!firstLaunch){
+   const cancel=document.createElement('button');
+   cancel.type='button';cancel.textContent='ANNULER';
+   cancel.style.cssText='display:block;margin:12px auto 0;border:0;background:transparent;color:#a7c1cc;padding:8px;cursor:pointer';
+   cancel.addEventListener('click',function(){overlay.remove();});
+   panel.appendChild(cancel);
+  }
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  // Do not open the iPhone keyboard automatically: the player can read the message first.
+ }
+ function setup(){
+  const btn=document.getElementById('homePlayerNameEdit');
+  if(btn&&!btn.dataset.nicknameBound){
+   btn.dataset.nicknameBound='1';
+   btn.addEventListener('click',function(){openEditor(false);});
+  }
+  refresh();
+  if(!savedName())openEditor(true);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);
+ else setup();
 })();
