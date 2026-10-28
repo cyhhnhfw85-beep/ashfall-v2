@@ -751,16 +751,11 @@ function roomWalls(room){
  wallCache.set(room,walls);return walls;
 }
 // Camera only affects rendering. World coordinates and collision data stay untransformed.
-// Camera 2.5D: 25° off vertical, visually foreshortened room plane.
-// Purely graphical: physics, room layout, aim, doors and enemy positions stay in world coordinates.
-const ASH_CAMERA_TILT_DEG=25;
-const ASH_CAMERA_Y_SCALE=Math.cos(ASH_CAMERA_TILT_DEG*Math.PI/180);
-
 let roomCamera={x:0,y:0,zoom:1,id:-1};
 function cameraFor(room){
  const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
- const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*ASH_CAMERA_Y_SCALE);
+ const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/zoom;
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
  const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
@@ -1200,11 +1195,22 @@ const PERK_ICON_PATHS=Object.freeze({
  rapid:'<path d="M14 2 5.5 13h6L10 22l8.5-11H13L14 2Z"/><path d="M4 5h4M3 9h3"/>',
  power:'<path d="M12 2c-3.2 3.5-5 6.7-5 10.5V21h10v-8.5C17 8.7 15.2 5.5 12 2Z"/><path d="M7 17h10M9 12h6M12 5v3"/>',
  speed:'<path d="M2.5 7h8M1.5 12h7M2.5 17h8"/><path d="m12 4 9 8-9 8v-5H8v-6h4V4Z"/>',
- vital:'<path d="M9 2.5h6v6h6v6h-6v7H9v-7H3v-6h6v-6Z"/><path d="M10.5 12h3"/>'
+ vital:'<path d="M9 2.5h6v6h6v6h-6v7H9v-7H3v-6h6v-6Z"/><path d="M10.5 12h3"/>',
+ pierce:'<circle cx="12" cy="12" r="8"/><path d="M3 12h18M12 3v18M9 12h6"/>',
+ armor:'<path d="M12 2 20 5v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3Z"/><path d="m9 12 2 2 4-4"/>',
+ laststand:'<path d="M12 2 20 6v6c0 4-3 7-8 10-5-3-8-6-8-10V6l8-4Z"/><path d="M12 7v6M12 17h.01"/>',
+ emergency:'<path d="m13 2-8 11h7l-1 9 8-12h-7l1-8Z"/><path d="M3 6h4M2 10h3"/>',
+ dodge:'<path d="M12 2 20 6v6c0 4-3 7-8 10-5-3-8-6-8-10V6l8-4Z"/><path d="m8 13 3 3 5-7"/>',
+ arc:'<path d="m13 2-8 11h7l-1 9 8-12h-7l1-8Z"/><path d="M3 4 1 6M21 18l2 2"/>',
+ blast:'<path d="m12 2 2.5 6 6.5-1-3 5 4 5-7-.5L12 22l-3-5.5L2 17l4-5-3-5 6.5 1L12 2Z"/><circle cx="12" cy="12" r="2"/>',
+ mark:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/>',
+ scanner:'<path d="M8 3H4a1 1 0 0 0-1 1v4M16 3h4a1 1 0 0 1 1 1v4M3 16v4a1 1 0 0 0 1 1h4M21 16v4a1 1 0 0 1-1 1h-4"/><path d="M5 13c3-5 11-5 14 0-3 5-11 5-14 0Z"/><circle cx="12" cy="13" r="2"/>',
+ magnet:'<path d="M5 3h5v9a2 2 0 0 0 4 0V3h5v9a7 7 0 0 1-14 0V3Z"/><path d="M5 7h5M14 7h5"/>',
+ recycle:'<path d="m7 4 4-2 3 5M11 2l-2 5M18 9l4 3-4 4M22 12h-5M15 20H8l-2-4M8 20l2-4"/><circle cx="12" cy="12" r="2"/>'
 });
 function perkIcon(id){
  const paths=PERK_ICON_PATHS[id];
- return paths?'<svg class="perk-art" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+paths+'</svg>':'';
+ return paths?'<svg class="perk-art" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(paths||PERK_ICON_PATHS.power)+'</svg>':'';
 }
 
 function perkDescription(id,n){
@@ -3912,8 +3918,8 @@ function combatFxPaintHurt(){
 
 function draw(){let r=data.run;if(!r)return;let room=r.rooms[r.current];combatFxReset(room);let sec=sectorOf(room),theme=SECTORS[sec];
  cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,360,cv.height);cx.save();
- const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom*ASH_CAMERA_Y_SCALE,-camera.x*camera.zoom,-camera.y*camera.zoom*ASH_CAMERA_Y_SCALE);
- cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/(camera.zoom*ASH_CAMERA_Y_SCALE));
+ const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom,-camera.x*camera.zoom,-camera.y*camera.zoom);
+ cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/camera.zoom);
  // V44: la couche statique couvre toutes les cellules ; aucun effet anime n'entre dans le cache.
  drawCachedSurface(room,sec,theme);
  drawDynamicHazard(room,sec);
