@@ -359,7 +359,12 @@ function ashContractPayout(r,won){
  return {statuses,credits:complete.reduce((n,c)=>n+c.credits,0),research:complete.reduce((n,c)=>n+c.research,0)};
 }
 function ashRenderContractSelection(){
- const host=$('ashContractPicker');if(!host||data.run)return;
+ const host=$('ashContractPicker');if(!host)return;
+ if(data.run){
+  const statuses=ashContractStatuses(data.run);
+  host.innerHTML='<div class="home953-heading"><div><span class="home953-eyebrow">MISSION EN COURS</span><h3>MES CONTRATS</h3></div></div><p class="home953-intro">Contrats choisis pour cette expédition. Les objectifs peuvent être modifiés avant la prochaine expédition.</p>'+statuses.map(c=>'<section class="home953-contract"><div class="home953-contract-head"><div><h4>'+uiSafe(c.name)+'</h4><small>'+c.actual+' / '+c.target+' · '+(c.complete?'Terminé':'En cours')+'</small></div></div></section>').join('');
+  return;
+ }
  const selected=ashSelectedContracts();
  const groups=[
   {key:'rooms',name:'EXPLORATION',hint:'Parcourir les salles',glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>'},
@@ -756,8 +761,10 @@ function cameraFor(room){
  const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*1);
- const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
- const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
+ const px=Number.isFinite(player?.x)?player.x:g.w/2;
+ const py=Number.isFinite(player?.y)?player.y:g.h/2;
+ const targetX=g.w<sightW?(g.w-sightW)/2:clamp(px-sightW/2,0,g.w-sightW);
+ const targetY=g.h<sightH?(g.h-sightH)/2:clamp(py-sightH/2,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
  else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.38;roomCamera.zoom=zoom}
  return roomCamera;
@@ -3956,7 +3963,10 @@ function draw(){let r=data.run;if(!r)return;let room=r.rooms[r.current];combatFx
  const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom*1,-camera.x*camera.zoom,-camera.y*camera.zoom*1);
  cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/(camera.zoom*1));
  // V44: la couche statique couvre toutes les cellules ; aucun effet anime n'entre dans le cache.
- drawCachedSurface(room,sec,theme);
+ // V2.4.5: rendu direct de la surface pour eviter les canvas secondaires invalides sur iOS.
+ // Le cache reste disponible dans le code pour une future optimisation apres tests.
+ try { paintStaticSurface(room,sec,theme); }
+ catch(surfaceError) { console.warn('ASHFALL floor fallback',surfaceError); cx.fillStyle='#142e39';cx.fillRect(0,0,roomGeom(room).w,roomGeom(room).h); }
  drawDynamicHazard(room,sec);
  drawScenicLife(room,sec,theme);
  drawIncidentAmbient(room);
