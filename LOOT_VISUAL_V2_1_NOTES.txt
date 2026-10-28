@@ -1,0 +1,1 @@
+Equipment and weapon loot ONLY: larger brighter rarity-based ground bloom, extra diffuse outer halo, stronger rarity ring. XP and credits unchanged. All other code preserved except cache busting. Node syntax verified. iPhone visual validation pending.

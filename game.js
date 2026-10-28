@@ -1318,10 +1318,11 @@ function afLootGlow(cx,d,now){
  const rarity=rar.includes('myth')?5:rar.includes('legend')?4:rar.includes('epiq')?3:rar.includes('rare')?2:rar.includes('inhabituel')||rar.includes('peu commun')?1:0;
  const palette=['#c7dbe2','#64dfb8','#5abaff','#b477ff','#ffc357','#ff799d'];
  const color=xp?'#63f4f7':credit?'#ffc869':palette[rarity];
+ const equipment=!xp&&!credit;
  const rank=xp?2:credit?1:rarity;
  const pulse=1+(Math.sin(now*(rank>=3?3.2:2.1)+d.x*.05)*.08);
- const radius=(xp?20:credit?20:21+rank*4.4)*pulse;
- const alpha=xp?.38:credit?.27:Math.min(.57,.17+rank*.085);
+ const radius=(xp?20:credit?20:32+rank*6.2)*pulse;
+ const alpha=xp?.38:credit?.27:Math.min(.86,.39+rank*.095);
  cx.save();
  // Ground light bloom is deliberately below the actual pickup silhouette.
  const g=cx.createRadialGradient(0,2,3,0,2,radius);
@@ -1329,7 +1330,7 @@ function afLootGlow(cx,d,now){
  cx.globalAlpha=alpha;cx.fillStyle=g;cx.beginPath();cx.ellipse(0,2,radius,radius*.65,0,0,Math.PI*2);cx.fill();
  cx.globalAlpha=1;
  cx.strokeStyle=color;cx.lineWidth=rank>=3?1.6:1;
- cx.globalAlpha=.3+(rank>=2?.12*Math.sin(now*3+d.y*.04):0);
+ cx.globalAlpha=equipment?.53+(rank>=2?.14*Math.sin(now*3+d.y*.04):0):.3+(rank>=2?.12*Math.sin(now*3+d.y*.04):0);
  cx.beginPath();cx.ellipse(0,2,radius*.62,radius*.32,0,0,Math.PI*2);cx.stroke();
  cx.globalAlpha=1;
  // Only high rarity gets orbiting sparkles, kept subtle for combat readability.
