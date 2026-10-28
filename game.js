@@ -239,7 +239,7 @@ function e2RunBagMarkup(r){
  const drops=ground(r.rooms[r.current]).filter(d=>d.kind==='weapon'&&!d.got);
  const pending=s.pendingDrop?drops.find(d=>d.id===s.pendingDrop):null;
  const canDiscard=!!r.rooms[r.current]?.cleared&&!r.rooms[r.current]?.enemies?.length;
- return `<section class="ash922-bag ash927-bag ash933-loot-bag"><header class="ash922-header"><span class="ash922-kicker">ASHFALL · EXTRACTION</span><h2>SAC D’EXPÉDITION</h2><div class="ash922-capacity"><strong>${s.loot.length}<span>/${cap}</span></strong><span>Butin non sécurisé</span></div><div class="ash922-capacity-track"><span style="width:${Math.min(100,s.loot.length/cap*100)}%"></span></div></header><p class="ash922-help">Le matériel trouvé doit être extrait avant de pouvoir être équipé dans le refuge. Tout le contenu du sac est perdu si tu péris.</p><section class="ash922-section"><h3>BUTIN TROUVÉ <span>${s.loot.length}/${cap}</span></h3><div class="ash927-inventory-grid">${tiles}${empty}</div>${selected?`<section class="ash927-compare"><div class="ash927-compare-heading"><strong>${uiSafe(selected.name)}</strong><span>${uiSafe(selected.rar)} · ${e2SlotName(selected.slot)}</span></div><div class="ash927-compare-picture">${e2ItemArt(selected)}</div><p>${uiSafe(e2ItemStats(selected))}</p><p class="ash927-note">Équipement utilisable après extraction réussie uniquement.</p><button type="button" data-e2-run-drop="${uiSafe(selected.id)}" ${canDiscard?'':'disabled'}>ABANDONNER</button></section>`:'<p class="ash927-note">Sélectionne un objet pour afficher ses caractéristiques.</p>'}${drops.length?`<details class="ash922-ground"><summary>OBJETS AU SOL · ${drops.length}</summary><div class="ash922-ground-list">${drops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">${d.manualDiscard?'Récupérer volontairement':'Examiner'} · ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</div></details>`:''}${pending?`<section class="eq2-pending"><strong>SAC PLEIN — ${uiSafe(pending.item.name)}</strong><p>Abandonne un objet pour récupérer celui-ci, ou laisse-le au sol.</p>${s.loot.map(w=>`<button data-e2-replace="${uiSafe(w.id)}" ${canDiscard?'':'disabled'}>Remplacer ${uiSafe(w.name)}</button>`).join('')}<button data-e2-dismiss="1">Laisser la trouvaille</button></section>`:''}</section></section>`;
+ return `<section class="ash922-bag ash927-bag ash933-loot-bag"><header class="ash922-header"><span class="ash922-kicker">ASHFALL · EXTRACTION</span><h2>SAC D’EXPÉDITION</h2><div class="ash922-capacity"><strong>${s.loot.length}<span>/${cap}</span></strong><span>Butin non sécurisé</span></div><div class="ash922-capacity-track"><span style="width:${Math.min(100,s.loot.length/cap*100)}%"></span></div></header><p class="ash922-help">Le matériel trouvé doit être extrait avant de pouvoir être équipé dans le refuge. Tout le contenu du sac est perdu si tu péris.</p><section class="ash922-section"><h3>BUTIN TROUVÉ <span>${s.loot.length}/${cap}</span></h3><div class="ash927-inventory-grid">${tiles}${empty}</div>${selected?`<section class="ash927-compare"><nav class="ash-inventory-swipe-nav"><button type="button" data-ash-bag-step="-1" aria-label="Objet précédent">‹</button><span>${s.loot.findIndex(w=>w.id===selected.id)+1} / ${s.loot.length} · Glisser</span><button type="button" data-ash-bag-step="1" aria-label="Objet suivant">›</button></nav><div class="ash927-compare-heading"><strong>${uiSafe(selected.name)}</strong><span>${uiSafe(selected.rar)} · ${e2SlotName(selected.slot)}</span></div><div class="ash927-compare-picture">${e2ItemArt(selected)}</div><p>${uiSafe(e2ItemStats(selected))}</p><p class="ash927-note">Équipement utilisable après extraction réussie uniquement.</p><button type="button" data-e2-run-drop="${uiSafe(selected.id)}" ${canDiscard?'':'disabled'}>ABANDONNER</button></section>`:'<p class="ash927-note">Sélectionne un objet pour afficher ses caractéristiques.</p>'}${drops.length?`<details class="ash922-ground"><summary>OBJETS AU SOL · ${drops.length}</summary><div class="ash922-ground-list">${drops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">${d.manualDiscard?'Récupérer volontairement':'Examiner'} · ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</div></details>`:''}${pending?`<section class="eq2-pending"><strong>SAC PLEIN — ${uiSafe(pending.item.name)}</strong><p>Abandonne un objet pour récupérer celui-ci, ou laisse-le au sol.</p>${s.loot.map(w=>`<button data-e2-replace="${uiSafe(w.id)}" ${canDiscard?'':'disabled'}>Remplacer ${uiSafe(w.name)}</button>`).join('')}<button data-e2-dismiss="1">Laisser la trouvaille</button></section>`:''}</section></section>`;
 }
 function e2OpenBag(){if(!data.run?.eq2)return;overlay='bag';$('overlay').innerHTML='<button class="close" data-op="close">✕ Fermer</button>'+e2RunBagMarkup(data.run);$('overlay').hidden=false;persist();}
 function e2RunAction(type,id){const r=data.run;if(!r?.eq2)return;const s=r.eq2;if(['equip','secure','transfer'].includes(type)){msg('Équipement et protection disponibles uniquement après extraction, au refuge.');return;}
@@ -2778,7 +2778,9 @@ function merchantRender(){
  let html=`<div class="mr-shell"><div class="mr-top"><strong>MARCHAND</strong><span class="mr-money">${afIcon('credits')} ${data.credits} CR</span></div><div class="mr-tabs">${tab('buy','ACHETER')}${tab('sell','VENDRE')}</div><div class="mr-categories" aria-label="Types d’équipement">${MERCHANT_SLOTS.map(slot=>ashCompactFilterButton(slot,'data-mr-category',merchantCategory)).join('')}</div><div class="mr-subtitle">${available} objet${available!==1?'s':''} ${merchantTab==='buy'?'disponibles':'à vendre'}</div>${refreshUi}<div class="mr-grid">${items.map(iconCard).join('')||'<p class="mr-empty">Aucun objet dans cette catégorie.</p>'}</div>`;
  if(selected){
   const buy=merchantTab==='buy',value=buy?selected.price:merchantEquipSale(selected),locked=buy&&(selected.sold||data.credits<value);
-  html+=`<section class="mr-detail" aria-label="Détail de l’objet"><button type="button" class="mr-close" data-mr-close aria-label="Fermer">✕</button><div class="mr-detail-head"><div class="mr-detail-icon">${e2ItemArt(selected)}</div><div><small>${e2SlotName(selected.slot||'weapon')} · ${uiSafe(selected.rar)}</small><h3>${uiSafe(selected.name)}</h3><strong>${buy?'−':'+'}${value} CR</strong></div></div><p>${uiSafe(e2ItemStats(selected)||'Équipement tactique')}</p><button type="button" class="mr-confirm" data-mr-confirm ${locked?'disabled':''}>${buy?(selected.sold?'INDISPONIBLE':data.credits<value?'CRÉDITS INSUFFISANTS':'ACHETER CET OBJET'):'VENDRE CET OBJET'}</button></section>`;
+  const pos=items.findIndex(w=>String(w._ref)===String(merchantSelected));
+  const nav=items.length>1?`<nav class="ash-inventory-swipe-nav" aria-label="Parcourir les objets"><button type="button" data-mr-step="-1" aria-label="Objet précédent">‹</button><span>${pos+1} / ${items.length} · Glisser</span><button type="button" data-mr-step="1" aria-label="Objet suivant">›</button></nav>`:null;
+  html+=`<section class="mr-detail" aria-label="Détail de l’objet"><button type="button" class="mr-close" data-mr-close aria-label="Fermer">✕</button>${nav}<div class="mr-detail-head"><div class="mr-detail-icon">${e2ItemArt(selected)}</div><div><small>${e2SlotName(selected.slot||'weapon')} · ${uiSafe(selected.rar)}</small><h3>${uiSafe(selected.name)}</h3><strong>${buy?'−':'+'}${value} CR</strong></div></div><p>${uiSafe(e2ItemStats(selected)||'Équipement tactique')}</p><button type="button" class="mr-confirm" data-mr-confirm ${locked?'disabled':''}>${buy?(selected.sold?'INDISPONIBLE':data.credits<value?'CRÉDITS INSUFFISANTS':'ACHETER CET OBJET'):'VENDRE CET OBJET'}</button></section>`;
  }
  html+='</div>';host.innerHTML=html;
 }
@@ -2814,12 +2816,27 @@ let inventorySortMode="rarity";
 let inventoryRarity="all";
 let inventoryQuery="";
 const INVENTORY_PAGE_SIZE=20;
+function ashInventoryVisibleWeapons(){
+ const normalize=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr-FR');
+ const ranked=data.stash.map((w,i)=>({w,i})).filter(({w})=>(inventoryRarity==='all'||w.rar===inventoryRarity)&&(!inventoryQuery||normalize(w.name+' '+w.rar).includes(normalize(inventoryQuery))));
+ const sortable={rarity:w=>LOOT_RARITY_RANK[w.rar]||0,power:w=>lootPower(w),damage:w=>lootNumber(w.dmg),rate:w=>lootNumber(w.rate),value:w=>salvagePrice(w)};
+ if(sortable[inventorySortMode])ranked.sort((a,b)=>sortable[inventorySortMode](b.w)-sortable[inventorySortMode](a.w)||a.i-b.i);
+ return ranked;
+}
+function ashInventoryStep(delta){
+ const items=ashInventoryVisibleWeapons();if(!items.length)return;
+ const at=items.findIndex(x=>x.w.id===selectedInventoryId);
+ const next=(Math.max(0,at)+delta+items.length)%items.length;
+ selectedInventoryId=items[next].w.id;inventoryPage=Math.floor(next/INVENTORY_PAGE_SIZE);renderRefugeCharacter();
+}
 function renderInventorySelection(){
  const host=$('inventorySelection');if(!host)return;
  const i=data.stash.findIndex(w=>w.id===selectedInventoryId);
  if(i<0){host.hidden=true;host.innerHTML='';return;}
  const w=data.stash[i];host.hidden=false;
- host.innerHTML=`<div class="ash-loot-selection-heading"><span class="inventory-detail-label">ARME SÉLECTIONNÉE</span>${lootRarityBadge(w)}</div>
+ const sequence=ashInventoryVisibleWeapons(),position=sequence.findIndex(x=>x.w.id===w.id);
+ const nav=sequence.length>1?`<nav class="ash-inventory-swipe-nav" aria-label="Parcourir les armes"><button type="button" data-ash-inventory-step="-1" aria-label="Arme précédente">‹</button><span>${position+1} / ${sequence.length} · Glisser pour comparer</span><button type="button" data-ash-inventory-step="1" aria-label="Arme suivante">›</button></nav>`:null;
+ host.innerHTML=nav+`<div class="ash-loot-selection-heading"><span class="inventory-detail-label">ARME SÉLECTIONNÉE</span>${lootRarityBadge(w)}</div>
  <div class="inventory-selected-head"><span class="inventory-selected-art">${weaponArt(w)}</span><div class="ash-loot-selected-copy"><b>${uiSafe(w.name)}</b><small>${lootDisplay(w.dmg)} dégâts · ${lootDisplay(w.rate)} tirs/s</small><strong>${lootDisplay(lootPower(w))} puissance indicative</strong></div></div>
  ${lootCompare(w,data.equipped)}
  <div class="ash-loot-resale">Valeur de revente : <strong>${salvagePrice(w)} crédits</strong></div>
@@ -2908,13 +2925,7 @@ function renderRefugeCharacter(){
  if($('inventoryEquippedLabel'))$('inventoryEquippedLabel').textContent=data.equipped?`${data.equipped.name} · ${data.equipped.rar}`:'Aucune arme';
  const preview=$('characterReservePreview');
  if(preview){
-  const ranked=data.stash.map((w,i)=>({w,i})).filter(({w})=>{
-   const rar=inventoryRarity==='all'||w.rar===inventoryRarity;
-   const normalize=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr-FR');
-   return rar&&(!inventoryQuery||normalize(w.name+' '+w.rar).includes(normalize(inventoryQuery)));
-  });
-  const sortable={rarity:w=>LOOT_RARITY_RANK[w.rar]||0,power:w=>lootPower(w),damage:w=>lootNumber(w.dmg),rate:w=>lootNumber(w.rate),value:w=>salvagePrice(w)};
-  if(sortable[inventorySortMode])ranked.sort((a,b)=>sortable[inventorySortMode](b.w)-sortable[inventorySortMode](a.w)||a.i-b.i);
+  const ranked=ashInventoryVisibleWeapons();
   const pages=Math.max(1,Math.ceil(ranked.length/INVENTORY_PAGE_SIZE));
   inventoryPage=Math.max(0,Math.min(inventoryPage,pages-1));
   const offset=inventoryPage*INVENTORY_PAGE_SIZE,items=ranked.slice(offset,offset+INVENTORY_PAGE_SIZE);
@@ -2922,7 +2933,7 @@ function renderRefugeCharacter(){
   if(!selectedVisible)selectedInventoryId=ranked.length?ranked[0].w.id:null;
   const summary=$('ashLootInventoryCount');if(summary)summary.textContent=`${ranked.length} / ${data.stash.length} armes affichées`;
   document.querySelectorAll('[data-loot-rarity]').forEach(b=>{const active=b.dataset.lootRarity===inventoryRarity;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
-  const cards=items.map(({w,i})=>`<button type="button" class="inventory-cell ash-loot-inventory-cell ${w.id===selectedInventoryId?'inventory-active':''}" data-inventory-index="${i}" aria-pressed="${w.id===selectedInventoryId}" aria-label="Voir ${uiSafe(w.name)} : ${uiSafe(w.rar)}, puissance ${lootDisplay(lootPower(w))}" style="--item-rarity:${tint(w)}"><span class="inventory-symbol">${weaponArt(w)}</span><span class="inventory-name">${uiSafe(w.name)}</span><span class="inventory-rarity">${uiSafe(w.rar)}</span><span class="ash-loot-cell-power">${lootDisplay(lootPower(w))} PUISS.</span></button>`).join('');
+  const cards=items.map(({w,i})=>`<button type="button" class="inventory-cell ash-loot-inventory-cell ${w.id===selectedInventoryId?'inventory-active':''}" data-inventory-index="${items.find(x=>x.w.id===w.id)?.i??i}" aria-pressed="${w.id===selectedInventoryId}" aria-label="Voir ${uiSafe(w.name)} : ${uiSafe(w.rar)}, puissance ${lootDisplay(lootPower(w))}" style="--item-rarity:${tint(w)}"><span class="inventory-symbol">${weaponArt(w)}</span><span class="inventory-name">${uiSafe(w.name)}</span><span class="inventory-rarity">${uiSafe(w.rar)}</span><span class="ash-loot-cell-power">${lootDisplay(lootPower(w))} PUISS.</span></button>`).join('');
   preview.innerHTML=ranked.length?cards+Array.from({length:Math.max(0,Math.min(8-items.length,8))},()=>'<span class="inventory-cell inventory-empty" aria-hidden="true"></span>').join(''):'<div class="ash-loot-no-results">Aucune arme ne correspond aux filtres. <button type="button" data-loot-reset>Réinitialiser</button></div>';
   const controls=$('inventoryPages');if(controls){controls.hidden=pages<=1;controls.innerHTML=pages>1?`<button type="button" data-inventory-page="prev" ${inventoryPage===0?'disabled':''}>← Précédent</button><span>${inventoryPage+1} / ${pages} · ${ranked.length} armes</span><button type="button" data-inventory-page="next" ${inventoryPage===pages-1?'disabled':''}>Suivant →</button>`:'';}
   renderInventorySelection();
@@ -3167,11 +3178,16 @@ $('mapBtn').addEventListener('click',e=>{
 });
 // Le clic synthetique iOS peut etre annule quand un autre doigt tient le joystick.
 $('overlay').addEventListener('click',e=>{
+  const bagNav=e.target.closest('[data-ash-bag-step]');if(bagNav){ashBagStep(Number(bagNav.dataset.ashBagStep));return;}
   const chosen=e.target.closest('[data-e2-select]');if(chosen){e2BagSelectionId=chosen.getAttribute('data-e2-select')||null;e2OpenBag();return;}
   const action=e.target.closest('[data-e2-run-equip],[data-e2-run-drop],[data-e2-secure],[data-e2-transfer],[data-e2-replace],[data-e2-dismiss],[data-e2-inspect]');
   if(action){const ops={'data-e2-run-equip':'equip','data-e2-run-drop':'drop','data-e2-secure':'secure','data-e2-transfer':'transfer','data-e2-replace':'replace','data-e2-dismiss':'dismiss','data-e2-inspect':'inspect'};for(const [attr,op] of Object.entries(ops))if(action.hasAttribute(attr)){e2RunAction(op,action.getAttribute(attr));return;}}
   let b=e.target.closest('[data-op]');if(!b)return;let op=b.dataset.op,idx=Number(b.dataset.idx);if(op==='choosePerk')choosePerk(b.dataset.perk);else if(op==='close'||op==='resume')closeOverlay();else if(op==='equipBag')equipBag(idx);else if(op==='drop')drop(idx);else if(op==='bag'){overlayReturn='pause';openOverlay('bag')}else if(op==='map'){overlayReturn='pause';openOverlay('map')}else if(op==='backPause')openOverlay('pause');else if(op==='retreat')openOverlay('retreatConfirm');else if(op==='confirmRetreat')finish(false,'abandon')});
-function merchantClickHandler(e){const b=e.target.closest('[data-merchant-tab],[data-mr-category],[data-mr-view],[data-mr-close],[data-mr-confirm],[data-mr-refresh]');if(!b)return;
+function merchantClickHandler(e){const b=e.target.closest('[data-merchant-tab],[data-mr-category],[data-mr-view],[data-mr-close],[data-mr-confirm],[data-mr-refresh],[data-mr-step]');if(!b)return;
+ if(b.hasAttribute('data-mr-step')){
+  const items=merchantCards().filter(w=>merchantCategory==='all'||(w.slot||'weapon')===merchantCategory);
+  const index=items.findIndex(w=>String(w._ref)===String(merchantSelected));if(items.length){merchantSelected=items[(Math.max(0,index)+Number(b.dataset.mrStep)+items.length)%items.length]._ref;merchantRender();}return;
+ }
  if(b.hasAttribute('data-mr-refresh')){merchantPaidRefresh();return;}
  if(b.hasAttribute('data-merchant-tab')){merchantTab=b.dataset.merchantTab;merchantSelected=null;}
  else if(b.hasAttribute('data-mr-category')){merchantCategory=b.dataset.mrCategory;merchantSelected=null;}
@@ -3179,6 +3195,38 @@ function merchantClickHandler(e){const b=e.target.closest('[data-merchant-tab],[
  else if(b.hasAttribute('data-mr-close'))merchantSelected=null;
  else if(b.hasAttribute('data-mr-confirm')){merchantTransaction();return;}
  merchantRender();}
+function ashBagStep(delta){
+ const loot=data.run?.eq2?.loot;if(!Array.isArray(loot)||!loot.length)return;
+ const i=loot.findIndex(w=>w.id===e2BagSelectionId);
+ e2BagSelectionId=loot[(Math.max(0,i)+delta+loot.length)%loot.length].id;e2OpenBag();
+}
+// Touch-only horizontal gestures. Never steal vertical scrolling or button actions.
+(function ashInstallItemSwipe(){
+ let start=null;
+ document.addEventListener('touchstart',e=>{
+  const el=e.target.closest('#inventorySelection, .mr-detail, .ash927-compare, .eq2-owned-card, .ash-gear-card');
+  if(!el||e.touches.length!==1||e.target.closest('button,input,select,textarea,a')){start=null;return;}
+  const t=e.touches[0];start={x:t.clientX,y:t.clientY,el};
+ },{passive:true});
+ document.addEventListener('touchend',e=>{
+  if(!start||!e.changedTouches.length)return;
+  const {x,y,el}=start;start=null;
+  if(!el.isConnected)return;
+  const t=e.changedTouches[0],dx=t.clientX-x,dy=t.clientY-y;
+  if(Math.abs(dx)<48||Math.abs(dx)<Math.abs(dy)*1.4)return;
+  const delta=dx<0?1:-1;
+  if(el.matches('#inventorySelection'))ashInventoryStep(delta);
+  else if(el.matches('.mr-detail')){
+   const items=merchantCards().filter(w=>merchantCategory==='all'||(w.slot||'weapon')===merchantCategory);
+   const i=items.findIndex(w=>String(w._ref)===String(merchantSelected));
+   if(items.length>1){merchantSelected=items[(Math.max(0,i)+delta+items.length)%items.length]._ref;merchantRender();}
+  }else if(el.matches('.ash927-compare'))ashBagStep(delta);
+  else if(el.matches('.eq2-owned-card, .ash-gear-card')){
+   const cards=[...el.parentElement.querySelectorAll(':scope > .eq2-owned-card, :scope > .ash-gear-card')];
+   const i=cards.indexOf(el);if(cards.length>1){const target=cards[(i+delta+cards.length)%cards.length];target.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+  }
+ },{passive:true});
+})();
 $('runDebrief').addEventListener('click',e=>{if(e.target.closest('[data-end-action=return]'))closeRunDebrief();});
 $('toolsBody').addEventListener('click',merchantClickHandler);if($('merchantPageContent'))$('merchantPageContent').addEventListener('click',merchantClickHandler);
 if($('merchantPageContent'))$('merchantPageContent').addEventListener('change',e=>{if(e.target.id==='merchantSort'){merchantSort=e.target.value;merchantRender();}});
@@ -3194,6 +3242,7 @@ $('ashLootSearch').addEventListener('input',e=>{inventoryQuery=e.target.value;in
 $('ashLootRarityFilters').addEventListener('click',e=>{const b=e.target.closest('[data-loot-rarity]');if(!b)return;inventoryRarity=b.dataset.lootRarity;inventoryPage=0;renderRefugeCharacter();});
 $('inventoryPages').addEventListener('click',e=>{const b=e.target.closest('[data-inventory-page]');if(!b)return;inventoryPage+=b.dataset.inventoryPage==='next'?1:-1;renderRefugeCharacter();});
 $('inventorySelection').addEventListener('click',e=>{
+ const nav=e.target.closest('[data-ash-inventory-step]');if(nav){ashInventoryStep(Number(nav.dataset.ashInventoryStep));return;}
   const extra=e.target.closest('[data-e2-recycle]');if(extra&&data.eq2){e2GearAction('recycle',extra.getAttribute('data-e2-recycle'),extra.getAttribute('data-e2-stat'));return;}
   const b=e.target.closest('[data-grid-equip],[data-grid-sell]');if(!b)return;
  if(b.hasAttribute('data-grid-equip'))equipHome(Number(b.dataset.gridEquip));
