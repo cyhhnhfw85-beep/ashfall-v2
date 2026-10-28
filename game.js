@@ -232,16 +232,6 @@ function e2RefreshRunWeapon(){const r=data.run;if(!r?.eq2)return;
  if(player){const old=player.max||max;player.max=max;player.hp=Math.min(max,player.hp+Math.max(0,max-old));}
 }
 let e2BagSelectionId=null;
-let e2GroundCompareId=null;
-function e2GroundInspectionMarkup(r,pending,canDiscard){
- if(!pending?.item)return '';
- const item=pending.item,s=r.eq2,chosen=s.loot.find(w=>w.id===e2GroundCompareId)||null;
- const detail=e2EffectDetails(item),description=e2PickWeapon(item)?`Arme · ${lootDisplay(item.dmg)} dégâts par tir · ${lootDisplay(item.rate)} tirs/s`:(detail.desc||'Équipement tactique');
- const choices=s.loot.map(w=>`<button type="button" class="ash-ground-compare-choice ${chosen?.id===w.id?'is-selected':''}" data-e2-ground-compare="${uiSafe(w.id)}" aria-pressed="${chosen?.id===w.id?'true':'false'}">${e2ItemArt(w)}<span><strong>${uiSafe(w.name)}</strong><small>${uiSafe(w.rar)} · Nv ${w.level||1} · ${uiSafe(e2SlotName(w.slot))}</small><small>${uiSafe(e2ItemStats(w))}</small></span></button>`).join('');
- const canReplace=!!chosen&&canDiscard;const canPickup=s.loot.length<E2.capacity(r);
- return `<section class="eq2-pending ash-ground-inspect" aria-label="Fiche de l'objet au sol"><h3>OBJET AU SOL — FICHE</h3><div class="ash-ground-item"><div class="ash-ground-art">${e2ItemArt(item)}</div><div><strong>${uiSafe(item.name)}</strong><p>${uiSafe(item.rar||'Commun')} · Nv ${item.level||1} · ${uiSafe(e2SlotName(item.slot))}</p><p>${uiSafe(e2ItemStats(item))}</p><p>${uiSafe(description)}</p></div></div><h3>COMPARER AVEC LE SAC</h3><p>Sélectionne l'objet à abandonner pour consulter les différences avant de confirmer.</p><div class="ash-ground-choices">${choices||'<p>Aucun équipement dans le sac.</p>'}</div>${chosen?`<div class="ash-ground-diff"><div><strong>OBJET TROUVÉ</strong><p>${uiSafe(item.name)} · ${uiSafe(e2ItemStats(item))}</p><p>${uiSafe(description)}</p></div><div><strong>OBJET À REMPLACER</strong><p>${uiSafe(chosen.name)} · ${uiSafe(e2ItemStats(chosen))}</p><p>${uiSafe(e2EffectDetails(chosen).desc||'')}</p></div>${item.slot===chosen.slot?e2ComparisonMarkup(item,chosen):'<p>Catégories différentes : les bonus ne sont pas directement comparables. Consulte les deux fiches ci-dessus.</p>'}</div>`:''}<div class="ash-ground-actions">${canPickup?'<button type="button" data-e2-ground-pickup="1">Ramasser cet objet</button>':''}${canReplace?`<button type="button" data-e2-replace="${uiSafe(chosen.id)}">Confirmer : remplacer ${uiSafe(chosen.name)}</button>`:''}<button type="button" data-e2-dismiss="1">Laisser la trouvaille</button></div>${!canDiscard?'<p>Remplacement disponible uniquement en salle sécurisée.</p>':''}</section>`;
-}
-
 function e2RunBagMarkup(r){
  const s=r.eq2,cap=E2.capacity(r),selected=s.loot.find(w=>w.id===e2BagSelectionId);
  const tiles=s.loot.map(w=>`<button type="button" data-e2-select="${uiSafe(w.id)}" class="ash927-tile ${selected?.id===w.id?'ash927-tile-selected':''}" style="--eq2-rarity:${tint(w)}" aria-label="${uiSafe(w.name)}, ${uiSafe(w.rar)}"><span class="ash927-tile-picture">${e2ItemArt(w)}</span><span class="ash927-tile-level">${w.level||1}</span></button>`).join('');
@@ -249,16 +239,21 @@ function e2RunBagMarkup(r){
  const drops=ground(r.rooms[r.current]).filter(d=>d.kind==='weapon'&&!d.got);
  const pending=s.pendingDrop?drops.find(d=>d.id===s.pendingDrop):null;
  const canDiscard=!!r.rooms[r.current]?.cleared&&!r.rooms[r.current]?.enemies?.length;
- return `<style>.ash-ground-inspect{margin-top:16px}.ash-ground-inspect h3{font-size:15px;margin:12px 0}.ash-ground-item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #54778a;border-radius:12px}.ash-ground-art{width:88px;height:88px;flex-shrink:0;display:grid;place-items:center}.ash-ground-art img{max-width:100%;max-height:100%;object-fit:contain}.ash-ground-item p{margin:5px 0;overflow-wrap:anywhere}.ash-ground-choices{display:grid;gap:8px}.ash-ground-compare-choice{display:flex;align-items:center;gap:10px;text-align:left;width:100%;white-space:normal;min-height:64px}.ash-ground-compare-choice.is-selected{outline:2px solid #62c9e1}.ash-ground-compare-choice img{width:52px;height:52px;object-fit:contain}.ash-ground-compare-choice span{display:grid;gap:3px;min-width:0}.ash-ground-compare-choice small{font-size:12px;overflow-wrap:anywhere}.ash-ground-diff{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}.ash-ground-diff>div{border:1px solid #527388;border-radius:9px;padding:9px;overflow-wrap:anywhere}.ash-ground-diff p{font-size:13px}.ash-ground-diff>.ash927-stat-diff,.ash-ground-diff>p{grid-column:1/-1}.ash-ground-actions{display:flex;flex-wrap:wrap;gap:8px}.ash-ground-actions button{white-space:normal}@media(max-width:420px){.ash-ground-item{align-items:flex-start}.ash-ground-art{width:70px;height:70px}.ash-ground-diff{grid-template-columns:1fr}}</style><section class="ash922-bag ash927-bag ash933-loot-bag"><header class="ash922-header"><span class="ash922-kicker">ASHFALL · EXTRACTION</span><h2>SAC D’EXPÉDITION</h2><div class="ash922-capacity"><strong>${s.loot.length}<span>/${cap}</span></strong><span>Butin non sécurisé</span></div><div class="ash922-capacity-track"><span style="width:${Math.min(100,s.loot.length/cap*100)}%"></span></div></header><p class="ash922-help">Le matériel trouvé doit être extrait avant de pouvoir être équipé dans le refuge. Tout le contenu du sac est perdu si tu péris.</p><section class="ash922-section"><h3>BUTIN TROUVÉ <span>${s.loot.length}/${cap}</span></h3><div class="ash927-inventory-grid">${tiles}${empty}</div>${selected?`<section class="ash927-compare"><div class="ash927-compare-heading"><strong>${uiSafe(selected.name)}</strong><span>${uiSafe(selected.rar)} · ${e2SlotName(selected.slot)}</span></div><div class="ash927-compare-picture">${e2ItemArt(selected)}</div><p>${uiSafe(e2ItemStats(selected))}</p><p class="ash927-note">Équipement utilisable après extraction réussie uniquement.</p><button type="button" data-e2-run-drop="${uiSafe(selected.id)}" ${canDiscard?'':'disabled'}>ABANDONNER</button></section>`:'<p class="ash927-note">Sélectionne un objet pour afficher ses caractéristiques.</p>'}${drops.length?`<details class="ash922-ground"><summary>OBJETS AU SOL · ${drops.length}</summary><div class="ash922-ground-list">${drops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">${d.manualDiscard?'Récupérer volontairement':'Examiner'} · ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</div></details>`:''}${pending?e2GroundInspectionMarkup(r,pending,canDiscard):''}</section></section>`;
+ return `<section class="ash922-bag ash927-bag ash933-loot-bag"><header class="ash922-header"><span class="ash922-kicker">ASHFALL · EXTRACTION</span><h2>SAC D’EXPÉDITION</h2><div class="ash922-capacity"><strong>${s.loot.length}<span>/${cap}</span></strong><span>Butin non sécurisé</span></div><div class="ash922-capacity-track"><span style="width:${Math.min(100,s.loot.length/cap*100)}%"></span></div></header><p class="ash922-help">Le matériel trouvé doit être extrait avant de pouvoir être équipé dans le refuge. Tout le contenu du sac est perdu si tu péris.</p><section class="ash922-section"><h3>BUTIN TROUVÉ <span>${s.loot.length}/${cap}</span></h3><div class="ash927-inventory-grid">${tiles}${empty}</div>${selected?`<section class="ash927-compare"><div class="ash927-compare-heading"><strong>${uiSafe(selected.name)}</strong><span>${uiSafe(selected.rar)} · ${e2SlotName(selected.slot)}</span></div><div class="ash927-compare-picture">${e2ItemArt(selected)}</div><p>${uiSafe(e2ItemStats(selected))}</p><p class="ash927-note">Équipement utilisable après extraction réussie uniquement.</p><button type="button" data-e2-run-drop="${uiSafe(selected.id)}" ${canDiscard?'':'disabled'}>ABANDONNER</button></section>`:'<p class="ash927-note">Sélectionne un objet pour afficher ses caractéristiques.</p>'}${drops.length?`<details class="ash922-ground"><summary>OBJETS AU SOL · ${drops.length}</summary><div class="ash922-ground-list">${drops.map(d=>`<button data-e2-inspect="${uiSafe(d.id)}">${d.manualDiscard?'Récupérer volontairement':'Examiner'} · ${uiSafe(d.item?.name||'Objet')}</button>`).join('')}</div></details>`:''}${pending?`<section class="eq2-pending"><strong>SAC PLEIN — ${uiSafe(pending.item.name)}</strong><p>Abandonne un objet pour récupérer celui-ci, ou laisse-le au sol.</p>${s.loot.map(w=>`<button data-e2-replace="${uiSafe(w.id)}" ${canDiscard?'':'disabled'}>Remplacer ${uiSafe(w.name)}</button>`).join('')}<button data-e2-dismiss="1">Laisser la trouvaille</button></section>`:''}</section></section>`;
 }
 function e2OpenBag(){if(!data.run?.eq2)return;overlay='bag';$('overlay').innerHTML='<button class="close" data-op="close">✕ Fermer</button>'+e2RunBagMarkup(data.run);$('overlay').hidden=false;persist();}
 function e2RunAction(type,id){const r=data.run;if(!r?.eq2)return;const s=r.eq2;if(['equip','secure','transfer'].includes(type)){msg('Équipement et protection disponibles uniquement après extraction, au refuge.');return;}
  // Aucun retrait ou remplacement d'équipement lors d'une salle encore hostile.
  if((type==='drop'||type==='replace')&&(!r.rooms[r.current]?.cleared||r.rooms[r.current]?.enemies?.length)){msg('Gestion de l’équipement disponible seulement en salle sécurisée.');return;}
- if(type==='dismiss'){s.pendingDrop=null;e2GroundCompareId=null;e2OpenBag();return;}
+ if(type==='dismiss'){s.pendingDrop=null;e2OpenBag();return;}
  if(type==='inspect'){
   const dropped=ground(r.rooms[r.current]).find(d=>d.id===id&&!d.got);if(!dropped)return;
-  s.pendingDrop=dropped.id;e2GroundCompareId=null;e2OpenBag();return;
+  if(dropped.manualDiscard&&E2.pickup(r,dropped.item)){
+   if(e2PickWeapon(dropped.item))r.bag.push(dropped.item);
+   dropped.got=true;r.rooms[r.current].drops=ground(r.rooms[r.current]).filter(d=>!d.got);
+   s.pendingDrop=null;ashRefreshContractHud(r);e2RefreshRunWeapon();persist();render();e2OpenBag();return;
+  }
+  s.pendingDrop=dropped.id;e2OpenBag();return;
  }
  if(type==='equip'){
   const target=E2.runItem(r,id);if(!target)return;
@@ -278,7 +273,7 @@ function e2RunAction(type,id){const r=data.run;if(!r?.eq2)return;const s=r.eq2;i
   if(!E2.pickup(r,d.item))throw Error('failed replacement');d.got=true;
   if(d.item.slot==='weapon')r.bag.push(d.item);
   r.rooms[r.current].drops=ground(r.rooms[r.current]).filter(x=>!x.got);
-  s.pendingDrop=null;e2GroundCompareId=null;e2RefreshRunWeapon();
+  s.pendingDrop=null;e2RefreshRunWeapon();
  }
  persist();render();e2OpenBag();
 }
@@ -2942,8 +2937,6 @@ $('mapBtn').addEventListener('click',e=>{
 });
 // Le clic synthetique iOS peut etre annule quand un autre doigt tient le joystick.
 $('overlay').addEventListener('click',e=>{
-  const groundPickup=e.target.closest('[data-e2-ground-pickup]');if(groundPickup){e2RunAction('pickup');return;}
-  const groundCompare=e.target.closest('[data-e2-ground-compare]');if(groundCompare){e2GroundCompareId=groundCompare.getAttribute('data-e2-ground-compare');e2OpenBag();return;}
   const chosen=e.target.closest('[data-e2-select]');if(chosen){e2BagSelectionId=chosen.getAttribute('data-e2-select')||null;e2OpenBag();return;}
   const action=e.target.closest('[data-e2-run-equip],[data-e2-run-drop],[data-e2-secure],[data-e2-transfer],[data-e2-replace],[data-e2-dismiss],[data-e2-inspect]');
   if(action){const ops={'data-e2-run-equip':'equip','data-e2-run-drop':'drop','data-e2-secure':'secure','data-e2-transfer':'transfer','data-e2-replace':'replace','data-e2-dismiss':'dismiss','data-e2-inspect':'inspect'};for(const [attr,op] of Object.entries(ops))if(action.hasAttribute(attr)){e2RunAction(op,action.getAttribute(attr));return;}}
