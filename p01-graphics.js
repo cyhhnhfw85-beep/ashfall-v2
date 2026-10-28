@@ -119,19 +119,58 @@
   obstacles.forEach((o,i)=>{if(!Array.isArray(o)||o.length<4)return;const [x,y,w,h]=o;if(!(w>0&&h>0))return;prop(c,x,y,w,h,hash(i,7,s),p);});
   c.restore();
  }
- function prop(c,x,y,w,h,t,p){c.save();const r=Math.min(7,w*.12,h*.12);
-  c.shadowColor='rgba(0,0,0,.62)';c.shadowBlur=10;c.shadowOffsetY=4;rr(c,x+1,y+1,w-2,h-2,r);c.fillStyle='#101b21';c.fill();c.shadowBlur=0;c.shadowOffsetY=0;
-  const g=c.createLinearGradient(x,y,x+w,y+h);g.addColorStop(0,t>.66?'#53646a':t>.33?'#425960':'#455157');g.addColorStop(.42,t>.66?'#34454d':'#2a3e46');g.addColorStop(1,'#18272e');rr(c,x+2,y+2,w-4,h-4,r);c.fillStyle=g;c.fill();c.strokeStyle='#0a171d';c.lineWidth=2;c.stroke();
-  rr(c,x+6,y+6,Math.max(1,w-12),Math.max(1,h-12),Math.min(4,r));c.strokeStyle='rgba(172,201,202,.26)';c.lineWidth=1;c.stroke();
-  if(t<.33){ // sealed crate with metal bands
-   fill(c,x+w*.47,y+4,Math.max(3,w*.08),h-8,'rgba(11,22,28,.52)');fill(c,x+4,y+h*.44,w-8,Math.max(3,h*.1),'rgba(11,22,28,.45)');
-  }else if(t<.66){ // industrial worktable / console, solid footprint
-   fill(c,x+w*.15,y+h*.18,w*.7,h*.23,'#111f26');fill(c,x+w*.2,y+h*.22,w*.6,h*.1,'#529e9e');line(c,x+w*.2,y+h*.68,x+w*.8,y+h*.68,'rgba(217,170,97,.65)',2);
-  }else{ // mechanical housing
-   for(let k=0;k<3;k++)fill(c,x+w*.2,y+h*(.23+k*.2),w*.6,Math.max(2,h*.075),'#16252c');
-   fill(c,x+w*.73,y+h*.14,Math.max(3,w*.09),Math.max(3,h*.09),p[2]);
+
+ function prop(c,x,y,w,h,t,p){
+  // Every visual solid is strictly contained in the EXISTING gameplay collision rectangle.
+  // No new physical obstacles are introduced by the renderer.
+  if(w<12||h<12)return;
+  c.save();const r=Math.min(6,w*.1,h*.1),small=Math.min(w,h)<38;
+  c.shadowColor='rgba(0,0,0,.70)';c.shadowBlur=12;c.shadowOffsetY=5;
+  rr(c,x+1,y+1,w-2,h-2,r);c.fillStyle='#0b171e';c.fill();
+  c.shadowBlur=0;c.shadowOffsetY=0;
+  const grad=c.createLinearGradient(x,y,x+w*.18,y+h);
+  grad.addColorStop(0,'#71858a');grad.addColorStop(.12,'#435a62');
+  grad.addColorStop(.48,'#30434b');grad.addColorStop(1,'#13242c');
+  rr(c,x+2,y+2,w-4,h-4,r);c.fillStyle=grad;c.fill();
+  c.strokeStyle='#0a151b';c.lineWidth=2;c.stroke();
+  // Beveled upper shell gives the machine actual perceived height.
+  fill(c,x+5,y+4,w-10,Math.max(3,h*.11),'rgba(175,208,209,.22)');
+  fill(c,x+4,y+h*.79,w-8,Math.max(2,h*.12),'rgba(3,12,18,.38)');
+  if(t<.23){ // cargo crate with reinforcement straps and corner guards
+   fill(c,x+w*.44,y+5,Math.max(4,w*.12),h-10,'#15262d');
+   fill(c,x+5,y+h*.43,w-10,Math.max(4,h*.12),'#15262d');
+   line(c,x+6,y+6,x+w-6,y+6,'rgba(187,210,204,.34)',2);
+   for(const xx of [x+6,x+w-11])for(const yy of [y+7,y+h-12])
+    fill(c,xx,yy,5,5,'#82908a');
+  }else if(t<.48){ // powered industrial console
+   fill(c,x+6,y+6,w-12,h*.43,'#0b2029');
+   fill(c,x+9,y+9,w-18,Math.max(3,h*.32),'#174452');
+   for(let k=0;k<4;k++){
+    const xx=x+12+k*(w-24)/4;
+    fill(c,xx,y+12,Math.max(2,(w-28)/6),Math.max(2,h*.08),k===0?p[2]:'#2c7480');
+   }
+   fill(c,x+7,y+h*.63,w-14,Math.max(3,h*.09),'#18262c');
+   for(let k=0;k<3;k++)fill(c,x+12+k*10,y+h*.81,4,3,k===0?'#d7a565':'#75969c');
+  }else if(t<.72){ // industrial workbench with inset service panels
+   fill(c,x+5,y+5,w-10,Math.max(5,h*.22),'#52656a');
+   line(c,x+6,y+6,x+w-6,y+6,'rgba(218,222,201,.42)',2);
+   fill(c,x+7,y+h*.36,w-14,Math.max(5,h*.35),'#182e36');
+   for(let k=0;k<3;k++)line(c,x+11,y+h*(.42+k*.1),x+w-11,y+h*(.42+k*.1),'rgba(108,149,151,.38)',2);
+   fill(c,x+9,y+h*.79,Math.max(7,w*.25),3,'#bd955e');
+  }else{ // generator / compressor with visible turbine and heat vents
+   const cx=x+w*.45,cy=y+h*.49,rad=Math.min(w,h)*.23;
+   c.fillStyle='#101e26';c.beginPath();c.arc(cx,cy,rad+4,0,Math.PI*2);c.fill();
+   c.strokeStyle='#81969a';c.lineWidth=3;c.beginPath();c.arc(cx,cy,rad,0,Math.PI*2);c.stroke();
+   for(let k=0;k<5;k++){const a=k*Math.PI*2/5;
+    line(c,cx,cy,cx+Math.cos(a)*rad*.85,cy+Math.sin(a)*rad*.85,'#48646d',3);}
+   fill(c,x+w*.76,y+7,Math.max(3,w*.09),h-14,'#0d222b');
+   for(let k=0;k<4;k++)fill(c,x+w*.77,y+11+k*(h-22)/4,Math.max(2,w*.07),2,k===0?p[2]:'#476a70');
   }
-  [[x+8,y+8],[x+w-9,y+8],[x+8,y+h-9],[x+w-9,y+h-9]].forEach(q=>{fill(c,q[0],q[1],2,2,'#0a161a');});c.restore();
+  if(!small){
+   for(const xx of [x+7,x+w-9])for(const yy of [y+7,y+h-9])
+    fill(c,xx,yy,3,3,'#101a1e');
+  }
+  c.restore();
  }
  function walls(c,room,wallRects,doors){room=room&&typeof room==='object'&&!Array.isArray(room)?room:{kind:'standard'};wallRects=Array.isArray(wallRects)?wallRects:[];doors=Array.isArray(doors)?doors:[];const p=paletteFor(room),s=seedOf(room);c.save();
   wallRects.forEach((a,i)=>{const [x,y,w,h]=a;if(!(w>0&&h>0))return;const horizontal=w>=h;
@@ -140,6 +179,23 @@
    line(c,x+1,y+1,x+w-1,y+1,'rgba(180,212,214,.29)',2);
    const len=horizontal?w:h,step=70;for(let q=step;q<len-6;q+=step){const xx=horizontal?x+q:x,yy=horizontal?y:y+q;line(c,xx,yy,xx+(horizontal?0:w),yy+(horizontal?h:0),'rgba(2,11,17,.65)',2);if(hash(i,q,s)>.62){fill(c,xx+(horizontal?-3:3),yy+(horizontal?3:-3),horizontal?6:Math.max(3,w-6),horizontal?Math.max(3,h-6):6,'rgba(141,169,170,.11)');}}
    c.strokeStyle='#09151c';c.lineWidth=1;c.strokeRect(x+.5,y+.5,w-1,h-1);
+  });
+
+  // Structural wall bays and conduit channels, clipped within existing wall footprints.
+  wallRects.forEach((a,i)=>{
+   const [x,y,w,h]=a,hor=w>=h,len=hor?w:h;
+   if(len<95)return;
+   c.save();c.beginPath();c.rect(x+2,y+2,Math.max(1,w-4),Math.max(1,h-4));c.clip();
+   for(let q=32;q<len-22;q+=98){
+    const bx=hor?x+q-17:x+w*.23,by=hor?y+h*.23:y+q-17;
+    const bw=hor?34:w*.54,bh=hor?h*.54:34;
+    if(bw<4||bh<4)continue;
+    fill(c,bx+2,by+2,bw,bh,'rgba(2,10,15,.55)');
+    fill(c,bx,by,bw,bh,'#2a434b');
+    fill(c,bx+3,by+3,Math.max(1,bw-6),Math.max(1,bh-6),'#132a33');
+    fill(c,bx+5,by+5,Math.max(1,bw-10),Math.min(3,Math.max(1,bh-10)),hash(i,q,s)>.6?p[2]:'#6b8589');
+   }
+   c.restore();
   });
   wallFixtures(c,wallRects,s,p);
   doors.forEach((d,i)=>{const {x,y,w,h,locked,arena}=d;if(!(w>0&&h>0))return;const accent=locked?'#e36f65':arena?'#e9b66b':'#61d5c5';c.save();
