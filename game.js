@@ -2209,13 +2209,13 @@ function renderRefugeCharacter(){
  if($('activeWeaponArt'))$('activeWeaponArt').innerHTML=weaponArt(data.equipped);
  if($('characterEquippedSlotArt'))$('characterEquippedSlotArt').innerHTML=weaponArt(data.equipped);
  if($('characterHeldWeaponImage')){
-  const weaponName=String(data.equipped?.name||'').toLowerCase();
-  const isPistol=/pistolet|secours/.test(weaponName)||!data.equipped;
+  // Portrait fixe volontairement neutre sur Accueil et Survivant.
+  // L'arme réellement équipée continue d'être gérée dans les slots, les données et le gameplay.
+  const source='assets/survivant-neutre-v1.png?v=survivor-neutral-1';
   const img=$('characterHeldWeaponImage');
-  const source=isPistol?img.dataset.pistolSrc:$('nomadeRifleData')?.src;
-  if(source && img.src!==source) img.src=source;
+  if(img && !img.src.includes('survivant-neutre-v1.png'))img.src=source;
   const hero=$('homeHeroSurvivor');
-  if(hero && source && hero.src!==source)hero.src=source;
+  if(hero && !hero.src.includes('survivant-neutre-v1.png'))hero.src=source;
 }
  // Accueil : résumé dynamique de l'équipement, lecture seule.
  if($('homeWeaponArt'))$('homeWeaponArt').innerHTML=weaponArt(data.equipped);
