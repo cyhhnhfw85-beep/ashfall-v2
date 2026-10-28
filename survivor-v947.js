@@ -25,17 +25,21 @@ function init(){
     requestAnimationFrame(()=>{if(selection){selection.hidden=false;open('ARME',selection);}}
     );});grid.appendChild(clone);
   });}
-  if(filter!=='weapons'&&gear){
-   // Render owned tactical gear from the same equipment2 source used by the engine.
-   // Only top-level cards, never nested action buttons or the collection wrapper.
-   const cards=[...gear.querySelectorAll('.eq2-owned-list > .eq2-owned-card')]
-    .filter(source=>!source.closest('.eq2-collection')?.querySelector('summary')?.textContent?.startsWith('Arme équipée'));
+  if(gear){
+   // Reuse the authoritative equipment-engine cards, including the equipped weapon.
+   // The equipped weapon is not in the reserve preview, so it needs its own inventory tile.
+   const cards=[...gear.querySelectorAll('.eq2-owned-list > .eq2-owned-card')].filter(source=>{
+    const weapon=source.closest('.eq2-collection')?.querySelector('summary')?.textContent?.startsWith('Arme équipée');
+    return weapon?filter!=='gear':filter!=='weapons';
+   });
    for(const source of cards){
-    const card=document.createElement('button');card.type='button';card.className='sv-item sv-gear';
+    const equipped=source.classList.contains('is-equipped');
+    const card=document.createElement('button');card.type='button';card.className='sv-item sv-gear'+(equipped?' sv-is-equipped':'');
+    if(equipped){const badge=document.createElement('span');badge.className='sv-equipped-badge';badge.textContent='✓ ÉQUIPÉ';card.appendChild(badge);card.setAttribute('aria-label','Équipé · '+(source.querySelector('.eq2-item-copy strong')?.textContent||'Équipement'));}
     const tone=source.style.getPropertyValue('--eq2-rarity').trim()||'#d9e2e9';card.style.setProperty('--eq2-rarity',tone);
     const art=source.querySelector('.eq2-mini-art'),copy=source.querySelector('.eq2-item-copy');
     const name=copy?.querySelector('strong')?.textContent||'Équipement';
-    card.innerHTML='<span class="sv-gear-art"></span><span class="sv-gear-name"></span>';
+    card.insertAdjacentHTML('beforeend','<span class="sv-gear-art"></span><span class="sv-gear-name"></span>');
     if(art)card.querySelector('.sv-gear-art').innerHTML=art.innerHTML;
     card.querySelector('.sv-gear-name').textContent=name;
     card.addEventListener('click',()=>{

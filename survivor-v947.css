@@ -68,3 +68,9 @@
   border:2px solid var(--sv-equipped-rarity,#47758b)!important;
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sv-equipped-rarity,#47758b) 20%,transparent)!important;
 }
+
+/* V9.5.9 equipment status badge: visual only, driven by equipment engine selection. */
+#survivor-panel-equipment .sv-grid .sv-item.sv-is-equipped{position:relative!important;padding-top:19px!important}
+#survivor-panel-equipment .sv-grid .sv-equipped-badge{position:absolute;top:3px;right:4px;z-index:2;display:inline-flex;align-items:center;justify-content:center;min-height:16px;padding:1px 5px;border:1px solid #79d6bb;border-radius:5px;background:#123f3c;color:#d8fff0;font-size:8px;font-weight:800;line-height:1.1;letter-spacing:.025em;white-space:nowrap;pointer-events:none}
+#survivor-panel-equipment .sv-grid .sv-is-equipped .sv-gear-art{height:51px;max-height:51px}
+#survivor-panel-equipment .sv-grid .sv-is-equipped .sv-gear-art img,#survivor-panel-equipment .sv-grid .sv-is-equipped .sv-gear-art svg{max-height:49px}
