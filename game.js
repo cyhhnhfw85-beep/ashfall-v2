@@ -1316,30 +1316,36 @@ function lootUpdate(room,dt){
 function lootDraw(room){
  const now=performance.now()/1000;
  for(const d of ground(room)){
-  const isXp=d.kind==='xp',isCredit=d.kind==='credits',col=isXp?'#74eced':isCredit?'#ffcb6e':tint(d.item||{});
-  const bob=Math.sin(now*4+d.x*.04)*2-(d.bounce||0)*22;
-  cx.save();cx.globalAlpha=.15;cx.fillStyle=col;cx.beginPath();cx.ellipse(d.x,d.y+5,isXp?10:19,isXp?7:12,0,0,Math.PI*2);cx.fill();cx.restore();
-  if(d.kind==='weapon'&&['Épique','Légendaire','Mythique'].includes(d.item?.rar)){
-    cx.save();cx.globalAlpha=.17+.07*Math.sin(now*4);cx.fillStyle=col;cx.fillRect(d.x-4,Math.max(24,d.y-45),8,43);cx.restore();
-  }
-  cx.fillStyle=col;cx.strokeStyle='#0c1522';cx.lineWidth=2;cx.beginPath();
-  if(isXp){cx.moveTo(d.x,d.y-6+bob);cx.lineTo(d.x+6,d.y+bob);cx.lineTo(d.x,d.y+6+bob);cx.lineTo(d.x-6,d.y+bob)}
-  else if(isCredit){cx.arc(d.x,d.y+bob,6,0,Math.PI*2)}
-   else{
-    // Une arme générique, pas la photo PNG de l'inventaire : silhouette tactique
-    // horizontale très lisible, colorée selon la rareté de l'équipement.
-    cx.closePath();cx.save();cx.translate(d.x,d.y+bob);
-    cx.shadowColor=col;cx.shadowBlur=8;cx.strokeStyle='#081722';cx.lineWidth=1.4;
-    cx.beginPath();cx.roundRect(-17,-8,34,19,5);cx.fillStyle='#0d2331';cx.fill();cx.stroke();
-    cx.shadowBlur=0;cx.fillStyle=col;cx.strokeStyle=col;cx.lineJoin='round';
-    cx.fillRect(-6,-4,15,7);  // corps
-    cx.fillRect(8,-2,9,3);   // canon
-    cx.beginPath();cx.moveTo(-7,-2);cx.lineTo(-15,-5);cx.lineTo(-15,2);cx.lineTo(-7,2);cx.closePath();cx.fill(); // crosse
-    cx.beginPath();cx.moveTo(0,3);cx.lineTo(6,3);cx.lineTo(4,9);cx.lineTo(1,9);cx.closePath();cx.fill(); // poignée
-    cx.fillRect(-2,-7,6,2); // organe de visée
-    cx.restore();continue;
+  const xp=d.kind==='xp',credit=d.kind==='credits',col=xp?'#74eced':credit?'#ffcb6e':tint(d.item||{});
+  const bob=Math.sin(now*4+d.x*.04)*1.5-(d.bounce||0)*22;
+  cx.save();cx.translate(d.x,d.y+bob);
+  cx.fillStyle='rgba(0,7,11,.42)';cx.beginPath();cx.ellipse(0,7,xp?9:18,xp?4:7,0,0,Math.PI*2);cx.fill();
+  if(d.kind==='weapon'){
+   // Raised metal equipment capsule, identifiable as a physical pickup.
+   cx.fillStyle='#09151d';cx.beginPath();cx.roundRect(-18,-10,36,19,4);cx.fill();
+   cx.fillStyle='#29434e';cx.fillRect(-15,-8,30,13);
+   cx.fillStyle='#627a84';cx.fillRect(-15,-8,30,2);
+   cx.fillStyle=col;cx.fillRect(-15,3,30,2);
+   cx.fillStyle='#0a1119';cx.fillRect(-11,-3,22,5);
+   cx.fillStyle='#b4c3c8';cx.fillRect(-7,-3,15,2);
+   cx.fillStyle='#607781';cx.fillRect(6,-2,9,2);
+   cx.fillStyle='#a5b5bc';cx.fillRect(-13,-2,5,3);
+   cx.fillStyle='#a5b5bc';cx.fillRect(-2,1,3,5);
+   cx.fillStyle=col;cx.fillRect(13,-6,2,4);
+   if(['Épique','Légendaire','Mythique'].includes(d.item?.rar)){
+    cx.globalAlpha=.12+.06*Math.sin(now*4);cx.fillStyle=col;cx.fillRect(-4,-33,8,24);cx.globalAlpha=1;
    }
-   cx.closePath();cx.fill();cx.stroke();
+  }else if(credit){
+   cx.fillStyle='#554025';cx.beginPath();cx.ellipse(0,2,8,6,0,0,Math.PI*2);cx.fill();
+   cx.fillStyle='#e9b75e';cx.beginPath();cx.ellipse(0,-1,8,6,0,0,Math.PI*2);cx.fill();
+   cx.strokeStyle='#fff0b4';cx.lineWidth=1;cx.beginPath();cx.ellipse(0,-1,5,3.5,0,0,Math.PI*2);cx.stroke();
+   cx.fillStyle='#775027';cx.fillRect(-1,-4,2,6);
+  }else{
+   cx.fillStyle='#173e4c';cx.beginPath();cx.moveTo(0,-10);cx.lineTo(8,-2);cx.lineTo(0,6);cx.lineTo(-8,-2);cx.closePath();cx.fill();
+   cx.strokeStyle='#8ef5f5';cx.lineWidth=1.5;cx.stroke();
+   cx.fillStyle='#b5ffff';cx.beginPath();cx.moveTo(0,-7);cx.lineTo(4,-2);cx.lineTo(0,3);cx.lineTo(-4,-2);cx.closePath();cx.fill();
+  }
+  cx.restore();
  }
 }
 
@@ -3522,55 +3528,55 @@ window.__ashfallVisualStats=()=>({paints:staticPaintCount,rooms:staticSurfaces.s
 // 0.8.9.49 — Les objets gardent les mêmes positions et règles; seules leurs formes changent.
 function drawRefinedChest(room,r){
  if(room.chest!=='closed'&&room.chest!=='opened')return;
- const opened=room.chest==='opened';
- const isEpic=isArena(r.current,r);
- const guarded=isGuarded(r.current,r)&&room.enemies.length>0;
- const col=isEpic?'#c99df6':'#f2cd83', side='#70523b', dark='#302d2b';
- const fx=Math.max(0,Math.min(1,(room.chestFx||0)/1.15));
- const time=performance.now()/1000;
+ const opened=room.chest==='opened',epic=isArena(r.current,r),guarded=isGuarded(r.current,r)&&room.enemies.length>0;
+ const fx=Math.max(0,Math.min(1,(room.chestFx||0)/1.15)),time=performance.now()/1000;
+ const accent=epic?'#bc8af0':guarded?'#ff8866':'#7bddd5';
  cx.save();cx.translate(180,110);
- // ombre portée au sol et halo réservé aux récompenses d'arène
- cx.fillStyle='rgba(3,10,13,.40)';cx.beginPath();cx.ellipse(0,24,34,9,0,0,Math.PI*2);cx.fill();
- if(isEpic||fx>0){cx.globalAlpha=isEpic?.18+Math.sin(time*3)*.04:fx*.38;cx.fillStyle=col;cx.beginPath();cx.ellipse(0,8,33,22,0,0,Math.PI*2);cx.fill();cx.globalAlpha=1;}
- // corps 3/4: les trois faces ont des valeurs distinctes
- cx.fillStyle=dark;cx.fillRect(-25,-4,50,30);
- cx.fillStyle='#a77c52';cx.beginPath();cx.moveTo(-24,0);cx.lineTo(22,0);cx.lineTo(19,22);cx.lineTo(-22,22);cx.closePath();cx.fill();
- cx.fillStyle='#805b3c';cx.beginPath();cx.moveTo(22,0);cx.lineTo(27,-4);cx.lineTo(25,17);cx.lineTo(19,22);cx.closePath();cx.fill();
- cx.fillStyle='#e3bd79';cx.fillRect(-22,2,42,4);
- cx.fillStyle='#4b3c31';cx.fillRect(-21,17,40,4);
- for(const bx of [-18,12]){cx.fillStyle='#d4b17e';cx.fillRect(bx,3,5,16);cx.fillStyle='#6b543d';cx.fillRect(bx+1,6,3,2);cx.fillRect(bx+1,13,3,2);}
- // serrure et rivets
- cx.fillStyle=guarded?'#df8d69':'#e7d39e';cx.fillRect(-3,4,7,12);cx.fillStyle='#3d3838';cx.fillRect(0,7,2,5);
- // le couvercle bascule vers l'arrière lors de l'ouverture; le coffre reste présent
+ // Industrial extraction crate: solid perspective, mechanical hinges and lid.
+ cx.fillStyle='rgba(0,6,11,.54)';cx.beginPath();cx.ellipse(2,26,37,11,0,0,Math.PI*2);cx.fill();
+ if(epic||fx){cx.globalAlpha=.09+(epic?.09:0)+fx*.17;cx.fillStyle=accent;cx.beginPath();cx.ellipse(0,14,38,23,0,0,Math.PI*2);cx.fill();cx.globalAlpha=1;}
+ // side depth
+ cx.fillStyle='#0a141d';cx.beginPath();cx.moveTo(20,-2);cx.lineTo(29,-9);cx.lineTo(29,18);cx.lineTo(20,25);cx.closePath();cx.fill();
+ cx.fillStyle='#1c3440';cx.beginPath();cx.moveTo(-27,-3);cx.lineTo(20,-3);cx.lineTo(20,25);cx.lineTo(-27,25);cx.closePath();cx.fill();
+ cx.fillStyle='#334c58';cx.fillRect(-25,0,43,4);
+ cx.fillStyle='#0b1c26';cx.fillRect(-24,6,41,15);
+ cx.fillStyle='#2b4651';cx.fillRect(-23,8,39,2);
+ cx.fillStyle='#49606b';cx.fillRect(-25,21,43,3);
+ // armor brackets, industrial fasteners
+ for(const x of [-22,12]){
+  cx.fillStyle='#607782';cx.fillRect(x,-2,6,25);
+  cx.fillStyle='#1c2d35';cx.fillRect(x+1,3,4,14);
+  cx.fillStyle='#a4bac1';cx.fillRect(x+2,5,2,2);cx.fillRect(x+2,17,2,2);
+ }
+ // front latch + rarity indicator
+ cx.fillStyle='#0a1119';cx.fillRect(-6,5,14,16);
+ cx.fillStyle='#859aa3';cx.fillRect(-5,6,12,3);
+ cx.fillStyle=accent;cx.fillRect(-3,12,8,4);
+ cx.fillStyle='#111f27';cx.fillRect(-2,13,6,2);
+ cx.fillStyle='#1a2b35';cx.fillRect(-25,25,9,3);cx.fillRect(11,25,9,3);
+ // two back-mounted hinge cylinders
+ for(const x of [-19,15]){cx.fillStyle='#111d24';cx.fillRect(x,-11,6,9);cx.fillStyle='#657f8a';cx.fillRect(x+1,-10,4,3);}
  if(opened){
-  cx.fillStyle='#181b20';cx.beginPath();cx.moveTo(-22,-1);cx.lineTo(23,-1);cx.lineTo(20,6);cx.lineTo(-19,6);cx.closePath();cx.fill();
-  cx.save();cx.translate(0,-5);cx.rotate(-.47);
-  cx.fillStyle='#45382f';cx.fillRect(-25,-13,51,15);
-  cx.fillStyle='#aa8356';cx.fillRect(-22,-11,45,10);
-  cx.fillStyle='#e6c28a';cx.fillRect(-22,-11,45,3);cx.restore();
-  cx.fillStyle='rgba(255,218,129,.28)';cx.beginPath();cx.ellipse(0,0,14,5,0,0,Math.PI*2);cx.fill();
+  // lid hinged upright at back: no floating lid.
+  cx.fillStyle='#07141c';cx.beginPath();cx.moveTo(-27,-8);cx.lineTo(23,-8);cx.lineTo(23,3);cx.lineTo(-27,3);cx.closePath();cx.fill();
+  cx.fillStyle='#123642';cx.fillRect(-23,-5,43,6);
+  cx.fillStyle=accent;cx.globalAlpha=.46;cx.fillRect(-19,-4,35,2);cx.globalAlpha=1;
+  cx.fillStyle='#263e49';cx.beginPath();cx.moveTo(-26,-8);cx.lineTo(-22,-34);cx.lineTo(20,-34);cx.lineTo(24,-8);cx.closePath();cx.fill();
+  cx.fillStyle='#0b1d26';cx.beginPath();cx.moveTo(-20,-12);cx.lineTo(-17,-29);cx.lineTo(15,-29);cx.lineTo(19,-12);cx.closePath();cx.fill();
+  cx.strokeStyle='#69818a';cx.lineWidth=2;cx.beginPath();cx.moveTo(-25,-8);cx.lineTo(-22,-34);cx.lineTo(20,-34);cx.lineTo(24,-8);cx.stroke();
+  cx.fillStyle=accent;cx.fillRect(-13,-31,25,2);
  }else{
-  cx.fillStyle='#3c322b';cx.beginPath();cx.moveTo(-27,-4);cx.lineTo(-17,-18);cx.lineTo(18,-18);cx.lineTo(27,-4);cx.closePath();cx.fill();
-  cx.fillStyle='#b88c59';cx.beginPath();cx.moveTo(-24,-5);cx.lineTo(-16,-15);cx.lineTo(16,-15);cx.lineTo(24,-5);cx.closePath();cx.fill();
-  cx.fillStyle='#dec087';cx.fillRect(-24,-6,47,3);
-  cx.fillStyle='#e7d49b';cx.fillRect(-3,-15,7,10);
+  // Closed sloped lid in perspective
+  cx.fillStyle='#0c1921';cx.beginPath();cx.moveTo(-29,-5);cx.lineTo(-20,-19);cx.lineTo(20,-19);cx.lineTo(29,-5);cx.closePath();cx.fill();
+  cx.fillStyle='#364d58';cx.beginPath();cx.moveTo(-25,-6);cx.lineTo(-18,-17);cx.lineTo(18,-17);cx.lineTo(25,-6);cx.closePath();cx.fill();
+  cx.fillStyle='#647b84';cx.beginPath();cx.moveTo(-20,-15);cx.lineTo(19,-15);cx.lineTo(22,-11);cx.lineTo(-22,-11);cx.closePath();cx.fill();
+  cx.fillStyle=accent;cx.fillRect(-9,-12,18,2);
+  cx.fillStyle='#0d2029';cx.fillRect(-4,-17,8,6);
  }
- if(guarded&&!opened){
-  cx.strokeStyle='#d7846b';cx.lineWidth=2.1;cx.strokeRect(-26,-6,54,31);
-  // pictogramme de verrou sans emoji, stable sur iOS
-  cx.strokeStyle='#ffd1ae';cx.lineWidth=2;cx.beginPath();cx.arc(0,-31,5,Math.PI,Math.PI*2);cx.stroke();
-  cx.fillStyle='#cf8e70';cx.fillRect(-6,-31,12,9);
- }else if(!opened){
-  cx.strokeStyle=isEpic?'#d3aff1':'#b6dbd6';cx.lineWidth=1.7;cx.strokeRect(-26,-6,54,31);
- }
+ if(guarded&&!opened){cx.strokeStyle='#e78367';cx.lineWidth=2;cx.strokeRect(-28,-5,56,32);}
  if(fx>0){
-  cx.globalAlpha=fx;
-  cx.strokeStyle=col;cx.lineWidth=3.5;cx.beginPath();cx.arc(0,1,30+(1-fx)*22,0,Math.PI*2);cx.stroke();
-  for(let i=0;i<5;i++){let a=time*1.9+i*Math.PI*2/5;cx.fillStyle=col;cx.fillRect(Math.cos(a)*19-1,-17-Math.sin(a)*11,3,3);}
-  cx.globalAlpha=1;
+  cx.globalAlpha=fx;cx.strokeStyle=accent;cx.lineWidth=2.5;cx.beginPath();cx.arc(0,1,30+(1-fx)*16,0,Math.PI*2);cx.stroke();cx.globalAlpha=1;
  }
- cx.textAlign='center';cx.font='bold 10px sans-serif';cx.fillStyle=guarded?'#ffd5ae':opened?'#a8c8d2':col;
- /* Le coffre communique son état par la serrure et le couvercle, sans étiquette. */
  cx.restore();
 }
 
