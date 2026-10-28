@@ -1,0 +1,15 @@
+/* ASHFALL — Aura de rareté V1 : effet contenu dans la case, sans changement de logique. */
+.ash-aura-item{--ash-aura-color:#aeb9c4;--ash-aura-strength:.07;position:relative;isolation:isolate}
+.ash-aura-item.ash-aura-common{--ash-aura-color:#aeb9c4;--ash-aura-strength:.045}
+.ash-aura-item.ash-aura-uncommon{--ash-aura-color:#45c48a;--ash-aura-strength:.17}
+.ash-aura-item.ash-aura-rare{--ash-aura-color:#4ca5ff;--ash-aura-strength:.27}
+.ash-aura-item.ash-aura-epic{--ash-aura-color:#ae66f4;--ash-aura-strength:.39}
+.ash-aura-item.ash-aura-legendary{--ash-aura-color:#f3b64c;--ash-aura-strength:.52}
+.ash-aura-item.ash-aura-mythic{--ash-aura-color:#ff4966;--ash-aura-strength:.68}
+.ash-aura-item::before{content:"";position:absolute;pointer-events:none;z-index:0;inset:3px;border-radius:inherit;background:radial-gradient(ellipse 62% 50% at 50% 36%,var(--ash-aura-color),transparent 92%);opacity:var(--ash-aura-strength)}
+.ash-aura-item.ash-aura-mythic::before{animation:ash-aura-breathe 4.8s ease-in-out infinite}
+.ash-aura-item>*{position:relative;z-index:1}
+.ash-aura-item .mr-art,.ash-aura-item .sv-gear-art,.ash-aura-item .ash-ws-art{filter:drop-shadow(0 0 12px var(--ash-aura-color))}
+.ash-aura-item.ash-aura-common .mr-art,.ash-aura-item.ash-aura-common .sv-gear-art,.ash-aura-item.ash-aura-common .ash-ws-art{filter:none}
+@keyframes ash-aura-breathe{0%,100%{opacity:.63}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.ash-aura-item.ash-aura-mythic::before{animation:none}}
