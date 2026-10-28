@@ -1227,8 +1227,8 @@ function createRun(){
  // Une salle gardée compatible sert de secours si un secteur manque de salles ordinaires.
  // Les anciennes expéditions ne reçoivent jamais ces nouveaux événements.
  const discoveryPlan=[
-  {sector:0,role:'relay'}, {sector:1,role:'salvage'},
-  {sector:1,role:'relay'}, {sector:2,role:'distress'},
+  {sector:0,role:'scanner'}, {sector:1,role:'salvage'},
+  {sector:1,role:'scanner'}, {sector:2,role:'distress'},
   {sector:2,role:'salvage'}, {sector:3,role:'distress'},
   {sector:3,role:'salvage'}
  ];
@@ -1281,7 +1281,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1728,7 +1728,7 @@ function afDrawCanvasSignal(ctx,x,y,kind,size=9){
 
 // Phase 3B (0.8.9.51) — exploration sans bouton, sans objets bloquants.
 // Les evenements appartiennent a l'expedition, sont uniques et persistants.
-const FIELD_NAMES={cache:'CACHE DISSIMULÉE',scanner:'TERMINAL CARTOGRAPHIQUE',medic:'STATION MÉDICALE',stabilizer:'RÉGULATEUR DE ZONE',relay:'RELAIS D’ÉCHO',salvage:'DÉPÔT ABANDONNÉ',distress:'SIGNAL DE DÉTRESSE'};
+const FIELD_NAMES={cache:'CACHE DISSIMULÉE',scanner:'TERMINAL DE RECONNAISSANCE',medic:'STATION MÉDICALE',stabilizer:'RÉGULATEUR DE ZONE',relay:'RELAIS D’ÉCHO',salvage:'DÉPÔT ABANDONNÉ',distress:'SIGNAL DE DÉTRESSE'};
 const ASH_DISCOVERY_ROLES=new Set(['relay','salvage','distress']);
 function ashDiscoveryStats(run){const sites=(run?.rooms||[]).filter(room=>ASH_DISCOVERY_ROLES.has(room.fieldRole));return {total:sites.length,complete:sites.filter(room=>room.fieldEvent?.state==='used').length};}
 
@@ -1821,7 +1821,7 @@ function prepareRoomFieldEvent(room){
  else room.fieldEvent={kind:room.fieldRole,x:180,y:270,state:'unavailable',hold:0};
 }
 
-function revealFieldIntel(room,limit=3){
+function revealFieldIntel(room,limit=3,strictRadius=false){
  const run=data.run,orig=room.id;
  const distances=new Map([[orig,0]]),queue=[orig];
  for(let i=0;i<queue.length;i++){
@@ -1836,7 +1836,7 @@ function revealFieldIntel(room,limit=3){
  let available=[...distances.entries()].filter(([id,d])=>id!==orig&&!run.rooms[id].seen&&!intel.includes(id)).sort((a,b)=>a[1]-b[1]||a[0]-b[0]).slice(0,limit);
  // Si toute la zone proche a deja ete exploree, sonder les fronts non visites
  // au lieu de consommer inutilement un terminal. Exploration sans teleportation.
- if(!available.length&&run.interactiveV54){
+ if(!available.length&&run.interactiveV54&&!strictRadius){
   for(let i=0;i<queue.length;i++){
    const here=queue[i],dist=distances.get(here);
    for(const e of run.edges||[]){
@@ -1908,8 +1908,10 @@ function triggerFieldEvent(room){
    msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
   }
  }else if(ev.kind==='scanner'){
-  const count=revealFieldIntel(room);
-  msg(count?'◈ SCAN TERMINÉ : '+count+' salles inconnues signalées sur la carte.':'◈ SCAN TERMINÉ : aucun nouveau signal accessible.');
+  const reconV2=!!data.run?.fieldReconV2;
+  const count=revealFieldIntel(room,reconV2?4:3,reconV2);
+  if(reconV2)collectXp(5,true);
+  msg('◈ RECONNAISSANCE : '+count+' salle'+(count>1?'s':'')+' signalée'+(count>1?'s':'')+' sur la carte'+(reconV2?' · +5 XP':'')+'.');
  }else if(ev.kind==='medic'){
   const target=data.run?.fieldSupportV2?Math.round(Math.min(45,Math.max(25,player.max*.20))):22;
   const heal=Math.min(target,player.max-player.hp);player.hp+=heal;
@@ -2994,7 +2996,9 @@ function ashMapMarkup(run,mini=false){
    type==='tall'?`M${px} ${py}h${subx}v${suby*2}h${-subx}z`:
    type==='ell'?`M${px} ${py}h${subx*2}v${suby}h${-subx}v${suby}h${-subx}z`:
    `M${px} ${py}h${subx}v${suby}h${-subx}z`;
-  const label=here?'●':scanned?(labRecon.has(z.id)&&reconLv>=7&&isBoss(z.id,run)?'B?':labRecon.has(z.id)&&reconLv>=4&&isArena(z.id,run)?'A?':'?'):isBoss(z.id,run)?'B':isArena(z.id,run)?'A':isExit(z.id,run)?'E':z.kind==='outpost'?'P':(!scanned&&ASH_DISCOVERY_ROLES.has(z.fieldRole)?(z.fieldEvent?.state==='used'?'d':'D'):'');
+  const reconScanned=!!run.fieldReconV2&&scanned&&(run.intelRooms||[]).includes(z.id);
+  const reconLabel=reconScanned?(isBoss(z.id,run)?'B?':isArena(z.id,run)?'A?':z.kind==='secret'?'S?':z.kind==='guarded'?'C?':z.kind==='outpost'?'P?':'?'):null;
+  const label=here?'●':scanned?(reconLabel||(labRecon.has(z.id)&&reconLv>=7&&isBoss(z.id,run)?'B?':labRecon.has(z.id)&&reconLv>=4&&isArena(z.id,run)?'A?':'?')):isBoss(z.id,run)?'B':isArena(z.id,run)?'A':isExit(z.id,run)?'E':z.kind==='outpost'?'P':(!scanned&&ASH_DISCOVERY_ROLES.has(z.fieldRole)?(z.fieldEvent?.state==='used'?'d':'D'):'');
   const cx=px+subx/2,cy=py+suby/2;
   return `<g><path d="${shape}" fill="${fill}" fill-opacity="${scanned?.52:.96}" stroke="${here?'#fff3cc':'#a8cad3'}" stroke-width="${here?1.8:.9}" stroke-linejoin="round"/>${here?`<circle cx="${cx}" cy="${cy}" r="${mini?3.7:4.9}" fill="#11202a"/><circle cx="${cx}" cy="${cy}" r="${mini?2:2.7}" fill="#fff0ca"/>`:label?`<text x="${cx}" y="${cy+3}" fill="#f8f6ee" font-size="${mini?8:11}" text-anchor="middle" font-weight="900">${label}</text>`:''}</g>`;
  }).join('');
