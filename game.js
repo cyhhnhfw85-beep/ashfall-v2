@@ -4235,6 +4235,26 @@ function ashWsCompare(w){
  const rows=stats.map(([label,a,b])=>`<div class="ash-ws-stat-row"><span>${label}</span><span>${num(a)}</span><span class="${b>a?'ash-ws-gain':''}">${num(b)}${b>a?` <em>+${num(b-a)}</em>`:''}</span></div>`).join('');
  return `<div class="ash-ws-compare" aria-label="Comparaison des statistiques avant et après renforcement"><div class="ash-ws-compare-title">RENFORCEMENT · NIVEAU +${Number(w.upgrade)||0} → +${Number(next.upgrade)||0}</div><div class="ash-ws-compare-head"><span>STATISTIQUE</span><span>ACTUEL</span><span>APRÈS</span></div>${rows}<small class="ash-ws-compare-note">${w.slot==='weapon'?'Valeurs de base de l’arme, hors bonus du personnage.':'Bonus d’équipement calculés par le moteur, hors autres équipements.'}</small></div>`;
 }
+function ashWsOptimizeCompare(w,stat){
+ const next={...w,optimized:stat};
+ const num=v=>Number(v||0).toLocaleString('fr-FR',{maximumFractionDigits:2});
+ let rows=[];
+ if(w.slot==='weapon'){
+  const dmg=x=>(Number(x.dmg)||0)*(1+.06*(Number(x.upgrade)||0)+(x.optimized==='dmg'?.05:0));
+  const rate=x=>(Number(x.rate)||0)*(1+(x.optimized==='rate'?.05:0));
+  rows=[['Dégâts / tir',dmg(w),dmg(next)],['Cadence / s',rate(w),rate(next)],['DPS de base',dmg(w)*rate(w),dmg(next)*rate(next)]];
+ }else{
+  const a=e2EffectDetails(w),b=e2EffectDetails(next);
+  rows=[[a.name+(a.unit?' ('+a.unit.trim()+')':''),a.value,b.value]];
+  if(Number(w.stats?.resilience))rows.push(['Résilience (base)',Number(w.stats.resilience)*(w.optimized==='resilience'?1.08:1),Number(w.stats.resilience)*(stat==='resilience'?1.08:1)]);
+  if(Number(w.stats?.agility))rows.push(['Agilité (base)',Number(w.stats.agility)*(w.optimized==='agility'?1.08:1),Number(w.stats.agility)*(stat==='agility'?1.08:1)]);
+ }
+ const labels={dmg:'DÉGÂTS',rate:'CADENCE',efficiency:'EFFICACITÉ',resilience:'RÉSILIENCE',agility:'AGILITÉ'};
+ const html=rows.map(([label,a,b])=>{const delta=b-a;return `<div class="ash-ws-stat-row"><span>${label}</span><span>${num(a)}</span><span class="${delta>0.00001?'ash-ws-gain':delta<-.00001?'ash-ws-loss':''}">${num(b)}${Math.abs(delta)>.00001?` <em>${delta>0?'+':''}${num(delta)}</em>`:''}</span></div>`}).join('');
+ const unchanged=rows.every(([,a,b])=>Math.abs(b-a)<.00001);
+ const note=unchanged?'Cette option ne modifie pas les statistiques affichées pour cet objet.':'Aperçu calculé avec les formules actuelles du jeu, hors bonus du personnage.';
+ return `<div class="ash-ws-compare ash-ws-opt-compare" aria-live="polite"><div class="ash-ws-compare-title">OPTIMISATION · ${labels[stat]||stat}</div><div class="ash-ws-compare-head"><span>STATISTIQUE</span><span>ACTUEL</span><span>APRÈS</span></div>${html}<small class="ash-ws-compare-note">${note}</small></div>`;
+}
 function ashWorkshopRender(){
  const panel=document.getElementById('ash-v21-workshop-panel');if(!panel||panel.hidden)return;
  if(!data.eq2){panel.innerHTML='<h2>ATELIER</h2><p>Équipements non disponibles pour cette sauvegarde.</p>';return;}
@@ -4247,7 +4267,7 @@ function ashWorkshopRender(){
   const on=equipped.has(w.id),up=E2.upgradeCost(w),opt=E2.optimizeCost(w),yieldComponents=E2.rarityYield(w)+Math.floor((Number(w.investedComponents)||0)*.5);
   const opts=w.slot==='weapon'?[['dmg','Dégâts'],['rate','Cadence']]:[['efficiency','Efficacité'],['resilience','Résilience'],['agility','Agilité']];
   const actions=`<button type="button" data-ash-ws-action="upgrade" data-ash-ws-id="${safe(w.id)}" ${!up||data.credits<up.credits||comps<up.components?'disabled':''}>${up?`Renforcer +${Number(w.upgrade||0)} → +${Number(w.upgrade||0)+1} · ${up.credits} crédits + ${up.components} composants`:'Amélioration maximale'}</button>`+
-   `<div class="ash-ws-opt"><small>Optimisation · ${opt.credits} crédits + ${opt.components} composants</small>${opts.map(([key,label])=>`<button type="button" data-ash-ws-action="optimize" data-ash-ws-id="${safe(w.id)}" data-ash-ws-stat="${key}" ${w.optimized===key||data.credits<opt.credits||comps<opt.components?'disabled':''}>${safe(label)}${w.optimized===key?' ✓':''}</button>`).join('')}</div>`+
+   `<div class="ash-ws-opt ash-ws-opt-v2"><strong class="ash-ws-opt-heading">OPTIMISATION</strong><small>Choisis une statistique pour voir le résultat avant de payer.</small><div class="ash-ws-opt-choices" role="group" aria-label="Choix de l’optimisation">${opts.map(([key,label])=>`<button type="button" data-ash-ws-preview="${key}" aria-pressed="false" ${w.optimized===key?'disabled':''}>${safe(label)}${w.optimized===key?' ✓':''}</button>`).join('')}</div><div class="ash-ws-opt-preview" aria-live="polite"><p class="ash-ws-detail-hint">Sélectionne une optimisation pour comparer les statistiques.</p></div><small>Coût : ${opt.credits} crédits + ${opt.components} composants${data.credits<opt.credits||comps<opt.components?' · Ressources insuffisantes':''}</small><button type="button" class="ash-ws-opt-confirm" data-ash-ws-action="optimize" data-ash-ws-id="${safe(w.id)}" disabled>Choisir une optimisation</button></div>`+
    (on?'<small>Objet équipé : recyclage désactivé</small>':`<button type="button" class="ash-ws-recycle" data-ash-ws-action="recycle" data-ash-ws-id="${safe(w.id)}">Recycler · +${yieldComponents} composants</button>`);
   return `<details class="ash-ws-card ash-ws-compact ash-ws-tile" data-ash-ws-type="${safe(w.slot)}" style="--ash-ws-rarity:${tint(w)}"><summary class="ash-ws-summary"><span class="ash-ws-art">${e2ItemArt(w)}</span><span class="ash-ws-summary-info"><strong>${safe(w.name)}</strong><small>${safe(w.rar)} · Nv ${Number(w.level)||1} · +${Number(w.upgrade)||0}/5</small></span>${on?'<span class="ash-ws-equipped">ÉQUIPÉ</span>':''}</summary><div class="ash-ws-actions ash-ws-detail"><div class="ash-ws-detail-head"><span class="ash-ws-detail-art">${e2ItemArt(w)}</span><div><strong>${safe(w.name)}</strong><small>${safe(w.rar)} · Niveau ${Number(w.level)||1} · +${Number(w.upgrade)||0}/5</small></div></div><p class="ash-ws-detail-hint">${up?`Renforcement de l’objet : +${Number(w.upgrade||0)} vers +${Number(w.upgrade||0)+1}`:'Renforcement maximal (+5)'}</p>${up?ashWsCompare(w):'<p class="ash-ws-detail-hint">Cet objet est déjà au niveau maximal de renforcement.</p>'}${actions}<button type="button" class="ash-ws-close" data-ash-ws-close>Fermer la fiche</button></div></details>`;
  }).join('');
@@ -4269,6 +4289,18 @@ function ashWorkshopAction(op,id,stat){
   render();renderRefugeCharacter();ashWorkshopRender();msg('Atelier : opération enregistrée.');
  }catch(error){data=JSON.parse(previous);ashWorkshopRender();msg('Opération annulée.');}
 }
+document.getElementById('ash-v21-workshop-panel')?.addEventListener('click',e=>{
+ const button=e.target.closest('[data-ash-ws-preview]');if(!button)return;
+ const card=button.closest('.ash-ws-card'),id=card?.querySelector('[data-ash-ws-id]')?.dataset.ashWsId;
+ const w=E2.owned(data).find(x=>x.id===id);if(!w)return;
+ const stat=button.dataset.ashWsPreview,container=button.closest('.ash-ws-opt-v2');
+ container.querySelectorAll('[data-ash-ws-preview]').forEach(b=>{const active=b===button;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
+ container.querySelector('.ash-ws-opt-preview').innerHTML=ashWsOptimizeCompare(w,stat);
+ const confirmButton=container.querySelector('.ash-ws-opt-confirm'),cost=E2.optimizeCost(w);
+ confirmButton.dataset.ashWsStat=stat;
+ confirmButton.disabled=!!(data.credits<cost.credits||data.eq2.components<cost.components);
+ confirmButton.textContent=`Optimiser ${button.textContent.trim()} · ${cost.credits} crédits + ${cost.components} composants`;
+});
 document.getElementById('ash-v21-workshop-panel')?.addEventListener('click',e=>{
  const button=e.target.closest('[data-ash-ws-action]');if(!button)return;
  ashWorkshopAction(button.dataset.ashWsAction,button.dataset.ashWsId,button.dataset.ashWsStat);
