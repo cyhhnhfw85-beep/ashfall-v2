@@ -5,7 +5,7 @@
  const WEIGHTS=[['weapon',54],['armor',13],['boots',10],['module',10],['bag',9],['artifact',4]];
  const LEVEL_BONUS=[0,1,2,3];
  const BAG_CAPACITY=Object.freeze({Commun:6,Inhabituel:8,Rare:10,'Épique':12,'Légendaire':15,Mythique:18});
- function capacity(run){const s=run?.eq2;const extra=Math.floor(Math.max(0,Math.min(8,Number(run?.labLevels?.log01)||0))/2);if(!s)return 8+extra;if(!s.capacityLocked)return 8+extra; if(Number.isSafeInteger(s.capacity))return s.capacity+extra;const bag=(s.startingOwned||[]).find(w=>w.slot==='bag'&&w.id===s.startingSlots?.bag);return (bag?(BAG_CAPACITY[bag.rar]||6):4)+extra;}
+ function capacity(run){const s=run?.eq2;const extra=Math.max(0,Math.min(8,Number(run?.labLevels?.log01)||0));if(!s)return 8+extra;if(!s.capacityLocked)return 8+extra; if(Number.isSafeInteger(s.capacity))return s.capacity+extra;const bag=(s.startingOwned||[]).find(w=>w.slot==='bag'&&w.id===s.startingSlots?.bag);return (bag?(BAG_CAPACITY[bag.rar]||6):4)+extra;}
 
  const CATALOG=[
   {id:'armor-fantome',slot:'armor',name:'Fantôme',effect:'resist',base:0.045,desc:'Réduit les dégâts subis'},
@@ -99,7 +99,7 @@
  function active(run,slot){return runItem(run,run?.eq2?.slots?.[slot]);}
  function current(d,slot){return owned(d).find(x=>x.id===d.eq2?.slots?.[slot]&&x.slot===slot)||null;}
  function profile(run){const out={maxHp:0,speed:0,resist:0,rate:0,damage:0,xp:0,regen:0,killDamage:0,killSpeed:0,slowResist:0,credits:0,components:0,tesla:0,shield:0,medic:0,resonance:0,healing:0,frenzy:0,secure:0};
-  for(const slot of SLOTS.slice(1)){const w=active(run,slot);if(!w)continue;for(const [k,v] of Object.entries(buff(w)))out[k]+=(v||0)*(slot==='module'?(1+Math.max(0,Math.min(8,Number(run?.labLevels?.ing01)||0))*.015):1);if(w.stats){out.maxHp+=(Number(w.stats.resilience)||0)*(w.optimized==='resilience'?1.08:1);if(slot==='boots')out.speed+=(Number(w.stats.agility)||0)*(w.optimized==='agility'?1.08:1)*.002;}}
+  for(const slot of SLOTS.slice(1)){const w=active(run,slot);if(!w)continue;for(const [k,v] of Object.entries(buff(w)))out[k]+=(v||0)*(slot==='module'?(1+Math.max(0,Math.min(8,Number(run?.labLevels?.ing01)||0))*.04):1);if(w.stats){out.maxHp+=(Number(w.stats.resilience)||0)*(w.optimized==='resilience'?1.08:1);if(slot==='boots')out.speed+=(Number(w.stats.agility)||0)*(w.optimized==='agility'?1.08:1)*.002;}}
   for(const k of ['damage','resist','rate','speed','credits'])out[k]=Math.min(out[k],.22);
   return out;
  }
