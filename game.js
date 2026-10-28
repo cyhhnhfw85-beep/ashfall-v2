@@ -2919,7 +2919,7 @@ const ENEMY_SECTOR_SKINS=[
  {armor:'#76658b',dark:'#383549',metal:'#ada0bf',shine:'#d9bae4'}  // Citadelle
 ];
 function drawEnemyGameplay(enemy,sector,seconds,isBoss=false){
- if(window.AshBestiary3D?.draw(cx,enemy,sector,performance.now()/1000,isBoss,player))return;
+ // Keep the battle-tested enemy renderer as a guaranteed visibility fallback.
 
  const family=enemy.type;
  const s=ENEMY_SECTOR_SKINS[Math.max(0,Math.min(3,sector|0))];
@@ -3053,6 +3053,16 @@ function drawEnemyGameplay(enemy,sector,seconds,isBoss=false){
  }
  if(hitAmt>0){cx.save();cx.globalAlpha=hitAmt*.68;cx.strokeStyle='#ffe1b0';cx.lineWidth=1.6;cx.beginPath();cx.ellipse(0,-6,23,26,0,-2.5,-.8);cx.stroke();cx.restore();}
  cx.restore();
+
+ // V1.1: 3D drawn on top of a guaranteed 2D fallback; if 3D fails
+ // or has a rendering incompatibility on iOS, enemies remain visible.
+ try{
+  if(window.AshBestiary3D && cx && typeof cx.save==='function'){
+   cx.save();
+   window.AshBestiary3D.draw(cx,enemy,sector,performance.now()/1000,isBoss,player);
+   cx.restore();
+  }
+ }catch(_ash3dErr){try{cx.restore();}catch(_){}}
 }
 
 // V42 : habillage procedurale léger, 100 % calculé à partir de la salle.
