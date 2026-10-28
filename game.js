@@ -2081,6 +2081,14 @@ function ashChestCollect(){
  if(!persist(false)){msg('Sauvegarde indisponible : vérifie la progression avant de continuer.');return;}
  ashChestClearReveal();ashChestRender();render();
 }
+function ashOpenPrep(){
+ if(data.pendingDebrief||data.run){start();return;}
+ const modal=$('ashPrepOverlay');if(!modal)return;
+ ashRenderContractSelection();modal.hidden=false;
+ document.body.classList.add('ash-prep-open');
+ $('ashPrepCancel')?.focus();
+}
+function ashClosePrep(){const modal=$('ashPrepOverlay');if(modal)modal.hidden=true;document.body.classList.remove('ash-prep-open');}
 function start(){if(data.pendingDebrief){showRunDebrief();return}if(data.run){setPlayer();runProgress();if(data.run.pendingLevels>0)openLevelChoice();render();return}
  // Toute nouvelle expédition commence à l'entrée : aucun départ par checkpoint.
  if(!data.eq2&&!e2MigrateWhenSafe()){msg('Migration nécessaire avant de démarrer une nouvelle expédition : '+e2MigrationError);return;}
@@ -2810,8 +2818,9 @@ function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
 function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
+$('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();start();});$('ashPrepOverlay').addEventListener('click',e=>{if(e.target.id==='ashPrepOverlay')ashClosePrep();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ashPrepOverlay').hidden)ashClosePrep();});
 $('ashContractPicker').addEventListener('click',e=>{const b=e.target.closest('[data-contract-choice]');if(b)ashSelectContract(b.dataset.contractChoice);});
-$('upHp').onclick=()=>upgrade('hp');$('upDmg').onclick=()=>upgrade('dmg');$('insure').onclick=insure;$('merchantLaunch').onclick=()=>merchantOpen();$('start').onclick=start;
+$('upHp').onclick=()=>upgrade('hp');$('upDmg').onclick=()=>upgrade('dmg');$('insure').onclick=insure;$('merchantLaunch').onclick=()=>merchantOpen();$('start').onclick=ashOpenPrep;
 $('bagBtn').onclick=()=>openOverlay('bag');$('mapBtn').onclick=()=>openOverlay('map');$('pauseBtn').onclick=()=>openOverlay('pause');
 // iOS/PWA: la carte doit répondre au toucher même lorsqu'un autre doigt utilise le joystick.
 // pointerup ouvre directement le panneau; click reste disponible au clavier et à la souris.

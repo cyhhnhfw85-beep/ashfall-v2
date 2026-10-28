@@ -1078,3 +1078,12 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 
 /* Progression permanente du Survivant V1 */
 .ash-survivor-progress{margin:12px 10px;padding:14px;border:1px solid rgba(84,195,210,.35);border-radius:12px;background:rgba(10,29,40,.82);color:#e6f7fa}.ash-sp-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}.ash-sp-track{height:8px;margin:10px 0 7px;background:#273d48;border-radius:9px;overflow:hidden}.ash-sp-track>div{height:100%;background:#43bed4;border-radius:9px}.ash-survivor-progress small{display:block;color:#a5c1cb;font-size:11px}.ash-survivor-progress button{margin-top:10px;width:100%;padding:9px;border:1px solid #55bbcb;border-radius:7px;background:#153c4c;color:#e6f7fa;font-weight:700}.ash-sp-debrief{padding:10px 12px;margin:10px 0;border:1px solid rgba(84,195,210,.4);border-radius:8px;color:#c8f2fa;font-size:13px}.ash-sp-debrief strong{font-size:18px}
+
+/* Progression V1 — contrats dans la préparation, niveau sur l'accueil */
+#ashPrepOverlay[hidden]{display:none!important}
+.ash-prep-overlay{position:fixed;inset:0;z-index:99990;background:rgba(2,10,17,.88);display:flex;justify-content:center;align-items:center;padding:12px;box-sizing:border-box}
+.ash-prep-card{width:min(100%,650px);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;background:linear-gradient(155deg,#142e40,#0b1c2a);border:1px solid #567487;border-radius:20px;padding:16px;box-sizing:border-box;color:#e9f3f6;box-shadow:0 18px 65px #000a}
+.ash-prep-header h2{font-size:23px;margin:7px 0}.ash-prep-header p{color:#a9c0ce;font-size:13px;margin:0 0 10px}
+.ash-prep-actions{display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-top:12px}.ash-prep-actions button{min-height:50px;border-radius:12px;font-weight:800;font-size:12px;cursor:pointer}.ash-prep-actions #ashPrepCancel{background:#183245;border:1px solid #526d7c;color:#d8e7ef}.ash-prep-actions #ashPrepConfirm{background:#edc28a;color:#14202b;border:0}
+body.ash-prep-open{overflow:hidden}#refuge-page-home .ash-sp-home{display:block;margin:0 0 14px;padding:14px;border-radius:13px;background:linear-gradient(145deg,#142f40,#0e2433);border:1px solid #496b7c}#refuge-page-home .ash-sp-home .ash-sp-head{flex-wrap:wrap;gap:5px}
+@media(max-width:390px){.ash-prep-card{padding:10px}.ash-prep-actions{gap:7px}.ash-prep-actions button{font-size:11px;padding:8px 5px}}
