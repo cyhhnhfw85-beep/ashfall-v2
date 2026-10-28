@@ -38,7 +38,7 @@
  const emptySlots=()=>Object.fromEntries(SLOTS.map(k=>[k,null]));
  const hasStats=x=>x&&typeof x==='object'&&typeof x.id==='string'&&typeof x.slot==='string'&&SLOTS.includes(x.slot);
  const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
- const rarityFactor=x=>1+.12*Math.max(0,rarity(x))+.09*Math.max(0,(x.level||1)-1);
+ const rarityFactor=x=>1+.12*Math.max(0,rarity(x)-1)+.09*Math.max(0,(x.level||1)-1);
  const buff=x=>{const m=model(x);if(!m)return {};return {[m.effect]:(m.base||0)*(x.origin==='legacy-conversion'?1:rarityFactor(x))*(1+.075*clamp(x.upgrade||0,0,5))*(x.optimized==='efficiency'?1.08:1)*(clamp(Number(x.quality)||100,94,106)/100)};};
  function normalizeWeapon(w){if(!w||typeof w!=='object')return null;return {...w,slot:'weapon',model:w.model||'weapon-legacy',level:clamp(Number(w.level)||1,1,4),upgrade:clamp(Number(w.upgrade)||0,0,5),optimized:w.optimized||null,investedComponents:Number(w.investedComponents)||0};}
  function eq2State(d){return d.eq2&&d.eq2.schema===2?d.eq2:null;}

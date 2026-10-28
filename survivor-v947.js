@@ -14,13 +14,25 @@ function init(){
  root.insertBefore(inv,legacy);
  const dialog=document.createElement('div');dialog.className='sv-layer';dialog.hidden=true;dialog.innerHTML='<div class="sv-scrim" data-sv-close></div><section class="sv-sheet" role="dialog" aria-modal="true" aria-label="Détails équipement"><header><b id="svDialogTitle">ÉQUIPEMENT</b><button type="button" data-sv-close aria-label="Fermer">×</button></header><div class="sv-detail" id="svDetail"></div></section>';document.body.appendChild(dialog);
  const grid=inv.querySelector('#svGrid'), detail=dialog.querySelector('#svDetail'), title=dialog.querySelector('#svDialogTitle');let filter='all',shown=false;
+ const rank={'Commun':0,'Inhabituel':1,'Rare':2,'Épique':3,'Légendaire':4,'Mythique':5};
+ function sortTiles(){[...grid.querySelectorAll('.sv-item')].sort((a,b)=>Number(b.classList.contains('sv-is-equipped'))-Number(a.classList.contains('sv-is-equipped'))||(rank[b.dataset.rarity]??-1)-(rank[a.dataset.rarity]??-1)||(a.dataset.itemName||'').localeCompare(b.dataset.itemName||'','fr')).forEach(c=>grid.appendChild(c));}
+ function openGear(source){
+  const tone=source.style.getPropertyValue('--eq2-rarity').trim()||'#d9e2e9';
+  const panel=document.createElement('article');panel.className='sv-gear-detail';panel.style.setProperty('--eq2-rarity',tone);
+  const item=source.cloneNode(true);item.querySelectorAll('button').forEach(button=>{
+   const attr=button.hasAttribute('data-e2-home-equip')?'data-e2-home-equip':button.hasAttribute('data-e2-sell')?'data-e2-sell':null;
+   if(!attr)return;const id=button.getAttribute(attr);
+   button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const original=[...gear.querySelectorAll('['+attr+']')].find(b=>b.getAttribute(attr)===id);if(original){original.click();close();}});
+  });panel.appendChild(item);open('ÉQUIPEMENT',panel);
+ }
+
  function open(name,el){title.textContent=name;detail.replaceChildren();detail.appendChild(el);dialog.hidden=false;document.body.classList.add('sv-dialog-open');}
  function close(){dialog.hidden=true;document.body.classList.remove('sv-dialog-open');if(selection&&detail.contains(selection)){legacy.appendChild(selection);selection.hidden=true;}if(gear&&detail.contains(gear))legacy.appendChild(gear);detail.replaceChildren();shown=false;refresh();}
  dialog.querySelectorAll('[data-sv-close]').forEach(b=>b.addEventListener('click',close));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!dialog.hidden)close()});
  const preview=root.querySelector('#characterReservePreview'),selection=root.querySelector('#inventorySelection'),gear=root.querySelector('#ashGearConfigurator');
  function refresh(){if(!dialog.hidden||shown)return;grid.replaceChildren();
   if(filter!=='gear'&&preview){preview.querySelectorAll('button[data-inventory-index]').forEach((source)=>{
-   const clone=source.cloneNode(true);clone.classList.remove('inventory-active');clone.removeAttribute('aria-pressed');clone.classList.add('sv-item');clone.addEventListener('click',()=>{
+   const clone=source.cloneNode(true);clone.classList.remove('inventory-active');clone.removeAttribute('aria-pressed');clone.classList.add('sv-item');clone.dataset.rarity=source.querySelector('.inventory-rarity')?.textContent?.trim()||'';clone.dataset.itemName=source.querySelector('.inventory-name')?.textContent?.trim()||'';clone.addEventListener('click',()=>{
     source.click(); // Existing engine selection, upgrade, sell and equip handlers remain authoritative.
     requestAnimationFrame(()=>{if(selection){selection.hidden=false;open('ARME',selection);}}
     );});grid.appendChild(clone);
@@ -39,30 +51,29 @@ function init(){
     const tone=source.style.getPropertyValue('--eq2-rarity').trim()||'#d9e2e9';card.style.setProperty('--eq2-rarity',tone);
     const art=source.querySelector('.eq2-mini-art'),copy=source.querySelector('.eq2-item-copy');
     const name=copy?.querySelector('strong')?.textContent||'Équipement';
+    card.dataset.rarity=(copy?.querySelector('small')?.textContent||'').split('·')[0].trim();card.dataset.itemName=name;
     card.insertAdjacentHTML('beforeend','<span class="sv-gear-art"></span><span class="sv-gear-name"></span>');
     if(art)card.querySelector('.sv-gear-art').innerHTML=art.innerHTML;
     card.querySelector('.sv-gear-name').textContent=name;
-    card.addEventListener('click',()=>{
-     const panel=document.createElement('article');panel.className='sv-gear-detail';panel.style.setProperty('--eq2-rarity',tone);
-     const item=source.cloneNode(true);item.querySelectorAll('button').forEach(button=>{
-      const attr=button.hasAttribute('data-e2-home-equip')?'data-e2-home-equip':button.hasAttribute('data-e2-sell')?'data-e2-sell':null;
-      if(!attr)return;
-      const id=button.getAttribute(attr);
-      button.addEventListener('click',event=>{
-       event.preventDefault();event.stopPropagation();
-       const original=[...gear.querySelectorAll('['+attr+']')].find(b=>b.getAttribute(attr)===id);
-       if(original){original.click();close();}
-      });
-     });
-     panel.appendChild(item);open('ÉQUIPEMENT',panel);
-    });grid.appendChild(card);
+    card.addEventListener('click',()=>openGear(source));grid.appendChild(card);
    }
   }
+  sortTiles();
   if(!grid.children.length){const empty=document.createElement('p');empty.className='sv-empty';empty.textContent='Aucun objet dans cette catégorie.';grid.appendChild(empty);}
  }
  inv.querySelectorAll('[data-sv-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.svFilter;inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x===b));refresh()}));
- // Slot tap opens real equipment configurator, and weapon slot uses existing weapon list.
- showcase.querySelectorAll('[data-eq2-portrait-slot]').forEach(slot=>{slot.setAttribute('role','button');slot.tabIndex=0;const handler=()=>{const isWeapon=slot.dataset.eq2PortraitSlot==='weapon';filter=isWeapon?'weapons':'gear';inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x.dataset.svFilter===filter));if(isWeapon){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'})}else if(gear){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'});}};slot.addEventListener('click',handler);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler()}})});
+ // Open the equipped item's actual detail rather than scrolling to the inventory.
+ showcase.querySelectorAll('[data-eq2-portrait-slot]').forEach(slot=>{
+  slot.setAttribute('role','button');slot.tabIndex=0;
+  const handler=()=>{
+   const key=slot.dataset.eq2PortraitSlot;
+   const sources=[...gear.querySelectorAll('.eq2-owned-card.is-equipped')];
+   const source=key==='weapon'?sources.find(c=>c.closest('.eq2-collection')?.querySelector('summary')?.textContent?.startsWith('Arme équipée')):sources.find(c=>c.querySelector('.eq2-item-copy strong')?.textContent?.trim()===(slot.title||'').split(' : ').slice(1).join(' : ').trim());
+   if(source){openGear(source);return;}
+   filter=key==='weapon'?'weapons':'gear';inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x.dataset.svFilter===filter));refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'});
+  };
+  slot.addEventListener('click',handler);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler()}});
+ });
  // Engine repaints its UI; reflect results after the engine's own render cycle.
  let queued=false;const observer=new MutationObserver(()=>{if(queued||!dialog.hidden)return;queued=true;requestAnimationFrame(()=>{queued=false;refresh()})});
  if(preview)observer.observe(preview,{childList:true});if(gear)observer.observe(gear,{childList:true,subtree:true});
