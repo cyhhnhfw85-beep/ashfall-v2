@@ -1,0 +1,59 @@
+/* ASHFALL HUD V2 — compact tactical interface, gameplay geometry unchanged. */
+body.ashfall-expedition #game #afHudBar{
+ --af-hud-h:clamp(120px,16.8dvh,156px);
+ grid-template-columns:minmax(95px,1.12fr) minmax(42px,.55fr) minmax(105px,1.6fr) minmax(64px,.82fr)!important;
+ gap:clamp(3px,.8vw,7px)!important;
+ padding:calc(env(safe-area-inset-top) + 3px) 8px 7px!important;
+ background:linear-gradient(180deg,#081724 0%,#0b2230 90%,#07131d 100%)!important;
+ box-shadow:inset 0 -2px #205b69,0 3px 12px #0008!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status{gap:2px!important;align-self:center!important;position:relative;padding-bottom:14px!important}
+body.ashfall-expedition #game #afHudBar .af-heart{width:clamp(52px,8.3vw,68px)!important;height:clamp(52px,8.3vw,68px)!important}
+body.ashfall-expedition #game #afHudBar .af-xp{width:clamp(43px,7.1vw,56px)!important;height:clamp(43px,7.1vw,56px)!important}
+body.ashfall-expedition #game #afHudBar .af-status:after{
+ content:'NIV. ' attr(data-level) '  ·  ' attr(data-xp) ' XP';
+ position:absolute;bottom:0;left:3px;right:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ color:#a6d6dd;font-size:clamp(9px,2.3vw,11px);font-weight:800;letter-spacing:.15px;font-variant-numeric:tabular-nums;
+}
+body.ashfall-expedition #game #afHudBar .af-status:before{
+ content:'';position:absolute;left:3px;right:3px;bottom:-5px;height:4px;border-radius:3px;
+ background:linear-gradient(90deg,#4de4e6 var(--af-xp-progress,0%),#143e4d var(--af-xp-progress,0%));
+ box-shadow:0 0 0 1px #1b5260;
+}
+body.ashfall-expedition #game #ashContractHud{width:auto!important;gap:3px!important;align-self:center!important}
+body.ashfall-expedition #game #ashContractHud .af-contract-item{height:22px!important;gap:2px!important}
+body.ashfall-expedition #game #ashContractHud .af-contract-icon{width:17px!important;flex-basis:17px!important}
+body.ashfall-expedition #game #ashContractHud .af-contract-icon svg{width:16px!important;height:16px!important}
+body.ashfall-expedition #game #ashContractHud .af-contract-numbers{font-size:clamp(9px,2.3vw,11px)!important}
+body.ashfall-expedition #game #afHudBar #mapBtn{
+ height:clamp(79px,10.8dvh,112px)!important;
+ border:1px solid #327e8d!important;border-radius:9px!important;
+ background:radial-gradient(ellipse at center,#0b2733,#071621 85%)!important;
+ box-shadow:inset 0 0 0 2px #102e3c,0 2px 10px #0008!important;
+}
+body.ashfall-expedition #game #afHudBar #mapBtn:after{
+ content:'CARTE';position:absolute;bottom:3px;right:6px;pointer-events:none;
+ font-size:8px;letter-spacing:1px;font-weight:800;color:#72b7c2;opacity:.78;
+}
+body.ashfall-expedition #game #afHudBar #ashMiniMap{padding:3px 4px 12px;box-sizing:border-box}
+body.ashfall-expedition #game #afHudBar #ashMiniMap svg{width:100%!important;height:100%!important;overflow:hidden!important}
+body.ashfall-expedition #game #afHudBar .af-hud-actions{gap:5px!important}
+body.ashfall-expedition #game #afHudBar #pauseBtn,
+body.ashfall-expedition #game #afHudBar #bagBtn{
+ border:1px solid #276e7e!important;border-radius:9px!important;
+ background:linear-gradient(145deg,#102b39,#081c29)!important;
+ box-shadow:inset 0 1px #3a718055,0 2px 5px #0007!important;
+}
+body.ashfall-expedition #game #afHudBar #pauseBtn{height:clamp(30px,4dvh,40px)!important}
+body.ashfall-expedition #game #afHudBar #bagBtn{height:clamp(43px,5.8dvh,61px)!important}
+body.ashfall-expedition #stage #joyBase{
+ background:radial-gradient(circle,#12313c33 20%,#071c2b66 76%)!important;
+ border:1px solid #337f8d77!important;
+ box-shadow:0 0 0 9px #008ca308,inset 0 0 0 8px #15394733!important;
+}
+body.ashfall-expedition #stage #joyKnob{
+ background:radial-gradient(circle at 37% 29%,#8199a4,#3a6070 63%,#1a3644)!important;
+ border:2px solid #6fc7d3!important;
+ box-shadow:0 3px 12px #0008,inset 0 2px 7px #ffffff30!important;
+}
+@media(max-width:365px){body.ashfall-expedition #game #afHudBar{grid-template-columns:minmax(86px,1.1fr) minmax(38px,.55fr) minmax(90px,1.55fr) minmax(56px,.8fr)!important;padding-left:4px!important;padding-right:4px!important}}
