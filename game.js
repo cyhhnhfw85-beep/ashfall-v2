@@ -211,6 +211,26 @@ function e2ComparisonMarkup(selected,current){
  const delta=a.value-b.value;
  return `<p class="ash927-stat-diff">Différence de bonus : ${delta>0?'+':delta<0?'−':''}${Math.abs(delta).toFixed(1)}${a.unit} (${uiSafe(a.name)})</p>`;
 }
+// Inventory UX V2 — navigation par catégorie, état purement visuel.
+let e2HomeSelectedId=null;
+function e2HomeCategoryItems(slot){
+ return !data.run&&data.eq2&&E2?E2.owned(data).filter(w=>w.slot===slot):[];
+}
+function e2HomeStep(delta){
+ const current=E2.owned(data).find(w=>w.id===e2HomeSelectedId);
+ if(!current)return;
+ const items=e2HomeCategoryItems(current.slot);if(items.length<2)return;
+ const at=items.findIndex(w=>w.id===current.id);
+ e2HomeSelectedId=items[(at+delta+items.length)%items.length].id;
+ e2RenderHome();
+}
+function e2HomeDetail(w){
+ const items=e2HomeCategoryItems(w.slot),at=items.findIndex(x=>x.id===w.id);
+ const current=E2.owned(data).find(x=>x.id===data.eq2.slots[w.slot]&&x.slot===w.slot);
+ const equipped=current?.id===w.id;
+ const nav=items.length>1?`<nav class="ash-inventory-swipe-nav" aria-label="Parcourir les ${uiSafe(e2SlotName(w.slot))}"><button type="button" data-e2-home-step="-1" aria-label="Objet précédent">‹</button><span>${at+1} / ${items.length} · Glisser pour comparer</span><button type="button" data-e2-home-step="1" aria-label="Objet suivant">›</button></nav>`:'';
+ return `<section class="eq2-home-detail" data-e2-home-detail="1" aria-label="Détail ${uiSafe(e2SlotName(w.slot))}" style="--eq2-rarity:${tint(w)}"><div class="eq2-head"><strong>${uiSafe(e2SlotName(w.slot).toUpperCase())}</strong><button type="button" data-e2-home-close="1" aria-label="Fermer le détail">✕</button></div>${nav}<div class="eq2-owned-card" style="--eq2-rarity:${tint(w)}"><span class="eq2-mini-art">${e2ItemArt(w)}</span><div class="eq2-item-copy"><strong>${uiSafe(w.name)}</strong><small>${uiSafe(w.rar)} · Nv ${w.level||1}</small><small>${uiSafe(e2ItemStats(w))}</small></div></div>${current&&!equipped?`<div class="ash927-compare"><strong>ÉQUIPÉ : ${uiSafe(current.name)}</strong><p>${uiSafe(e2ItemStats(current))}</p>${e2ComparisonMarkup(w,current)}</div>`:''}<div class="eq2-item-actions">${equipped?'<span class="eq2-current">PORTÉ</span>':`<button type="button" data-e2-home-equip="${uiSafe(w.id)}">Équiper</button><button type="button" data-e2-sell="${uiSafe(w.id)}">Vendre</button>`}</div></section>`;
+}
 function e2OwnedCard(w,slot,selected){
  const isOn=selected?.id===w.id,level=w.level||1;
  return `<article data-eq2-slot="${slot}" class="eq2-owned-card ${isOn?'is-equipped':''}" style="--eq2-rarity:${tint(w)}"><span class="eq2-mini-art">${e2ItemArt(w)}</span><div class="eq2-item-copy"><strong>${uiSafe(w.name)}</strong><small>${uiSafe(w.rar)} · Nv ${level}</small><small>${uiSafe(e2ItemStats(w))}</small></div><div class="eq2-item-actions">${isOn?'<span class="eq2-current">PORTÉ</span>':`<button data-e2-home-equip="${uiSafe(w.id)}">Équiper</button>`}${!isOn?`<button data-e2-sell="${uiSafe(w.id)}">Vendre</button>`:''}</div></article>`;
@@ -219,8 +239,9 @@ function e2RenderHome(){
  const host=$('ashGearConfigurator');if(!host||data.run||!data.eq2)return;
  const s=data.eq2,items=E2.owned(data);
  const gear=items.filter(w=>w.slot!=='weapon');const weapon=items.find(w=>w.id===s.slots.weapon);
+  const detailItem=gear.find(w=>w.id===e2HomeSelectedId);if(e2HomeSelectedId&&!detailItem)e2HomeSelectedId=null;
  document.querySelectorAll('[data-eq2-portrait-slot]').forEach(el=>{const slot=el.dataset.eq2PortraitSlot,w=items.find(x=>x.id===s.slots[slot]&&x.slot===slot);el.title=w?`${e2SlotName(slot)} : ${w.name}`:`${e2SlotName(slot)} : vide`;const art=el.querySelector('span');if(art&&slot!=='weapon')art.innerHTML=w?e2ItemArt(w):'<span class="eq2-icon">○</span>';el.classList.toggle('eq2-filled',!!w);el.style.setProperty('--sv-equipped-rarity',w?tint(w):'#47758b');el.classList.toggle('sv-rarity-equipped',!!w);});
- host.innerHTML=`<section class="eq2-panel"><div class="eq2-head"><strong>ÉQUIPEMENTS 2.0</strong><span>${s.components} Composants</span></div><p class="eq2-tip">Six emplacements autour du personnage. Choisis les pièces acquises ci-dessous.</p>${weapon?`<details class="eq2-collection"><summary>Arme équipée · ${uiSafe(weapon.name)}</summary><div class="eq2-owned-list">${e2OwnedCard(weapon,'weapon',weapon)}</div></details>`:''}<p class="eq2-tip">Les objets acquis restent possédés. Au départ, seuls les six objets portés sont emportés.</p><details class="eq2-collection" open><summary>Réserve tactique · ${gear.length} pièces</summary><div class="eq2-owned-list">${gear.length?gear.map(w=>e2OwnedCard(w,w.slot,items.find(x=>x.id===s.slots[w.slot]))).join(''):'Aucune pièce supplémentaire. Découvre-en pendant une expédition.'}</div></details><details class="eq2-economy"><summary>Atelier et recyclage</summary><p>Recyclage des objets : récupération de Composants. Les bonus historiques des équipements déjà améliorés sont conservés.</p><p>Armes et objets tactiques acquis restent disponibles au refuge.</p></details></section>`;
+ host.innerHTML=`<section class="eq2-panel"><div class="eq2-head"><strong>ÉQUIPEMENTS 2.0</strong><span>${s.components} Composants</span></div><p class="eq2-tip">Six emplacements autour du personnage. Choisis les pièces acquises ci-dessous.</p>${weapon?`<details class="eq2-collection"><summary>Arme équipée · ${uiSafe(weapon.name)}</summary><div class="eq2-owned-list">${e2OwnedCard(weapon,'weapon',weapon)}</div></details>`:''}<p class="eq2-tip">Les objets acquis restent possédés. Au départ, seuls les six objets portés sont emportés.</p><details class="eq2-collection" open><summary>Réserve tactique · ${gear.length} pièces</summary><div class="eq2-owned-list">${gear.length?gear.map(w=>`<div data-e2-home-view="${uiSafe(w.id)}" role="button" tabindex="0" aria-label="Voir ${uiSafe(w.name)}">${e2OwnedCard(w,w.slot,items.find(x=>x.id===s.slots[w.slot]))}</div>`).join(''):'Aucune pièce supplémentaire. Découvre-en pendant une expédition.'}</div></details>${detailItem?e2HomeDetail(detailItem):''}<details class="eq2-economy"><summary>Atelier et recyclage</summary><p>Recyclage des objets : récupération de Composants. Les bonus historiques des équipements déjà améliorés sont conservés.</p><p>Armes et objets tactiques acquis restent disponibles au refuge.</p></details></section>`;
  if($('insurance'))$('insurance').textContent='Possession permanente';
  const insuranceLabel=$('loadoutInsuranceState')?.closest('.loadout-slot');if(insuranceLabel){const small=insuranceLabel.querySelector('small');if(small)small.textContent='PROPRIÉTÉ';}
  if($('loadoutInsuranceState'))$('loadoutInsuranceState').textContent='ACQUIS';if($('loadoutInsuranceHint'))$('loadoutInsuranceHint').textContent='Conservé après la mort';
@@ -3214,7 +3235,7 @@ function ashBagStep(delta){
 (function ashInstallItemSwipe(){
  let start=null;
  document.addEventListener('touchstart',e=>{
-  const el=e.target.closest('#inventorySelection, .mr-detail, .ash927-compare, .eq2-owned-card, .ash-gear-card');
+  const el=e.target.closest('#inventorySelection, .mr-detail, .ash927-compare, .eq2-home-detail, .eq2-owned-card, .ash-gear-card');
   if(!el||e.touches.length!==1||e.target.closest('button,input,select,textarea,a')){start=null;return;}
   const t=e.touches[0];start={x:t.clientX,y:t.clientY,el};
  },{passive:true});
@@ -3231,6 +3252,7 @@ function ashBagStep(delta){
    const i=items.findIndex(w=>String(w._ref)===String(merchantSelected));
    if(items.length>1){merchantSelected=items[(Math.max(0,i)+delta+items.length)%items.length]._ref;merchantRender();}
   }else if(el.matches('.ash927-compare'))ashBagStep(delta);
+  else if(el.matches('.eq2-home-detail'))e2HomeStep(delta);
   else if(el.matches('.eq2-owned-card, .ash-gear-card')){
    const cards=[...el.parentElement.querySelectorAll(':scope > .eq2-owned-card, :scope > .ash-gear-card')];
    const i=cards.indexOf(el);if(cards.length>1){const target=cards[(i+delta+cards.length)%cards.length];target.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
@@ -4905,7 +4927,11 @@ function survivorSwitch(panel){
 }
 document.querySelectorAll('[data-survivor-panel]').forEach(button=>button.addEventListener('click',()=>survivorSwitch(button.dataset.survivorPanel)));
 $('ashGearConfigurator').addEventListener('click',e=>{
- if(data.eq2){const b=e.target.closest('[data-e2-home-equip],[data-e2-sell]');if(b){const mapping={'data-e2-home-equip':'equip','data-e2-sell':'sell'};for(const [attribute,op] of Object.entries(mapping))if(b.hasAttribute(attribute)){e2GearAction(op,b.getAttribute(attribute),b.getAttribute('data-e2-stat'));return;}}return;}
+ if(data.eq2){
+  const nav=e.target.closest('[data-e2-home-step]');if(nav){e2HomeStep(Number(nav.dataset.e2HomeStep));return;}
+  if(e.target.closest('[data-e2-home-close]')){e2HomeSelectedId=null;e2RenderHome();return;}
+  const view=e.target.closest('[data-e2-home-view]');if(view&&!e.target.closest('button')){e2HomeSelectedId=view.dataset.e2HomeView;e2RenderHome();return;}
+  const b=e.target.closest('[data-e2-home-equip],[data-e2-sell]');if(b){const mapping={'data-e2-home-equip':'equip','data-e2-sell':'sell'};for(const [attribute,op] of Object.entries(mapping))if(b.hasAttribute(attribute)){e2GearAction(op,b.getAttribute(attribute),b.getAttribute('data-e2-stat'));return;}}return;}
  const buy=e.target.closest('[data-gear-id]');if(buy){ashGearAction(buy.dataset.gearId);return}const rem=e.target.closest('[data-gear-remove]');if(rem)ashGearAction(rem.dataset.gearRemove,true);});
 
 function refugeNavigate(tab){
