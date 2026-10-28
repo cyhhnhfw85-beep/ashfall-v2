@@ -92,7 +92,7 @@ function draw(ctx,e,sector,time,boss=false,player=null){
   }
  }
  poly.sort((a,b)=>a.depth-b.depth);
- ctx.save();
+ ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
  ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(e.x,e.y+16,kind==='drone'?17:kind==='brute'?19:14,5,0,0,2*PI);ctx.fill();
  for(let f of poly){ctx.beginPath();ctx.moveTo(f.vs[0][0],f.vs[0][1]);for(let i=1;i<4;i++)ctx.lineTo(f.vs[i][0],f.vs[i][1]);ctx.closePath();ctx.fillStyle=shade(f.col,.8+(f.depth%7)*.013);ctx.fill();ctx.strokeStyle=shade(f.col,.5);ctx.lineWidth=.45;ctx.stroke();}
  if(e.wind>0){ctx.globalAlpha=.65;ctx.strokeStyle='#ffd4a6';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(e.x,e.y-10,kind==='brute'?21:15,-PI*.85,-PI*.15);ctx.stroke();}

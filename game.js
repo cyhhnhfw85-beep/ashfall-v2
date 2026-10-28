@@ -3892,7 +3892,17 @@ if(room.enemies.length){
 }
 drawFieldEvent(room);drawRefinedChest(room,r);if(room.kind==='outpost')drawRefinedOutpost(room);if(isExit(r.current,r))drawExtractionGround(r,room)
 lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);/* Extraction V2.1 safety: legacy enemies rendered unconditionally until the 3D renderer is validated on iPhone. */
- drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
+ /* Bestiaire 3D V2: draw in the room's absolute coordinate space.
+  The original renderer is retained as a guaranteed visible fallback. */
+ let enemy3dVisible=false;
+ if(window.AshBestiary3D && typeof window.AshBestiary3D.draw==='function'){
+   cx.save();
+   try{enemy3dVisible=window.AshBestiary3D.draw(cx,e,sec,performance.now()/1000,guardian,player)===true;}
+   catch(err){if(!window.__ash3dWarned){console.warn('Bestiaire 3D fallback:',err);window.__ash3dWarned=true;}}
+   finally{cx.restore();}
+ }
+ if(!enemy3dVisible)drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);
+ const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
  // Graphics P2: read-only visual adapter, old drawing retained as atomic fallback.
  let aimX=player.facingX||1,aimY=player.facingY||0;
  // The last real player bullet supplies the actual fired direction, including spread.
