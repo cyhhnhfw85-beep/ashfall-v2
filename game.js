@@ -1281,7 +1281,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,incidentFullV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1648,7 +1648,12 @@ function initializeIncident(room){
  if(!data.run?.interactiveV52||!room.incidentRole||room.incident)return;
  const kind=room.incidentRole;
  const target=kind==='overload'?(room.interactables||[]).find(o=>o.state==='intact'):null;
- room.incident={kind,state:'warning',time:kind==='ambush'?3:kind==='overload'?4:7,sourceId:target?.id||null};
+ room.incident={kind,state:'warning',time:kind==='ambush'?2:kind==='overload'?(data.run?.incidentFullV2?2.5:4):1.5,sourceId:target?.id||null,incidentV2:kind==='blackout',fullV2:!!data.run?.incidentFullV2};
+ if(room.incident.fullV2&&kind==='ambush'){
+  // Only trigger reinforcements after meaningful progress through combat.
+  room.incident.state='pending';room.incident.time=0;
+  room.incident.initialEnemies=Math.max(1,room.enemies?.length||0);
+ }
  if(kind==='overload'&&!target){room.incident.state='resolved';room.incident.time=0}
 }
 function incidentBlocksClear(room){
@@ -1659,8 +1664,17 @@ function incidentBlocksClear(room){
 function updateIncident(room,dt){
  const event=room.incident;
  if(!data.run?.interactiveV52||!event||event.state==='resolved')return;
+ if(event.fullV2&&event.kind==='ambush'&&event.state==='pending'){
+  if(room.cleared){event.state='resolved';persist();return;}
+  if(!event.initialCaptured){event.initialEnemies=Math.max(1,room.enemies.length);event.initialCaptured=true;}
+  if(room.enemies.length>Math.floor(event.initialEnemies*.4))return;
+  event.state='warning';event.time=2;msg('⚠ Renforts tactiques détectés !');persist();return;
+ }
  event.time=Math.max(0,(event.time||0)-dt);
  if(event.kind==='blackout'){
+  if(event.incidentV2&&event.state==='warning'&&event.time<=0){
+   event.state='active';event.time=6;msg('◈ Blackout tactique : visibilité réduite.');persist();return;
+  }
   if(event.time<=0){event.state='resolved';msg('◈ Alimentation rétablie dans la salle.');persist()}
   return;
  }
@@ -1670,15 +1684,30 @@ function updateIncident(room,dt){
   if(!target||target.state!=='intact'){
    event.state='resolved';event.time=0;persist();return;
   }
-  if(event.time<=0){igniteInteractable(room,target);event.state='resolved';persist()}
+  if(event.time<=0){
+   if(event.fullV2){
+    // Localized discharge: one pulse, no chain reaction, once per incident.
+    const radius=65;
+    for(const enemy of room.enemies){
+     if(Math.hypot(enemy.x-target.x,enemy.y-target.y)<=radius){enemy.hp-=20;if(enemy.hp<=0&&!enemy.lootDropped)awardEnemyDefeat(room,enemy)}
+    }
+    if(player&&Math.hypot(player.x-target.x,player.y-target.y)<=radius)hurt(15,'surcharge');
+    window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:target.x,y:target.y}}));
+    msg('⚡ Décharge localisée terminée.');
+   }else igniteInteractable(room,target);
+   event.state='resolved';event.time=0;persist();
+  }
   return;
  }
  if(event.kind==='ambush'){
   if(event.state==='warning'&&event.time<=0){
    const before=room.enemies.length;
-   spawnReinforcement(room,2);
+   if(event.fullV2){
+    const count=Math.min(4,Math.max(2,2+Math.floor(room.sector/2)));
+    spawnReinforcement(room,count);
+   }else spawnReinforcement(room,2);
    event.state=room.enemies.length>before?'active':'resolved';
-   msg(event.state==='active'?'⚠ EMBUSCADE : deux renforts sont arrivés !':'⚠ Signal hostile perdu : aucun renfort.');
+   msg(event.state==='active'?(event.fullV2?'⚠ RENFORTS TACTIQUES : neutralise les hostiles !':'⚠ EMBUSCADE : deux renforts sont arrivés !'):'⚠ Signal hostile perdu : aucun renfort.');
    persist();
   }
   if(event.state==='active'&&room.enemies.length===0){
@@ -1691,9 +1720,9 @@ function drawIncidentAmbient(room){
  if(!data.run?.interactiveV52||!ev||ev.state==='resolved')return;
  const geo=roomGeom(room),clock=performance.now()/1000;
  cx.save();
- if(ev.kind==='blackout'){
-  const tint=cx.createRadialGradient(player.x,player.y,35,player.x,player.y,250);
-  tint.addColorStop(0,'rgba(5,14,26,.04)');tint.addColorStop(1,'rgba(2,7,19,.43)');
+ if(ev.kind==='blackout'&&ev.state==='active'){
+  const tint=cx.createRadialGradient(player.x,player.y,35,player.x,player.y,ev.fullV2?240:250);
+  tint.addColorStop(0,'rgba(5,14,26,.04)');tint.addColorStop(1,ev.fullV2?'rgba(2,7,19,.75)':'rgba(2,7,19,.43)');
   cx.fillStyle=tint;cx.fillRect(0,0,geo.w,geo.h);
   // petits voyants d'urgence, non bloquants
   const col=clock%1.5<.45?'#ed9c75':'#634139';
@@ -1704,7 +1733,7 @@ function drawIncidentAmbient(room){
   const o=(room.interactables||[]).find(z=>z.id===ev.sourceId);
   if(o&&o.state==='intact'){
    cx.strokeStyle=clock%0.6<.3?'#ffad78':'#ffc85f';cx.lineWidth=3;
-   cx.beginPath();cx.arc(o.x,o.y,27+3*Math.sin(clock*8),0,Math.PI*2);cx.stroke();
+   cx.beginPath();cx.arc(o.x,o.y,ev.fullV2?65:27+3*Math.sin(clock*8),0,Math.PI*2);cx.stroke();
   }
  }
  cx.restore();
@@ -2456,9 +2485,9 @@ function uiWeaponCard(w,i,source,eq){
 }
 function uiMission(){let r=data.run;if(!r)return '';let z=r.rooms[r.current];if(isBoss(r.current,r))return 'BOSS — Vaincre le Gardien K-17';if(isArena(r.current,r))return 'ARÈNE — Terminer les vagues';if(isExit(r.current,r))return r.exitStarted?(extractionContested(z)?'Extraction contestée · repousse les ennemis':'Extraction en cours · reste dans la salle jusqu’à la fin'):'Reste 3 s dans le cercle pour lancer l’extraction';if(z.incident&&z.incident.state!=='resolved'){
  const ev=z.incident;
- if(ev.kind==='ambush')return ev.state==='warning'?'⚠ Renforts en approche · '+Math.ceil(ev.time)+' s':'⚠ Embuscade · élimine les renforts';
+ if(ev.kind==='ambush')return ev.state==='pending'?'⚠ Activité hostile · sécurise la salle':ev.state==='warning'?'⚠ Renforts en approche · '+Math.ceil(ev.time)+' s':'⚠ Embuscade · élimine les renforts';
  if(ev.kind==='overload')return '⚡ Surcharge imminente · '+Math.ceil(ev.time)+' s · éloigne-toi';
- if(ev.kind==='blackout')return '◈ Coupure de courant · '+Math.ceil(ev.time)+' s';
+ if(ev.kind==='blackout')return ev.state==='warning'?'◈ Blackout imminent · '+Math.ceil(ev.time)+' s':'◈ Blackout tactique · '+Math.ceil(ev.time)+' s restants';
  }if(z.enemies&&z.enemies.length)return '⚔ Sécurise la salle pour ouvrir les nouvelles portes';if(z.kind==='outpost')return '📡 Approche du terminal pour activer l’avant-poste';if(z.fieldEvent?.state==='ready'&&z.cleared)return z.fieldEvent.kind==='cache'?'✦ Fouille la salle : cache dissimulée':'◈ Approche du terminal pour l’activer';return '✓ Salle sécurisée — Explore les sorties';}
 function hudStatus(){let r=data.run;if(!r)return '';let room=r.rooms[r.current];if(!room)return '';// 0.8.9.43: le HUD est hors de la portée locale de update(); recalculer sa position ici.
 if(r.exitStarted&&isExit(r.current,r)){let contested=room.enemies.some(e=>length(e,{x:180,y:195})<105);return `Extraction ${Math.max(0,Math.ceil(r.exitTime))} s${contested?' · contestée':''}`;}if(locked())return 'Portes verrouillées';if(isExit(r.current,r)&&!r.exitStarted)return `Cercle prêt · ${Math.round(Math.min(100,(r.exitCharge||0)/3*100))} %`;if(interaction()==='chest'&&!room.cleared)return 'Coffre protégé';if(isArena(r.current,r)&&room.enemies.length)return `Arène · vague ${room.arenaWave||1}/3`;if(room.fieldEvent?.state==='ready'&&room.cleared&&player&&Math.hypot(player.x-room.fieldEvent.x,player.y-room.fieldEvent.y)<70)return room.fieldEvent.kind==='cache'?'Cache dissimulée · approche-toi':room.fieldEvent.kind==='medic'&&player.hp>=player.max-1?'Station médicale · PV complets':'Terminal · approche-toi';if(room.cleared)return 'Portes ouvertes';return ''; }
