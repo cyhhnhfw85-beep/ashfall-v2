@@ -1281,7 +1281,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1732,6 +1732,52 @@ const FIELD_NAMES={cache:'CACHE DISSIMULÉE',scanner:'TERMINAL CARTOGRAPHIQUE',m
 const ASH_DISCOVERY_ROLES=new Set(['relay','salvage','distress']);
 function ashDiscoveryStats(run){const sites=(run?.rooms||[]).filter(room=>ASH_DISCOVERY_ROLES.has(room.fieldRole));return {total:sites.length,complete:sites.filter(room=>room.fieldEvent?.state==='used').length};}
 
+// Lot 1D: reachable placement grid for NEW V31 expeditions only.
+// This is deliberately calculated at first room entry, never on saved positions.
+function ashFieldReachable(room){
+ const g=roomGeom(room),step=20,cols=Math.ceil(g.w/step),rows=Math.ceil(g.h/step);
+ const valid=new Uint8Array(cols*rows),seen=new Uint8Array(cols*rows),queue=[];
+ for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+  const px=(x+.5)*step,py=(y+.5)*step;
+  if(!collidesSolid(px,py,22,room))valid[y*cols+x]=1;
+ }
+ const seeds=[];
+ for(const d of doors(room.id)){
+  const door=roomDoor(room,d);
+  const x=door.x+(door.side==='left'?38:door.side==='right'?-38:0);
+  const y=door.y+(door.side==='top'?38:door.side==='bottom'?-38:0);
+  seeds.push({x,y});
+ }
+ // Fallback for isolated/test rooms with no connected doors.
+ if(!seeds.length)seeds.push({x:180,y:195});
+ for(const seed of seeds){
+  let best=-1,dist=Infinity;
+  for(let i=0;i<valid.length;i++)if(valid[i]){
+   const px=(i%cols+.5)*step,py=(Math.floor(i/cols)+.5)*step;
+   const d=Math.hypot(px-seed.x,py-seed.y);
+   if(d<dist){best=i;dist=d}
+  }
+  if(best>=0&&dist<=90&&!seen[best]){seen[best]=1;queue.push(best)}
+ }
+ for(let n=0;n<queue.length;n++){
+  const i=queue[n],x=i%cols,y=Math.floor(i/cols);
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+   const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=cols||ny>=rows)continue;
+   const ni=ny*cols+nx;
+   if(valid[ni]&&!seen[ni]){seen[ni]=1;queue.push(ni)}
+  }
+ }
+ return {step,cols,rows,seen};
+}
+function ashFieldAccessible(reach,p){
+ const x=Math.floor(p.x/reach.step),y=Math.floor(p.y/reach.step);
+ for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+  const nx=x+dx,ny=y+dy;
+  if(nx<0||ny<0||nx>=reach.cols||ny>=reach.rows)continue;
+  if(reach.seen[ny*reach.cols+nx]&&Math.hypot((nx+.5)*reach.step-p.x,(ny+.5)*reach.step-p.y)<=29)return true;
+ }
+ return false;
+}
 function prepareRoomFieldEvent(room){
  if(!data.run?.interactiveV51||!room.fieldRole||room.fieldEvent)return;
  const geom=roomGeom(room),candidates=[];
@@ -1740,20 +1786,41 @@ function prepareRoomFieldEvent(room){
    candidates.push({x:gx*CELL_W+dx,y:gy*CELL_H+dy});
   }
  }
+ const secure=!!data.run?.fieldPlacementV2;
+ const reach=secure?ashFieldReachable(room):null;
+ const safe=p=>{
+  if(collidesSolid(p.x,p.y,secure?22:16,room))return false;
+  if(Math.hypot(p.x-180,p.y-110)<82||Math.hypot(p.x-180,p.y-195)<65)return false;
+  if(doors(room.id).some(d=>{const door=roomDoor(room,d);return Math.hypot(p.x-door.x,p.y-door.y)<(secure?135:95)}))return false;
+  if((room.interactables||[]).some(o=>o.state!=='spent'&&Math.hypot(p.x-o.x,p.y-o.y)<58))return false;
+  return !secure||ashFieldAccessible(reach,p);
+ };
  const start=(room.id*7)%Math.max(1,candidates.length);
  let spot=null;
  for(let n=0;n<candidates.length;n++){
   const p=candidates[(start+n)%candidates.length];
-  if(collidesSolid(p.x,p.y,16,room))continue;
-  if(Math.hypot(p.x-180,p.y-110)<82||Math.hypot(p.x-180,p.y-195)<65)continue;
-  if(doors(room.id).some(d=>{const door=roomDoor(room,d);return Math.hypot(p.x-door.x,p.y-door.y)<95}))continue;
-  if((room.interactables||[]).some(o=>o.state!=='spent'&&Math.hypot(p.x-o.x,p.y-o.y)<58))continue;
-  spot=p;break;
+  if(safe(p)){spot=p;break}
  }
- // Les caches et les terminaux sont des decors non solides.
+ // Rescue: scan the full walkable footprint, not only the seven legacy anchors.
+ // Deterministic room-specific rotation avoids bunching in identical coordinates.
+ if(!spot&&secure){
+  const fallback=[];
+  for(const [gx,gy] of geom.cells){
+   for(let y=52;y<=CELL_H-52;y+=24)for(let x=52;x<=CELL_W-52;x+=24){
+    fallback.push({x:gx*CELL_W+x,y:gy*CELL_H+y});
+   }
+  }
+  const offset=(room.id*31)%Math.max(1,fallback.length);
+  for(let n=0;n<fallback.length;n++){
+   const p=fallback[(n+offset)%fallback.length];
+   if(safe(p)){spot=p;break}
+  }
+ }
+ // No unreachable ghost interaction: retain the legacy unavailable state if impossible.
  if(spot)room.fieldEvent={kind:room.fieldRole,x:spot.x,y:spot.y,state:'ready',hold:0};
  else room.fieldEvent={kind:room.fieldRole,x:180,y:270,state:'unavailable',hold:0};
 }
+
 function revealFieldIntel(room,limit=3){
  const run=data.run,orig=room.id;
  const distances=new Map([[orig,0]]),queue=[orig];
