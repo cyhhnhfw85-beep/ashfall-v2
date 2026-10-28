@@ -1,0 +1,1 @@
+Rebuilt enemy renderer from scratch with deterministic opaque projected polygons. Smoke tested all 5 enemy families with mocked Canvas2D: >25 filled polygons each. Retains underlying 2D for guaranteed fallback. Combat, stats, saves, loot halos and extraction unchanged. iPhone rendering NOT yet verified. No GitHub changes.
