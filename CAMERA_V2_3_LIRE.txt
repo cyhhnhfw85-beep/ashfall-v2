@@ -1,0 +1,6 @@
+ASHFALL V2.3 — Prototype visuel reversible de camera inclinee.
+Base: Evolutions V2.2 (loot corrige, icones V2.1 conservees).
+Inclinaison simulee par compression verticale cos(25 deg), sans vraie projection perspective ni profondeur des murs.
+Activer: ajouter ?camera=on a l’URL du jeu. Desactiver: ?camera=off. Le choix reste memorise sur cet appareil.
+Aucune modification des collisions, coordonnees de loot ou mecanique de jeu.
+Test sur iPhone indispensable; attention a la lisibilite des murs et personnages.
