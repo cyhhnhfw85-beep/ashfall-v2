@@ -3608,36 +3608,76 @@ function drawRefinedOutpost(room){
 
 function extractionContested(room){return room.enemies.some(e=>length(e,{x:180,y:195})<105);}
 function drawExtractionGround(r,room){
- const x=180,y=195,active=!!r.exitStarted;
- const contested=active&&extractionContested(room);
+ const x=180,y=195,active=!!r.exitStarted,contested=active&&extractionContested(room);
  const progress=Math.max(0,Math.min(1,(r.exitCharge||0)/3));
- const time=performance.now()/1000;
+ const remaining=Math.max(0,Math.min(1,(r.exitTime||0)/12));
+ const t=performance.now()/1000,reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+ const motion=reduce?0:t,PI=Math.PI,TAU=2*PI;
+ const color=contested?'#ff806c':active?'#a2ffe5':'#f6c57c';
  cx.save();cx.translate(x,y);
- // la zone réellement sûre est de rayon 39 : la bordure principale reste à cette distance
- cx.fillStyle='rgba(7,25,29,.29)';cx.beginPath();cx.arc(0,0,38,0,Math.PI*2);cx.fill();
- cx.strokeStyle='#284752';cx.lineWidth=10;cx.beginPath();cx.arc(0,0,49,0,Math.PI*2);cx.stroke();
+ // Shadow and eight machined radial braces: an actual anchored industrial machine.
+ cx.fillStyle='rgba(0,0,0,.36)';cx.beginPath();cx.ellipse(0,8,74,59,0,0,TAU);cx.fill();
+ cx.fillStyle='#0b222c';cx.strokeStyle='#466b7b';cx.lineWidth=2;
+ cx.beginPath();cx.arc(0,0,62,0,TAU);cx.fill();cx.stroke();
  for(let i=0;i<8;i++){
-  const a=-Math.PI/2+i*Math.PI/4;
-  cx.strokeStyle='#587782';cx.lineWidth=4;cx.beginPath();cx.arc(0,0,49,a+.065,a+.47);cx.stroke();
+  const a=i*TAU/8,ca=Math.cos(a),sa=Math.sin(a);
+  cx.save();cx.rotate(a);
+  cx.fillStyle=i%2?'#233c48':'#2c4854';cx.fillRect(49,-5,17,10);
+  cx.fillStyle='#0b1d27';cx.fillRect(55,-3,9,6);
+  cx.fillStyle=active?(contested?'#fa766b':'#73d6c7'):'#bd9360';
+  cx.globalAlpha=.65+.3*Math.sin(motion*2+i*.8);cx.fillRect(57,-2,4,4);
+  cx.restore();
  }
- cx.lineWidth=4;cx.strokeStyle=active?(contested?'#fa886f':'#74e6cf'):'#70b9b6';
- cx.beginPath();cx.arc(0,0,39,0,Math.PI*2);cx.stroke();
- // anneau d'activation (3s) puis progression restante (12s), sans toucher aux temporisations
- cx.lineWidth=5;cx.strokeStyle=active?(contested?'#e87863':'#9bf5e1'):'#f8c979';
- cx.beginPath();cx.arc(0,0,44,-Math.PI/2,-Math.PI/2+Math.PI*2*(active?Math.max(0,Math.min(1,(r.exitTime||0)/12)):progress));cx.stroke();
+ // Machined outer housing and interrupted metal tracks.
+ cx.strokeStyle='#091a22';cx.lineWidth=12;cx.beginPath();cx.arc(0,0,50,0,TAU);cx.stroke();
+ cx.strokeStyle='#496675';cx.lineWidth=8;cx.beginPath();cx.arc(0,0,51,0,TAU);cx.stroke();
+ for(let i=0;i<12;i++){
+  let a=-PI/2+i*TAU/12;
+  cx.strokeStyle=i%3===0?'#7c9daa':'#314e5b';cx.lineWidth=3;
+  cx.beginPath();cx.arc(0,0,51,a+.04,a+.37);cx.stroke();
+ }
+ cx.fillStyle='rgba(4,25,30,.88)';cx.beginPath();cx.arc(0,0,38,0,TAU);cx.fill();
+ // A safe-zone boundary at radius 39, matching existing interaction mechanics.
+ cx.strokeStyle=contested?'#a44f47':active?'#3c8d85':'#377d84';cx.lineWidth=4;
+ cx.beginPath();cx.arc(0,0,39,0,TAU);cx.stroke();
+ // Dynamic luminous ring with restrained bloom.
+ const fraction=active?remaining:progress;
+ cx.save();cx.shadowColor=color;cx.shadowBlur=reduce?0:10;
+ cx.strokeStyle=color;cx.lineWidth=5;cx.lineCap='round';
+ cx.beginPath();cx.arc(0,0,44,-PI/2,-PI/2+TAU*fraction);cx.stroke();
+ cx.restore();
+ // Sequential activation nodes, visible even at small iPhone scale.
+ for(let i=0;i<12;i++){
+  const a=-PI/2+i*TAU/12;
+  cx.save();cx.rotate(a);cx.fillStyle=i/12<=fraction?color:'#203f4a';
+  cx.fillRect(41,-1.4,5,2.8);cx.restore();
+ }
+ // Animated field lines during charging, subdued when inactive.
+ if(!reduce&&(active||progress>.05)){
+  cx.strokeStyle=color;cx.globalAlpha=.12+.07*Math.sin(motion*5);
+  cx.lineWidth=1;
+  for(let i=0;i<3;i++){
+   const a=motion*(active?.48:.25)+i*TAU/3;
+   cx.beginPath();cx.arc(0,0,32,a,a+.9);cx.stroke();
+  }
+  cx.globalAlpha=1;
+ }
+ // Four armored anchor pylons, with active light strips.
  for(let i=0;i<4;i++){
-  const a=Math.PI/4+i*Math.PI/2,bx=Math.cos(a)*57,by=Math.sin(a)*57;
-  cx.fillStyle='#162c38';cx.fillRect(bx-6,by-8,12,16);
-  cx.strokeStyle='#5f8693';cx.lineWidth=1;cx.strokeRect(bx-6,by-8,12,16);
-  cx.fillStyle=contested?'#ff9276':active?'#a0ffe9':'#d2dece';
-  cx.globalAlpha=.75+.2*Math.sin(time*2.6+i);cx.fillRect(bx-2,by-5,4,10);cx.globalAlpha=1;
+  const a=PI/4+i*PI/2,bx=Math.cos(a)*57,by=Math.sin(a)*57;
+  cx.save();cx.translate(bx,by);cx.rotate(a-PI/4);
+  cx.fillStyle='#081a24';cx.fillRect(-8,-10,16,20);
+  cx.fillStyle='#385562';cx.fillRect(-7,-9,14,18);
+  cx.fillStyle='#142b36';cx.fillRect(-5,-7,10,14);
+  cx.fillStyle=color;cx.globalAlpha=.65+.25*Math.sin(motion*2.5+i);
+  cx.fillRect(-2,-5,4,10);cx.restore();
  }
  cx.restore();
- // Pendant les 3 secondes, garder les textes au-dessus du socle, le Nomade reste visible
  if(!active){
-  cx.save();cx.textAlign='center';cx.font='bold 11px sans-serif';cx.fillStyle='#c4f9eb';
-  /* Le cercle lui-même identifie l'extraction. */
-  cx.fillStyle='#f8d69c';cx.font='bold 17px sans-serif';cx.fillText(Math.round(progress*100)+' %',x,y+6);
+  cx.save();cx.textAlign='center';
+  cx.fillStyle='#091f27';cx.beginPath();cx.arc(x,y,25,0,TAU);cx.fill();
+  cx.fillStyle='#f8d69c';cx.font='bold 17px sans-serif';
+  cx.fillText(Math.round(progress*100)+' %',x,y+6);
   cx.restore();
  }
 }
@@ -3645,19 +3685,23 @@ function drawExtractionGround(r,room){
 function drawExtractionCountdown(r,room){
  if(!r.exitStarted)return;
  const contested=extractionContested(room),seconds=Math.max(0,Math.ceil(r.exitTime||0));
+ const t=performance.now()/1000,reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
  cx.save();cx.translate(180,195);
- cx.fillStyle=contested?'rgba(65,20,18,.88)':'rgba(8,30,33,.88)';
- cx.beginPath();cx.arc(0,0,25,0,Math.PI*2);cx.fill();
- cx.strokeStyle=contested?'#ffad85':'#b2fff0';cx.lineWidth=2.5;
- cx.beginPath();cx.arc(0,0,25,0,Math.PI*2);cx.stroke();
- cx.fillStyle='#fff';cx.textAlign='center';cx.font='bold 29px sans-serif';cx.fillText(String(seconds),0,10);
- cx.font='bold 10px sans-serif';cx.fillStyle=contested?'#ffc1a3':'#acffec';
- /* Rouge et halo pulsant en cas de contestation. */
- cx.font='bold 9px sans-serif';cx.fillStyle=contested?'#ffc1a3':'#d1eae8';
- /* Le chiffre central est la seule indication textuelle conservée. */
+ const danger=contested||seconds<=5,accent=contested?'#ff967a':danger?'#ffc18d':'#adffed';
+ // Concentric warning light and a solid readout over player/weapon.
+ if(!reduce){
+  cx.strokeStyle=accent;cx.globalAlpha=.12+.12*Math.sin(t*6);
+  cx.lineWidth=3;cx.beginPath();cx.arc(0,0,30+Math.sin(t*5)*2,0,Math.PI*2);cx.stroke();
+  cx.globalAlpha=1;
+ }
+ cx.fillStyle=contested?'rgba(55,18,19,.96)':'rgba(6,30,37,.95)';
+ cx.beginPath();cx.arc(0,0,26,0,Math.PI*2);cx.fill();
+ cx.strokeStyle=accent;cx.lineWidth=2.5;
+ cx.beginPath();cx.arc(0,0,26,0,Math.PI*2);cx.stroke();
+ cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#ffffff';
+ cx.font='bold 29px sans-serif';cx.fillText(String(seconds),0,1);
  cx.restore();
 }
-
 
 // 0.8.9.67 — Moteur de ressenti de combat, 100 % cosmetique.
 // Aucun effet ne touche aux dommages, cadences, collisions, AI, drops ou sauvegardes.
@@ -3813,7 +3857,14 @@ if(room.enemies.length){
  if(tactical){cx.save();cx.strokeStyle='#f8d68b';cx.lineWidth=2;cx.setLineDash([4,3]);cx.beginPath();cx.arc(tactical.x,tactical.y,25,0,Math.PI*2);cx.stroke();cx.setLineDash([]);cx.fillStyle='#ffe8b3';cx.font='bold 9px sans-serif';cx.textAlign='center';/* La cible tactique est identifiée par un anneau doré en pointillés. */cx.restore()}
 }
 drawFieldEvent(room);drawRefinedChest(room,r);if(room.kind==='outpost')drawRefinedOutpost(room);if(isExit(r.current,r))drawExtractionGround(r,room)
-lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);try{if(window.AshBestiary3D){cx.save();window.AshBestiary3D.draw(cx,e,sec,performance.now()/1000,guardian,player);cx.restore();}}catch(_ashErr){try{cx.restore();}catch(_){}}const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
+lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);let bestiary3DRendered=false;
+ if(window.AshBestiary3D && typeof window.AshBestiary3D.draw==='function'){
+   cx.save();
+   try{bestiary3DRendered=window.AshBestiary3D.draw(cx,e,sec,performance.now()/1000,guardian,player)===true;}
+   catch(err){if(!window.__ashBestiaryErrorLogged){console.warn('ASHFALL 3D enemy renderer:',err);window.__ashBestiaryErrorLogged=true;}}
+   finally{cx.restore();}
+ }
+ if(!bestiary3DRendered)drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
  // Graphics P2: read-only visual adapter, old drawing retained as atomic fallback.
  let aimX=player.facingX||1,aimY=player.facingY||0;
  // The last real player bullet supplies the actual fired direction, including spread.

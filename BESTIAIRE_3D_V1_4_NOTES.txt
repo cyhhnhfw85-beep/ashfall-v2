@@ -1,0 +1,1 @@
+Based on user uploaded ashfall-v2.zip. Render 3D enemy instead of 2D when successful; 2D fallback on error. Bump cache and JS query strings. No gameplay, AI, rewards, or save changes. JS syntax and archive CRC checked; iPhone test still required.
