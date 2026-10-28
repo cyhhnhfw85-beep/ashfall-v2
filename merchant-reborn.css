@@ -58,15 +58,20 @@
 #refuge-page-merchant .mr-grid .mr-item .mr-art img.weapon-art-img{
   display:block!important;width:100%!important;height:100%!important;
   max-width:none!important;max-height:none!important;object-fit:contain!important;
-  transform:translateY(-9px) scale(1.56);transform-origin:center center;
+  transform:translateY(-2px) scale(1.05);transform-origin:center center;
   pointer-events:none;
 }
 #refuge-page-merchant .mr-grid .mr-item .mr-art svg{
-  transform:translateY(-7px) scale(1.4);transform-origin:center center;
+  transform:translateY(-2px) scale(1.08);transform-origin:center center;
 }
 #refuge-page-merchant .mr-grid .mr-item .mr-name,
 #refuge-page-merchant .mr-grid .mr-item .mr-cost{position:relative;z-index:1;}
 @media(max-width:360px){
  #refuge-page-merchant .mr-grid .mr-item .mr-art img.ash952-gear-img,
- #refuge-page-merchant .mr-grid .mr-item .mr-art img.weapon-art-img{transform:translateY(-7px) scale(1.45);}
+ #refuge-page-merchant .mr-grid .mr-item .mr-art img.weapon-art-img{transform:translateY(-2px) scale(1.00);}
 }
+
+/* V9.6.1 merchant image sizing: equipment contained, weapons slightly enlarged. */
+#refuge-page-merchant .mr-grid .mr-item .mr-art img.ash952-gear-img{transform:translateY(-1px) scale(1.03)!important;}
+#refuge-page-merchant .mr-grid .mr-item .mr-art img.weapon-art-img{transform:translateY(-2px) scale(1.75)!important;}
+@media(max-width:360px){#refuge-page-merchant .mr-grid .mr-item .mr-art img.weapon-art-img{transform:translateY(-2px) scale(1.58)!important;}}
