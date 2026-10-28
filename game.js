@@ -3222,7 +3222,7 @@ function ashRenderMiniMap(run){
  // Do not zoom twice: that clipped large rooms and disconnected the position marker.
  ashLastMiniSignature=signature;}
 }
-function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)ashSchedulePlayfield();$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if(!data.run&&data.labK17?.migrated)labRender();
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';
@@ -4838,7 +4838,12 @@ function ashFitPlayfield(){
   if(stage.style.getPropertyValue('--ash-play-center')!==centerPos)stage.style.setProperty('--ash-play-center',centerPos);
   if(stage.style.getPropertyValue('--ash-play-left')!==leftPos)stage.style.setProperty('--ash-play-left',leftPos);
 }
-function ashSchedulePlayfield(){requestAnimationFrame(ashFitPlayfield)}
+let ashPlayfieldFramePending=false;
+function ashSchedulePlayfield(){
+  if(ashPlayfieldFramePending||document.hidden)return;
+  ashPlayfieldFramePending=true;
+  requestAnimationFrame(()=>{ashPlayfieldFramePending=false;if(!document.hidden)ashFitPlayfield()});
+}
 window.addEventListener('resize',ashSchedulePlayfield,{passive:true});
 window.addEventListener('orientationchange',ashSchedulePlayfield,{passive:true});
 if(window.visualViewport)window.visualViewport.addEventListener('resize',ashSchedulePlayfield,{passive:true});
@@ -5029,5 +5034,5 @@ $('toolsClose').addEventListener('click',()=>{if(refugeActivePage==='merchant')r
 
 if(!data.run)labMigrate();
 $('labK17Root')?.addEventListener('click',e=>{const branch=e.target.closest('[data-lab-branch]');if(branch){labSelected=branch.dataset.labBranch;labRender();return;}const buy=e.target.closest('[data-lab-buy]');if(buy)labBuy(buy.dataset.labBuy);});
-if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
+if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){if(document.hidden){last=t;requestAnimationFrame(frame);return;}let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 })();
