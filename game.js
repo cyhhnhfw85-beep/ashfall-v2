@@ -1139,11 +1139,24 @@ function createRun(){
 function setPlayer(){player=data.run?.player||null}
 
 // Progression temporaire : aucun champ de sauvegarde permanent modifié.
-const PERKS=[{id:'rapid',name:'Tir rapide',desc:'+8 %, +6 %, +4 % (max 3)',icon:'rate'},
- {id:'power',name:'Munitions renforcées',desc:'+8 %, +6 %, +4 % (max 3)',icon:'xp'},
- {id:'speed',name:'Semelles tactiques',desc:'+7 % vitesse (max 3)',icon:'speed'},
- {id:'vital',name:'Patch médical',desc:'+15 PV max et soin (max 3)',icon:'health'},
- ];
+// ASHFALL Evolutions V2: 15 temporary perks, 5 categories, 3 ranks.
+const PERKS=[
+ {id:'rapid',name:'Tir rapide',icon:'rate',family:'attack'},
+ {id:'power',name:'Munitions renforcées',icon:'xp',family:'attack'},
+ {id:'pierce',name:'Tir perforant',icon:'xp',family:'attack'},
+ {id:'vital',name:'Patch médical',icon:'health',family:'defense'},
+ {id:'armor',name:'Blindage réactif',icon:'health',family:'defense'},
+ {id:'laststand',name:'Dernier rempart',icon:'health',family:'defense'},
+ {id:'speed',name:'Semelles tactiques',icon:'speed',family:'mobility'},
+ {id:'emergency',name:'Propulseur d’urgence',icon:'speed',family:'mobility'},
+ {id:'dodge',name:'Esquive instinctive',icon:'speed',family:'mobility'},
+ {id:'arc',name:'Surcharge électrique',icon:'rate',family:'tech'},
+ {id:'blast',name:'Munitions instables',icon:'xp',family:'tech'},
+ {id:'mark',name:'Marquage tactique',icon:'xp',family:'tech'},
+ {id:'scanner',name:'Scanner de terrain',icon:'speed',family:'explore'},
+ {id:'magnet',name:'Récupération énergétique',icon:'rate',family:'explore'},
+ {id:'recycle',name:'Recyclage de combat',icon:'xp',family:'explore'}
+];
 function runProgress(){let r=data.run;if(!r)return null;
  if(!Number.isFinite(r.runLevel))r.runLevel=1;
  if(!Number.isFinite(r.xp))r.xp=0;
@@ -1160,16 +1173,21 @@ function collectXp(amount,deferChoice=false){let r=runProgress();if(!r)return;
  let safety=0;while(r.xp>=xpThreshold(r.runLevel)&&safety++<50){r.xp-=xpThreshold(r.runLevel);r.runLevel++;r.pendingLevels++}
  if(r.pendingLevels>0&&!deferChoice&&overlay!=='level')openLevelChoice();
 }
-const PERK_CAPS={rapid:3,power:3,speed:3,vital:3};
-function perkCount(id){let r=runProgress();return Math.min(PERK_CAPS[id]||3,Math.max(0,Number(r?.runPerks[id])||0))}
+const PERK_CAPS=Object.fromEntries(PERKS.map(p=>[p.id,3]));
+function perkCount(id){let r=runProgress();return Math.min(3,Math.max(0,Number(r?.runPerks?.[id])||0))}
 function perkBonus(id){let n=perkCount(id);if(id==='rapid'||id==='power')return [0,.08,.14,.18][n];if(id==='speed')return .07*n;if(id==='cool')return .08*n;return 0}
-function levelOptions(){let r=runProgress();const available=PERKS.filter(p=>perkCount(p.id)<PERK_CAPS[p.id]);
+function levelOptions(){
+ const r=runProgress(),available=PERKS.filter(p=>perkCount(p.id)<3);
  if(!available.length){r.pendingLevels=0;r.levelChoices=null;return []}
- const previous=Array.isArray(r.levelChoices)?r.levelChoices.filter(id=>available.some(p=>p.id===id)):[];
- if(!previous.length||previous.length>3){r.levelChoices=[...available].sort(()=>Math.random()-.5).slice(0,3).map(o=>o.id)}
-  else {const missing=available.filter(p=>!previous.includes(p.id)).sort(()=>Math.random()-.5);r.levelChoices=[...previous,...missing.slice(0,Math.max(0,Math.min(3,available.length)-previous.length)).map(p=>p.id)];}
- return r.levelChoices.map(id=>PERKS.find(p=>p.id===id)).filter(Boolean)}
-const PERK_STYLE={rapid:['OFFENSIF','perk-attack'],power:['DÉGÂTS','perk-damage'],speed:['MOBILITÉ','perk-mobility'],vital:['SURVIE','perk-defense']};
+ if(Array.isArray(r.levelChoices)&&r.levelChoices.length&&r.levelChoices.every(id=>available.some(p=>p.id===id)))return r.levelChoices.map(id=>PERKS.find(p=>p.id===id));
+ const last=Array.isArray(r.lastLevelChoices)?r.lastLevelChoices:[];
+ const weighted=available.map(p=>({p,score:Math.random()+(last.includes(p.id)?-.65:0)+(perkCount(p.id)>0?.18:0)})).sort((a,b)=>b.score-a.score);
+ const choices=[],families=new Set();
+ for(const item of weighted){if(!families.has(item.p.family)){choices.push(item.p);families.add(item.p.family)}if(choices.length===3)break}
+ for(const item of weighted){if(choices.length===3)break;if(!choices.includes(item.p))choices.push(item.p)}
+ r.levelChoices=choices.map(p=>p.id);return choices;
+}
+const PERK_STYLE={rapid:['OFFENSIF','perk-attack'],power:['DÉGÂTS','perk-damage'],pierce:['OFFENSIF','perk-attack'],vital:['SURVIE','perk-defense'],armor:['SURVIE','perk-defense'],laststand:['SURVIE','perk-defense'],speed:['MOBILITÉ','perk-mobility'],emergency:['MOBILITÉ','perk-mobility'],dodge:['MOBILITÉ','perk-mobility'],arc:['TECHNOLOGIE','perk-attack'],blast:['TECHNOLOGIE','perk-damage'],mark:['TECHNOLOGIE','perk-attack'],scanner:['EXPLORATION','perk-mobility'],magnet:['EXPLORATION','perk-mobility'],recycle:['EXPLORATION','perk-defense']};
 // 0.8.9.69 : le code de présentation des bonus ne doit JAMAIS afficher l'identifiant
 // technique d'une icône (rate, xp, speed...) comme une chaîne visible.
 // Ces cinq pictogrammes SVG sont autonomes : ni réseau, ni police emoji, ni sprite externe.
@@ -1184,12 +1202,10 @@ function perkIcon(id){
  return paths?'<svg class="perk-art" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+paths+'</svg>':'';
 }
 
-function perkDescription(id,next){
- if(id==='rapid')return '+'+[0,8,14,18][next]+' % cadence totale';
- if(id==='power')return '+'+[0,8,14,18][next]+' % dégâts totaux';
- if(id==='speed')return '+'+(next*7)+' % vitesse totale';
- if(id==='vital')return '+'+(next*15)+' PV max cumulés · soin +15 PV';
- return '';
+function perkDescription(id,n){
+ const d={rapid:['+8 %','+14 %','+18 %'],power:['+8 %','+14 %','+18 %'],speed:['+7 %','+14 %','+21 %'],vital:['+15 PV max · soin +15','+30 PV max · soin +15','+45 PV max · soin +15'],pierce:['15 %','22 %','30 %'],armor:['−6 %','−10 %','−14 %'],laststand:['20 %','30 %','40 %'],emergency:['+20 %','+30 %','+40 %'],dodge:['5 %','8 %','11 %'],arc:['1 arc / 8 tirs','1 arc / 7 tirs','1 arc / 6 tirs'],blast:['10 %','15 %','20 %'],mark:['+3 %','+5 %','+7 %'],scanner:['1 salle','2 salles','3 salles'],magnet:['+18 px','+32 px','+48 px'],recycle:['+2 crédits','+3 crédits','+4 crédits']};
+ const suffix={rapid:' cadence totale',power:' dégâts totaux',speed:' vitesse totale',pierce:' de tirs traversants',armor:' dégâts subis',laststand:' résistance sous 30 % PV',emergency:' vitesse pendant 2 s après impact',dodge:' de chances d’esquive',arc:' électrique',blast:' explosion à l’élimination',mark:' dégâts par tir consécutif (max 3)',scanner:'s adjacente(s) révélée(s)',magnet:' de portée d’aspiration XP',recycle:' toutes les 5 éliminations'};
+ return (d[id]?.[n-1]||'')+(suffix[id]||'');
 }
 function openLevelChoice(){let r=runProgress();if(!r||r.pendingLevels<=0)return;
  overlay='level';let opts=levelOptions();if(!opts.length){overlay='';$('overlay').hidden=true;persist();return}
@@ -1198,8 +1214,23 @@ function openLevelChoice(){let r=runProgress();if(!r||r.pendingLevels<=0)return;
 function choosePerk(id){let r=runProgress();if(!r||r.pendingLevels<=0||!r.levelChoices?.includes(id)||perkCount(id)>=PERK_CAPS[id])return;
  r.runPerks[id]=(r.runPerks[id]||0)+1;
  if(id==='vital'){player.max+=15;player.hp=Math.min(player.max,player.hp+15)}
- r.pendingLevels--;r.levelChoices=null;persist();closeOverlay();msg('Amélioration temporaire obtenue : '+PERKS.find(p=>p.id===id).name);
+ if(id==='scanner')ashRevealPerkRooms(r,perkCount('scanner'));r.lastLevelChoices=[...r.levelChoices];r.pendingLevels--;r.levelChoices=null;persist();closeOverlay();msg('Amélioration temporaire obtenue : '+PERKS.find(p=>p.id===id).name);
  if(r.pendingLevels>0)openLevelChoice();else render();}
+function ashRevealPerkRooms(r,n){
+ // Mark adjacent unexplored rooms as intel, without marking them visited or unlocking doors.
+ const here=r.rooms?.[r.current];if(!here)return;
+ const candidates=(r.rooms||[]).filter(o=>o&&o.id!==here.id&&!r.visited.includes(o.id)&&Math.hypot((o.gx??o.x??0)-(here.gx??here.x??0),(o.gy??o.y??0)-(here.gy??here.y??0))<=2);
+ if(!Array.isArray(r.intelRooms))r.intelRooms=[];
+ for(const room of candidates.slice(0,n)){if(!r.intelRooms.includes(room.id))r.intelRooms.push(room.id)}
+}
+function ashPerkDamageFactor(enemy){let n=perkCount('mark');if(!n)return 1;const r=data.run;if(r._markedEnemy!==enemy.id){r._markedEnemy=enemy.id;r._markHits=0}r._markHits=Math.min(3,(r._markHits||0)+1);return 1+Math.min(3,r._markHits)*[0,.03,.05,.07][n]}
+function ashPerkOnKill(room,enemy){const r=data.run;if(!r)return;
+ const n=perkCount('recycle');if(n&&r.kills%5===0){const extra=[0,2,3,4][n];r.earnedCredits+=extra;r.economy??={};r.economy.enemy=(r.economy.enemy||0)+extra}
+ const blast=perkCount('blast');if(blast&&Math.random()<[0,.10,.15,.20][blast]){
+  for(const other of room.enemies){if(other!==enemy&&other.hp>0&&Math.hypot(other.x-enemy.x,other.y-enemy.y)<50){other.hp-=8+blast*5;if(other.hp<=0&&!other.lootDropped)awardEnemyDefeat(room,other)}}
+  window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:enemy.x,y:enemy.y}}));
+ }
+}
 function hasLineOfSight(ax,ay,bx,by,room){let dist=Math.hypot(bx-ax,by-ay),steps=Math.ceil(dist/7);for(let i=1;i<steps;i++){let t=i/steps;if(collidesSolid(ax+(bx-ax)*t,ay+(by-ay)*t,4,room))return false}return true}
 
 
@@ -1293,7 +1324,7 @@ function lootUpdate(room,dt){
    if(!d.warned){d.warned=true;msg('Sac plein : équipement laissé au sol. Ouvre SAC pour le comparer.');}
    continue;
   }
-  const dist=Math.hypot(player.x-d.x,player.y-d.y);const range=d.kind==='xp'?104:68;
+  const dist=Math.hypot(player.x-d.x,player.y-d.y);const range=d.kind==='xp'?104+[0,18,32,48][perkCount('magnet')]:68;
   if(dist<range&&d.bounce<=0&&hasLineOfSight(d.x,d.y,player.x,player.y,room)){const speed=d.kind==='xp'?340:250;const t=Math.min(1,speed*dt/Math.max(1,dist));let tx=d.x+(player.x-d.x)*t,ty=d.y+(player.y-d.y)*t;if(!collidesSolid(tx,ty,6,room)){d.x=tx;d.y=ty}}
   if(Math.hypot(player.x-d.x,player.y-d.y)<18&&d.bounce<=0){
    if(d.kind==='xp'){collectXp(d.amount);d.got=true}
@@ -3918,7 +3949,7 @@ const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(
   cx.fillStyle='#1c2938';cx.fillRect(-7,3,6,18);cx.fillRect(2,3,6,18);cx.restore();
  }
  }combatFxPaintWorld();cx.restore();if(isBoss(r.current,r))ashDrawBossHud(room);combatFxPaintHurt();}
-function hurt(amount,cause='combat'){if(!player||!data.run||player.inv>0)return;if(data.run.eq2){const f=data.run.eq2.fx;if(E2.profile(data.run).shield>0&&f.shieldReady){f.shieldReady=false;f.shieldCooldown=32;player.inv=.35;msg('Égide : impact absorbé.');return;}}window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'damage',x:player.x,y:player.y}}));combatFxDamagePlayer();player.hp-=Math.max(1,Math.round(amount*(1-ashRunGear().resist)));player.inv=.65;if(player.hp<=0)finish(false,cause)}
+function hurt(amount,cause='combat'){if(!player||!data.run||player.inv>0)return;if(data.run.eq2){const f=data.run.eq2.fx;if(E2.profile(data.run).shield>0&&f.shieldReady){f.shieldReady=false;f.shieldCooldown=32;player.inv=.35;msg('Égide : impact absorbé.');return;}}window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'damage',x:player.x,y:player.y}}));combatFxDamagePlayer();if(perkCount('dodge')&&Math.random()<[0,.05,.08,.11][perkCount('dodge')]){player.inv=.35;msg('Esquive !');return}const low=player.hp/player.max<.3;const mitigation=1-[0,.06,.10,.14][perkCount('armor')];const last=low?1-[0,.20,.30,.40][perkCount('laststand')]:1;player.hp-=Math.max(1,Math.round(amount*(1-ashRunGear().resist)*mitigation*last));if(perkCount('emergency'))data.run._emergencyUntil=(data.run.elapsedSeconds||0)+2;player.inv=.65;if(player.hp<=0)finish(false,cause)}
 function transition(){
  if(locked())return false;
  const r=data.run,id=r.current,room=r.rooms[id];
@@ -3931,7 +3962,7 @@ function transition(){
 }
 function objective(name){let r=data.run;if(!r.objectives.includes(name))r.objectives.push(name)}
 function update(dt){if(!data.run||overlay)return;enforceArena();let r=data.run,room=r.rooms[r.current];if(r.eq2)e2Tick(dt,room);combatFxStep(dt,room);ashSweepFxStep(dt);if(Number.isFinite(r.elapsedSeconds))r.elapsedSeconds+=dt;environment(room);if(room.cleared){room.hazardOn=false;for(let i=bullets.length-1;i>=0;i--)if(bullets[i].enemy)bullets.splice(i,1)}if(sanitizeEnemyPositions(room))persist();let sec=sectorOf(room);room.envPhase+=dt; updateInteractables(room,dt);if(!data.run)return; if(!room.cleared&&!room.hazardDisabled&&room.kind!=='outpost'&&!isExit(r.current,r)&&r.current!==0&&(sec===1||sec===2)){room.hazardCooldown-=dt;if(room.hazardCooldown<=0){room.hazardOn=!room.hazardOn;room.hazardCooldown=room.hazardOn?1.15:2.9;if(!room.hazardOn)room.hazardX=sec===1?pick(105,255):pick(105,255)}if(room.hazardOn){let hit=sec===1?Math.abs(player.x-room.hazardX)<14&&player.y>50&&player.y<350:Math.hypot(player.x-room.hazardX,player.y-205)<42;if(hit){if(!room.hazardTick||room.hazardTick<=0){hurt(sec===1?11:15,'environnement');if(!data.run)return;room.hazardTick=.65}}}room.hazardTick=Math.max(0,(room.hazardTick||0)-dt)}player.inv=Math.max(0,player.inv-dt);player.fire=Math.max(0,player.fire-dt);player.dash=0;player.dashCooldown=Math.max(0,(player.dashCooldown||0)-dt);player.dashFlash=Math.max(0,(player.dashFlash||0)-dt);
-let vx=joy.x+(keyState.ArrowRight||keyState.d?1:0)-(keyState.ArrowLeft||keyState.a?1:0),vy=joy.y+(keyState.ArrowDown||keyState.s?1:0)-(keyState.ArrowUp||keyState.w?1:0),mag=Math.hypot(vx,vy);if(mag>1){vx/=mag;vy/=mag}player.dx=vx;player.dy=vy;if(mag>.15){player.facingX=vx;player.facingY=vy}advanceSolid(player,vx*150*(1+perkBonus('speed')+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,vy*150*(1+perkBonus('speed')+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,12,room);if(transition())return;
+let vx=joy.x+(keyState.ArrowRight||keyState.d?1:0)-(keyState.ArrowLeft||keyState.a?1:0),vy=joy.y+(keyState.ArrowDown||keyState.s?1:0)-(keyState.ArrowUp||keyState.w?1:0),mag=Math.hypot(vx,vy);if(mag>1){vx/=mag;vy/=mag}player.dx=vx;player.dy=vy;if(mag>.15){player.facingX=vx;player.facingY=vy}advanceSolid(player,vx*150*(1+perkBonus('speed')+((r._emergencyUntil||0)>(r.elapsedSeconds||0)?[0,.20,.30,.40][perkCount('emergency')]:0)+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,vy*150*(1+perkBonus('speed')+((r._emergencyUntil||0)>(r.elapsedSeconds||0)?[0,.20,.30,.40][perkCount('emergency')]:0)+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,12,room);if(transition())return;
 updateIncident(room,dt);if(!data.run)return;
 if(room.activated&&isArena(r.current,r)&&room.enemies.length===0&&!room.cleared){room.arenaWave=(room.arenaWave||1)+1;if(room.arenaWave<=3){spawnReinforcement(room,room.arenaWave===2?7:4);if(room.arenaWave===3){const elite=enemiesFor(r.current).find(e=>e.type==='sentinel');const pos=spawnSafe(room,room.enemies,{x:180,y:105});if(elite&&pos)room.enemies.push({...elite,id:uid(),hp:350,max:350,...pos});}player.inv=Math.max(player.inv,.7);msg(`⚠ ARÈNE : vague ${room.arenaWave}/3 !`)}else{room.cleared=true;room.chest='closed';r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};const arenaReward=pick(150,250);r.earnedCredits+=arenaReward;r.economy.arena+=arenaReward;objective('arène');objective('arène-recherche-1');objective('arène-recherche-2');msg('🏆 VICTOIRE : coffre épique en cours d’ouverture !')}persist()}if(isBoss(r.current,r)&&room.spawned&&room.enemies.length===0&&!room.cleared){room.cleared=true;region().bossDefeated=true;data.unlockHelix=true;r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=450;r.economy.boss+=450;objective('boss-k17');objective('boss-recherche');msg('🏆 GARDIEN K-17 VAINCU ! HELIX DÉBLOQUÉ (future région).');persist()}if(!room.cleared&&room.spawned&&room.enemies.length===0&&!isArena(r.current,r)&&!isBoss(r.current,r)&&!incidentBlocksClear(room)){room.cleared=true;if(room.kind!=='start'&&room.kind!=='outpost'){r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=20;r.economy.room+=20;objective('combat-'+r.current)}msg('✓ Salle sécurisée : nouvelles portes ouvertes !');persist()}
 if(room.enemies.length&&player.fire<=0){
@@ -3941,7 +3972,7 @@ if(room.enemies.length&&player.fire<=0){
   const target=tactical||candidates.reduce((a,b)=>length(player,a)<length(player,b)?a:b);
   const spread=tactical?0:mag>.15?(Math.random()-.5)*.46:(Math.random()-.5)*.09;
   const ang=Math.atan2(target.y-player.y,target.x-player.x)+spread;
-  const shotKind=combatFxFire(player.x,player.y,ang,r.equipped);
+  const shotKind=combatFxFire(player.x,player.y,ang,r.equipped);if(perkCount('arc')&&target&&target.hp>0){r._arcShots=(r._arcShots||0)+1;const period=[0,8,7,6][perkCount('arc')];if(r._arcShots%period===0){const chain=room.enemies.filter(e=>e!==target&&e.hp>0&&Math.hypot(e.x-target.x,e.y-target.y)<90).sort((a,b)=>Math.hypot(a.x-target.x,a.y-target.y)-Math.hypot(b.x-target.x,b.y-target.y))[0];if(chain){chain.hp-=7+perkCount('arc')*5;window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:chain.x,y:chain.y}}));if(chain.hp<=0&&!chain.lootDropped)awardEnemyDefeat(room,chain)}}}
   bullets.push({x:player.x,y:player.y,vx:Math.cos(ang)*300,vy:Math.sin(ang)*300,enemy:false,style:shotKind,dmg:damage()*(1+labLevel('arm01')*.02)*(1+perkBonus('power'))*(1+Math.min(.55,ashRunGear().damage+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killDamage+ashRunGear().frenzy:0))),ttl:1.5});
   player.fire=1/(r.equipped.rate*(1+perkBonus('rapid')+ashRunGear().rate+(r.eq2&&r.equipped.optimized==='rate'?.05:0)))
  }}
@@ -3962,7 +3993,7 @@ for(let b of bullets){
   if(collidesSolid(b.x,b.y,4,room)){combatFxWall(b.x,b.y,b);window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:b.x,y:b.y,enemy:b.enemy}}));b.ttl=0;break}
  }
  if(b.ttl<=0)continue;
- b.ttl-=dt;if(b.enemy){if(length(b,player)<16){hurt(b.dmg);if(!data.run)return;b.ttl=0}}else{for(let e of room.enemies){if(length(b,e)<15){e.hp-=b.dmg;combatFxHit(e,b.dmg,e.hp<=0,b);window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:e.hp<=0?'death':'impact',x:e.x,y:e.y}}));b.ttl=0;if(e.hp<=0&&!e.lootDropped){awardEnemyDefeat(room,e)}break}}}}
+ b.ttl-=dt;if(b.enemy){if(length(b,player)<16){hurt(b.dmg);if(!data.run)return;b.ttl=0}}else{for(let e of room.enemies){if(length(b,e)<15){const hitDmg=b.dmg*ashPerkDamageFactor(e);e.hp-=hitDmg;combatFxHit(e,hitDmg,e.hp<=0,b);window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:e.hp<=0?'death':'impact',x:e.x,y:e.y}}));if(!b._pierced&&perkCount('pierce')&&Math.random()<[0,.15,.22,.30][perkCount('pierce')]){b._pierced=true;b.dmg*=.65}else b.ttl=0;if(e.hp<=0&&!e.lootDropped){awardEnemyDefeat(room,e)}break}}}}
 room.enemies=room.enemies.filter(e=>e.hp>0);
 // À la fin d’un combat, supprimer immédiatement les tirs hostiles et désarmer les dangers de salle.
 // Une arène non terminée garde ses vagues : le nettoyage ne valide jamais une salle prématurément.
