@@ -1,9 +1,0 @@
-ASHFALL M1 FIXE — V2 SURVIVANT 3.0 — ZIP COMPLET
-
-1. Conserver un point de retour sur GitHub.
-2. Pour tester SANS toucher à GitHub : décompresser et lancer un serveur local dans ce dossier, ex. python -m http.server 8000 puis http://localhost:8000.
-3. Pour tester sur ashfall-v2 UNIQUEMENT : mettre à jour les fichiers à la racine et sous assets/ sans créer de dossier englobant; ne pas publier dans ashfall principal.
-4. Rafraîchir la page en forçant l'actualisation, ou ouvrir une fenêtre privée.
-5. Dans Refuge > Progression, ouvrir TEST MONDE 1 FIXE.
-
-Cette mise à jour ne synchronise PAS encore les équipements réels ni la sauvegarde du prototype au jeu original.

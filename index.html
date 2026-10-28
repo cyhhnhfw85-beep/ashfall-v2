@@ -205,4 +205,13 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 #ash-v21-workshop-panel .ash-ws-detail-head small{font-size:12px}
 #ash-v21-workshop-panel .ash-ws-close{background:#243c4d;border:1px solid #648291;color:#e7f2f5;border-radius:9px;padding:12px;font-weight:700}
 @media(max-width:340px){#ash-v21-workshop-panel .ash-ws-tile .ash-ws-summary{min-height:160px}#ash-v21-workshop-panel .ash-ws-tile .ash-ws-art{height:90px}}
-</style><script defer src="rarity-aura-v1.js?v=1"></script></body></html>
+</style><script defer src="rarity-aura-v1.js?v=1"></script><style id="ash-ws-modal-layer-fix">
+/* Correctif Atelier : les auras ne doivent jamais créer une couche au-dessus de la fiche. */
+#ash-v21-workshop-panel .ash-ws-list{isolation:isolate}
+#ash-v21-workshop-panel details.ash-ws-tile{z-index:0}
+#ash-v21-workshop-panel details.ash-ws-tile[open]{position:relative!important;z-index:100000!important;isolation:auto!important;overflow:visible!important}
+#ash-v21-workshop-panel details.ash-ws-tile[open]>.ash-ws-detail{position:fixed!important;z-index:100001!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;width:min(90vw,420px)!important;max-height:78dvh!important;overflow-y:auto!important;box-shadow:0 0 0 100vmax rgba(0,0,0,.82),0 16px 48px rgba(0,0,0,.7)!important}
+#ash-v21-workshop-panel details.ash-ws-tile[open]::before{display:none!important}
+#ash-v21-workshop-panel details.ash-ws-tile[open]>.ash-ws-summary{z-index:0!important}
+#ash-v21-workshop-panel details.ash-ws-tile[open]>.ash-ws-detail{isolation:isolate}
+</style></body></html>
