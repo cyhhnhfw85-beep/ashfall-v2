@@ -158,5 +158,5 @@
   const gain=w.slot==='weapon'?weaponPrice(w):(typeof gearPrice==='function'?gearPrice(w):Math.min(220,Math.max(12,15*rarityYield(w))));
   pool.splice(index,1);d.credits+=gain;return gain;
  }
- root.AshEquipment2=Object.freeze({SLOTS,CATALOG,LEGACY,CATALOG_ALL,WEIGHTS,emptySlots,model,buff,owned,gearItems,current,migrate,validate,start,validateRun,runItem,active,profile,generate,rollDrop,canEquip,equip,pickup,canPickup,clearRoom,secure,transfer,renounce,drop,finalize,rarityYield,recycle,sell,normalizeWeapon,capacity,BAG_CAPACITY});
+ root.AshEquipment2=Object.freeze({SLOTS,CATALOG,LEGACY,CATALOG_ALL,WEIGHTS,emptySlots,model,buff,owned,gearItems,current,migrate,validate,start,validateRun,runItem,active,profile,generate,rollDrop,canEquip,equip,pickup,canPickup,clearRoom,secure,transfer,renounce,drop,finalize,rarityYield,upgradeCost,optimizeCost,applyUpgrade,applyOptimize,recycle,sell,normalizeWeapon,capacity,BAG_CAPACITY});
 })(typeof window!=='undefined'?window:globalThis);

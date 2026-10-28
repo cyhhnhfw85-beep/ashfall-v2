@@ -4211,6 +4211,47 @@ $('tutorialPrev').addEventListener('click',()=>{tutorialIndex=Math.max(0,tutoria
 $('tutorialNext').addEventListener('click',()=>{if(tutorialIndex<tutorialSteps.length-1){tutorialIndex++;tutorialRender()}else{tutorialClose();start()}});
 $('tutorialSkip').addEventListener('click',tutorialClose);
 
+// Refuge V2.2: actions isolated in the game's state scope; no global state duplication.
+function ashWorkshopRender(){
+ const panel=document.getElementById('ash-v21-workshop-panel');if(!panel||panel.hidden)return;
+ if(!data.eq2){panel.innerHTML='<h2>ATELIER</h2><p>Équipements non disponibles pour cette sauvegarde.</p>';return;}
+ const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const owned=E2.owned(data),slots=data.eq2.slots||{},comps=data.eq2.components||0;
+ const equipped=new Set(Object.values(slots).filter(Boolean));
+ const rarity={Mythique:6,'Légendaire':5,'Épique':4,Rare:3,Inhabituel:2,Commun:1};
+ owned.sort((a,b)=>Number(equipped.has(b.id))-Number(equipped.has(a.id))||(rarity[b.rar]||0)-(rarity[a.rar]||0));
+ const cards=owned.map(w=>{
+  const on=equipped.has(w.id),up=E2.upgradeCost(w),opt=E2.optimizeCost(w),yieldComponents=E2.rarityYield(w)+Math.floor((Number(w.investedComponents)||0)*.5);
+  const opts=w.slot==='weapon'?[['dmg','Dégâts'],['rate','Cadence']]:[['efficiency','Efficacité'],['resilience','Résilience'],['agility','Agilité']];
+  const actions=`<button type="button" data-ash-ws-action="upgrade" data-ash-ws-id="${safe(w.id)}" ${!up||data.credits<up.credits||comps<up.components?'disabled':''}>${up?`Améliorer · ${up.credits} crédits + ${up.components} composants`:'Amélioration maximale'}</button>`+
+   `<div class="ash-ws-opt"><small>Optimisation · ${opt.credits} crédits + ${opt.components} composants</small>${opts.map(([key,label])=>`<button type="button" data-ash-ws-action="optimize" data-ash-ws-id="${safe(w.id)}" data-ash-ws-stat="${key}" ${w.optimized===key||data.credits<opt.credits||comps<opt.components?'disabled':''}>${safe(label)}${w.optimized===key?' ✓':''}</button>`).join('')}</div>`+
+   (on?'<small>Objet équipé : recyclage désactivé</small>':`<button type="button" class="ash-ws-recycle" data-ash-ws-action="recycle" data-ash-ws-id="${safe(w.id)}">Recycler · +${yieldComponents} composants</button>`);
+  return `<article class="ash-ws-card"><div><strong>${safe(w.name)}</strong> ${on?'<span class="ash-ws-equipped">ÉQUIPÉ</span>':''}<small>${safe(w.rar)} · Niveau ${Number(w.level)||1} · +${Number(w.upgrade)||0}/5</small></div><div class="ash-ws-actions">${actions}</div></article>`;
+ }).join('');
+ panel.innerHTML=`<h2>ATELIER</h2><p class="ash-ws-balance">${data.credits} crédits · <strong>${comps} composants</strong></p><p>Améliore, optimise ou recycle ton matériel. Les objets équipés ne peuvent pas être recyclés.</p><div class="ash-ws-list">${cards||'<p>Aucun équipement disponible.</p>'}</div>`;
+}
+function ashWorkshopAction(op,id,stat){
+ if(data.run||!data.eq2)return;
+ const w=E2.owned(data).find(x=>x.id===id);if(!w)return;
+ const cost=op==='upgrade'?E2.upgradeCost(w):E2.optimizeCost(w);
+ if(op!=='recycle'&&(!cost||data.credits<cost.credits||data.eq2.components<cost.components))return;
+ if(op==='recycle'){
+  if(Object.values(data.eq2.slots).includes(id))return;
+  const yieldComponents=E2.rarityYield(w)+Math.floor((Number(w.investedComponents)||0)*.5);
+  if(!confirm(`Recycler définitivement ${w.name} pour ${yieldComponents} composants ? Cette opération est irréversible.`))return;
+ }else if(!confirm(`${op==='upgrade'?'Améliorer':'Optimiser'} ${w.name} pour ${cost.credits} crédits et ${cost.components} composants ?`))return;
+ const previous=JSON.stringify(data);let result;
+ try{result=op==='upgrade'?E2.applyUpgrade(data,id):op==='optimize'?E2.applyOptimize(data,id,stat):E2.recycle(data,id)!==null;
+  if(!result||!E2.validate(data)||!persist()){data=JSON.parse(previous);msg('Opération annulée : état ou sauvegarde invalide.');ashWorkshopRender();return;}
+  render();renderRefugeCharacter();ashWorkshopRender();msg('Atelier : opération enregistrée.');
+ }catch(error){data=JSON.parse(previous);ashWorkshopRender();msg('Opération annulée.');}
+}
+document.getElementById('ash-v21-workshop-panel')?.addEventListener('click',e=>{
+ const button=e.target.closest('[data-ash-ws-action]');if(!button)return;
+ ashWorkshopAction(button.dataset.ashWsAction,button.dataset.ashWsId,button.dataset.ashWsStat);
+});
+document.getElementById('ash-v21-workshop')?.addEventListener('click',()=>ashWorkshopRender());
+
 // 0.8.9.8 — Navigation du refuge dans la même portée que l'état du jeu.
 let refugeActivePage='home';
 
