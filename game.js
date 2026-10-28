@@ -2454,7 +2454,46 @@ function renderInventorySelection(){
  <div class="ash-loot-resale">Valeur de revente : <strong>${salvagePrice(w)} crédits</strong></div>
  <div class="inventory-selected-actions"><button type="button" data-grid-equip="${i}">ÉQUIPER</button><button type="button" data-grid-sell="${i}" class="ui-secondary">VENDRE · ${salvagePrice(w)} CRÉDITS</button></div>`;
 }
+
+/* ASHFALL Progression V3 — Fondation 1: lecture seule, aucune modification du combat. */
+const ASH_POWER_SYNERGIES=Object.freeze([
+ {id:'rempart',name:'Rempart',models:['armor-bastion-x','boots-ancrage']},
+ {id:'surcharge',name:'Surcharge',models:['module-amplificateur','artifact-oeil-vide']},
+ {id:'renaissance',name:'Renaissance',models:['module-regenerateur','artifact-coeur-cendre']},
+ {id:'frenesie',name:'Frénésie',models:['armor-reactor','artifact-noyau-instable']},
+ {id:'assaut',name:'Assaut mobile',models:['module-cadence','boots-impulsion']},
+ {id:'gardien',name:'Gardien',models:['armor-sentinelle','module-stabilisateur']}
+]);
+function ashPowerReport(){
+ const weapon=data.equipped||{};
+ const equipped=data.eq2&&E2?['armor','boots','module','bag','artifact'].map(slot=>E2.current(data,slot)).filter(Boolean):[];
+ const models=new Set(equipped.map(w=>w.model));
+ const synergies=ASH_POWER_SYNERGIES.map(s=>({...s,active:s.models.every(m=>models.has(m))}));
+ // Reconstitue un profil de combat sans lancer d'expédition ni muter la sauvegarde.
+ const virtual={eq2:{slots:data.eq2?.slots||{},startingOwned:equipped,loot:[]},labLevels:data.labK17?.levels||{}};
+ const gear=data.eq2&&E2?E2.profile(virtual):{maxHp:0,rate:0,damage:0,resist:0,speed:0,regen:0,shield:0,medic:0,tesla:0,healing:0,killDamage:0,frenzy:0,killSpeed:0};
+ const lv=id=>Math.max(0,Math.min(8,Number(data.labK17?.levels?.[id])||0));
+ const dmg=Math.max(0,Number(weapon.dmg)||0)*(1+.06*Math.max(0,Number(weapon.upgrade)||0)+(weapon.optimized==='dmg'?.05:0));
+ const rate=Math.max(0,Number(weapon.rate)||0)*(1+(weapon.optimized==='rate'?.05:0));
+ const dps=dmg*rate*(1+lv('arm01')*.02)*(1+Math.min(.55,gear.damage||0))*(1+Math.min(.22,gear.rate||0));
+ const hp=100+lv('bio01')*8+(gear.maxHp||0);
+ const offense=Math.round(450*Math.sqrt(Math.max(0,dps)/44));
+ const survival=Math.round(350*Math.sqrt(Math.max(0,hp)/100)*Math.min(1.45,1/Math.max(.65,1-(gear.resist||0)))*(1+Math.min(.18,(gear.regen||0)*.04+(gear.shield||0)*.004+(gear.medic||0)*.004)));
+ const mobility=Math.round(150*(1+Math.min(.45,(gear.speed||0)+lv('mob01')*.015)+Math.min(.08,(gear.killSpeed||0)*.2)));
+ const utility=Math.round(50*(1+Math.min(.45,(gear.tesla||0)*.012+(gear.healing||0)*.3+(gear.frenzy||0)*.3)));
+ return {total:Math.max(0,offense+survival+mobility+utility),offense,survival,mobility,utility,synergies};
+}
+function ashRenderPower(){
+ const host=document.getElementById('ashPowerV3');if(!host||data.run)return;
+ const p=ashPowerReport();
+ host.innerHTML='<div class="ash-power-head"><span>PUISSANCE TOTALE</span><strong>'+p.total.toLocaleString('fr-BE')+'</strong></div>'+
+ '<div class="ash-power-grid"><span>⚔ Offensive <b>'+p.offense+'</b></span><span>♥ Survie <b>'+p.survival+'</b></span><span>➤ Mobilité <b>'+p.mobility+'</b></span><span>◈ Utilité <b>'+p.utility+'</b></span></div>'+
+ '<div class="ash-power-synergy"><b>COMPATIBILITÉS D’ÉQUIPEMENT</b>'+p.synergies.map(s=>'<div class="'+(s.active?'active':'')+'">'+(s.active?'◆':'◇')+' '+s.name+' <small>'+(s.active?'Association détectée — bonus non activé':'Non assemblée')+'</small></div>').join('')+'</div>'+
+ '<p class="ash-power-note">Score expérimental · ne déverrouille encore aucun contenu. Synergies détectées sans bonus de combat.</p>';
+}
+
 function renderRefugeCharacter(){
+ ashRenderPower();
  const stats=data.stats||{};
  ashGearRender();
  if($('activeWeaponArt'))$('activeWeaponArt').innerHTML=weaponArt(data.equipped);
