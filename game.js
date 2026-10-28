@@ -650,7 +650,7 @@ function salvagePrice(w){
 function premium(){return Math.max(20,Math.ceil(value(data.equipped)*.12))}
 function price(){return Math.round(value(data.equipped)*.55)}
 function tint(w){return ({'Commun':'#d9e2e9','Inhabituel':'#60de98','Rare':'#5aa9ff','Épique':'#c184ff','Légendaire':'#ffbd4c','Mythique':'#ff667c'})[w.rar]||'#d9e2e9'}
-function makeWeapon(level=0){return ashWeaponRoll(Math.max(1,Math.min(4,level+1)));}
+function makeWeapon(level=0){return ashWeaponRoll(Math.max(1,Math.min(4,level+1)),E2?.rollExpeditionRarity?.('enemy',data.run?.difficulty||1)||'Commun');}
 
 // ASHFALL 0.8.9.73 — Configuration tactique du survivant.
 // Ces modules sont débloqués une fois, puis équipés au refuge. Ils ne tombent pas au sol,
@@ -1348,9 +1348,10 @@ function hasLineOfSight(ax,ay,bx,by,room){let dist=Math.hypot(bx-ax,by-ay),steps
 function ground(room){if(!Array.isArray(room.drops))room.drops=[];return room.drops}
 function lootSpawn(room,kind,x,y,item=null,amount=1){
  if(data.run?.eq2&&kind==='weapon'&&item&&!item._eq2Dropped){
-   const alternative=E2.rollDrop(sectorOf(room));
-   if(alternative){if(item.rar==='Épique')alternative.rar='Épique';if(item.rar==='Rare'&&alternative.rar==='Commun')alternative.rar='Rare';item=alternative;}
-   else item={...E2.normalizeWeapon(item),level:sectorOf(room)+1};
+   const source=item._ashFromChest?(room.kind==='arena'?'arena':'chest'):'enemy';
+   const alternative=E2.rollDrop(sectorOf(room),Math.random,source,data.run?.difficulty||1);
+   if(alternative)item=alternative;
+   else item={...E2.normalizeWeapon(item),rar:E2.rollExpeditionRarity(source,data.run?.difficulty||1),level:sectorOf(room)+1};
  }
  const drops=ground(room);let theta=Math.random()*Math.PI*2,rad=10+Math.random()*17;
  // Placement relatif au point de mort, dans la géométrie réelle de la salle.
@@ -4220,8 +4221,7 @@ if(room.enemies.length===0){
 if(room.chest==='closed'&&room.cleared&&room.enemies.length===0&&!locked()&&!incidentBlocksClear(room)){
  room.chest='opened';room.chestFx=1.15;
  const g=makeWeapon(freeChestWeaponLevel(r,room));
- if(isArena(r.current,r)){g.rar='Épique';g.dmg=Math.max(36,g.dmg+10)}
- if(isGuarded(r.current,r)&&g.rar==='Commun'){g.rar='Rare';g.dmg+=8}
+ g._ashFromChest=true; // Rarity is rolled centrally, never forced to Epic/Rare.
  lootSpawn(room,'weapon',180,118,g);lootSpawn(room,'credits',177,122,null,pick(12,24));
  ground(room)[ground(room).length-1].source='chest';msg('✨ Coffre ouvert automatiquement · '+g.name+' !');persist();
 }
