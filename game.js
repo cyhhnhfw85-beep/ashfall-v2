@@ -3054,15 +3054,7 @@ function drawEnemyGameplay(enemy,sector,seconds,isBoss=false){
  if(hitAmt>0){cx.save();cx.globalAlpha=hitAmt*.68;cx.strokeStyle='#ffe1b0';cx.lineWidth=1.6;cx.beginPath();cx.ellipse(0,-6,23,26,0,-2.5,-.8);cx.stroke();cx.restore();}
  cx.restore();
 
- // V1.1: 3D drawn on top of a guaranteed 2D fallback; if 3D fails
- // or has a rendering incompatibility on iOS, enemies remain visible.
- try{
-  if(window.AshBestiary3D && cx && typeof cx.save==='function'){
-   cx.save();
-   window.AshBestiary3D.draw(cx,enemy,sector,performance.now()/1000,isBoss,player);
-   cx.restore();
-  }
- }catch(_ash3dErr){try{cx.restore();}catch(_){}}
+
 }
 
 // V42 : habillage procedurale léger, 100 % calculé à partir de la salle.
@@ -3821,7 +3813,7 @@ if(room.enemies.length){
  if(tactical){cx.save();cx.strokeStyle='#f8d68b';cx.lineWidth=2;cx.setLineDash([4,3]);cx.beginPath();cx.arc(tactical.x,tactical.y,25,0,Math.PI*2);cx.stroke();cx.setLineDash([]);cx.fillStyle='#ffe8b3';cx.font='bold 9px sans-serif';cx.textAlign='center';/* La cible tactique est identifiée par un anneau doré en pointillés. */cx.restore()}
 }
 drawFieldEvent(room);drawRefinedChest(room,r);if(room.kind==='outpost')drawRefinedOutpost(room);if(isExit(r.current,r))drawExtractionGround(r,room)
-lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
+lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);try{if(window.AshBestiary3D){cx.save();window.AshBestiary3D.draw(cx,e,sec,performance.now()/1000,guardian,player);cx.restore();}}catch(_ashErr){try{cx.restore();}catch(_){}}const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
  // Graphics P2: read-only visual adapter, old drawing retained as atomic fallback.
  let aimX=player.facingX||1,aimY=player.facingY||0;
  // The last real player bullet supplies the actual fired direction, including spread.
