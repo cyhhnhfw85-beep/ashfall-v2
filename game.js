@@ -74,37 +74,41 @@ ashArsenalReset();
 // Migration V1 catalogue : suppression volontaire des ANCIENS équipements possédés.
 // Les armes V9.5.7, crédits, recherche, progression et statistiques sont conservés.
 function ashEquipmentCatalogMigration(){
- if(data.equipmentCatalogV1Migrated===true)return true;
- if(data.run)return false; // ne pas altérer une expédition en cours
- try{
-  const snapshot=JSON.stringify(data),backupKey=KEY+'_pre_catalogue_v1';
-  if(!localStorage.getItem(backupKey)){
-   localStorage.setItem(backupKey,snapshot);
-   if(localStorage.getItem(backupKey)!==snapshot)throw Error('sauvegarde préalable impossible');
-  }
-  const previous=data;
-  const next=JSON.parse(snapshot);
-  const validModels=new Set(E2.CATALOG.map(m=>m.id));
-  if(next.eq2){
-   next.eq2.gear=(next.eq2.gear||[]).filter(w=>w?.slot==='weapon'||validModels.has(w?.model));
-   next.eq2.slots=next.eq2.slots||{};
-   for(const slot of ['armor','boots','module','bag','artifact']){
-    if(!next.eq2.gear.some(w=>w.id===next.eq2.slots[slot]&&w.slot===slot))next.eq2.slots[slot]=null;
-   }
-   next.eq2.slots.weapon=next.equipped?.id||null;
-  }
-  // Catalogue legacy, objets de démarrage et offres anciennes
-  if(next.loadout){delete next.loadout.owned;delete next.loadout.helmet;delete next.loadout.module;}
-  if(next.merchant){next.merchant.stock=[];next.merchant.rebornGearCycle=null;next.merchant.lastRefreshRun=-1;}
-  if(next.pendingDebrief?.lost)next.pendingDebrief.lost=next.pendingDebrief.lost.filter(w=>w?.slot==='weapon');
-  if(next.pendingDebrief?.acquired)next.pendingDebrief.acquired=next.pendingDebrief.acquired.filter(w=>w?.slot==='weapon');
-  next.equipmentCatalogV1Migrated=true;
-  if(next.eq2&&!E2.validate(next))throw Error('état équipements invalide après suppression');
-  data=next;
-  if(!persist()){data=previous;throw Error('échec de sauvegarde du nouveau catalogue');}
-  return true;
- }catch(err){msg('⚠ Migration équipements non effectuée : '+String(err?.message||err));return false;}
+ // SAFE FIX: never delete owned equipment merely because its model is absent
+ // from the current catalog. The legacy migration was destructive.
+ return true;
 }
+// Optional, explicit recovery from the original pre-catalog migration snapshot.
+function ashRecoverCatalogEquipment(){
+ if(data.run){msg('Termine l’expédition avant de récupérer les équipements.');return;}
+ const raw=localStorage.getItem(KEY+'_pre_catalogue_v1');
+ if(!raw){msg('Aucune sauvegarde antérieure au changement de catalogue trouvée sur cet appareil.');return;}
+ let old;
+ try{old=JSON.parse(raw);}catch(_){msg('Sauvegarde historique illisible.');return;}
+ if(!old?.eq2||!Array.isArray(old.eq2.gear)||!data.eq2){msg('Aucun équipement récupérable dans cette sauvegarde.');return;}
+ const currentIds=new Set(E2.owned(data).map(w=>w.id));
+ const missing=old.eq2.gear.filter(w=>w&&w.slot!=='weapon'&&typeof w.id==='string'&&!currentIds.has(w.id));
+ if(!missing.length){msg('Aucun équipement supplémentaire à restaurer.');return;}
+ if(!confirm('Restaurer '+missing.length+' équipement(s) de l’ancienne sauvegarde ? Les armes, crédits et progression actuels seront conservés.'))return;
+ const before=JSON.stringify(data);
+ try{
+  const restored=JSON.parse(before);
+  const known=new Set(E2.owned(restored).map(w=>w.id));
+  for(const w of missing){if(!known.has(w.id)){restored.eq2.gear.push(JSON.parse(JSON.stringify(w)));known.add(w.id);}}
+  for(const slot of ['armor','boots','module','bag','artifact']){
+   const oldId=old.eq2.slots?.[slot];
+   if(!restored.eq2.slots[slot]&&oldId&&restored.eq2.gear.some(w=>w.id===oldId&&w.slot===slot))restored.eq2.slots[slot]=oldId;
+  }
+  if(!E2.validate(restored))throw Error('validation');
+  const safetyKey=KEY+'_before_equipment_recovery_'+Date.now();
+  localStorage.setItem(safetyKey,before);
+  if(localStorage.getItem(safetyKey)!==before)throw Error('copie de sécurité');
+  data=restored;
+  if(!persist()){data=JSON.parse(before);throw Error('sauvegarde');}
+  render();msg('✓ '+missing.length+' équipement(s) restauré(s).');
+ }catch(err){data=JSON.parse(before);msg('Récupération annulée : '+String(err.message||err));}
+}
+
 function e2MigrateWhenSafe(){
  if(data.run||data.eq2)return !!data.eq2;
  if(!E2){e2MigrationError='Module Équipements 2.0 absent';return false;}
@@ -3208,7 +3212,7 @@ function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2
 }else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">'+(r.visited||[]).length+'/'+r.rooms.length+' salles visitées · '+r.rooms.filter(z=>z.seen).length+' découvertes</p><div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div><div class="ash-map-v2-legend"><span><i style="background:#71f5e5"></i>Extraction</span><span><i style="background:#ffc174"></i>Arène</span><span><i style="background:#ff9292"></i>Boss</span><span><i style="background:#8de2ad"></i>Soins</span><span><i style="background:#fff"></i>Vous</span></div><div class="ash-map-poi-title">POINTS D’INTÉRÊT CONNUS</div>'+ashMapPoiJournal(r)+'<p class="ash-map-v2-help">Glisse pour explorer · Les lieux inconnus restent masqués.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Sac d’extraction · '+r.eq2.loot.length+'/'+E2.capacity(r)+' objets non sécurisés':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/${r.rooms.length} SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/'+E2.capacity(r):r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button><button type="button" data-op="map">${afIcon("map")} CARTE</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
-function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
+function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Équipements disparus après une mise à jour ?</p><button id="recoverCatalogGear" type="button">Récupérer les anciens équipements</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('recoverCatalogGear').onclick=()=>{ashRecoverCatalogEquipment();};$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
 $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{ashCloseDifficulty();start();});$('ashPrepOverlay').addEventListener('click',e=>{if(e.target.id==='ashPrepOverlay')ashClosePrep();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ashPrepOverlay').hidden)ashClosePrep();if(e.key==='Escape'&&!$('ashDifficultyOverlay').hidden)ashCloseDifficulty();});
 $('ashContractPicker').addEventListener('click',e=>{const b=e.target.closest('[data-contract-choice]');if(b)ashSelectContract(b.dataset.contractChoice);});
 $('upHp').onclick=()=>upgrade('hp');$('upDmg').onclick=()=>upgrade('dmg');$('insure').onclick=insure;$('merchantLaunch').onclick=()=>merchantOpen();$('start').onclick=ashOpenPrep;
