@@ -4019,7 +4019,7 @@ function drawInteriorFloorSeams(room,sec,theme){
   if(keys.has((tx+1)+','+ty)){
    cx.fillStyle=bridge;cx.fillRect(x+CELL_W-21,y+20,42,CELL_H-40);
    cx.strokeStyle=theme.grid;cx.globalAlpha=.35;cx.lineWidth=2;
-   sceneLine(x+CELL_W,y+25,x+CELL_W,y+CELL_H-25,theme.grid,2);cx.globalAlpha=1;
+   /* Hazards V2: suppression du joint vertical long parasite entre cellules. */cx.globalAlpha=1;
    for(let i=0;i<5;i++){
     cx.fillStyle=theme.accent;cx.globalAlpha=.27;
     cx.fillRect(x+CELL_W-2,y+58+i*62,4,9);
@@ -4204,7 +4204,7 @@ function ashEnvV32Fx(room,sec){
    cx.strokeStyle=sec===1?'rgba(255,211,119,'+alpha+')':'rgba(255,157,101,'+alpha+')';
    cx.lineWidth=2;
    if(sec===1){
-    for(const yy of [55,345]){cx.beginPath();cx.arc(x,yy,8+Math.sin(now*8)*2,0,Math.PI*2);cx.stroke();}
+    /* Hazard V2: les emetteurs sont dessines par drawDynamicHazard. */
    }else{
     for(let i=0;i<5;i++){
      const a=i*Math.PI*2/5+now*.6,rr=23+Math.sin(now*4+i)*5;
@@ -4220,16 +4220,31 @@ function drawDynamicHazard(room,sec){
  if(room.cleared||room.hazardDisabled)return;
  cx.save();
  if(sec===1){
-  cx.strokeStyle=room.hazardOn?'#7fe8ff':room.hazardWarning>0?'#ffdb81':'#418baa';cx.lineWidth=room.hazardOn?7:room.hazardWarning>0?4:2;
-  cx.beginPath();cx.moveTo(room.hazardX||180,42);cx.lineTo(room.hazardX||180,356);cx.stroke();
-  cx.fillStyle='#bfeeff';cx.font='10px monospace';cx.textAlign='left';
-  /* Le faisceau avertit visuellement du danger. */
+  // Hazard V2: le laser et ses deux emetteurs partagent exactement la meme geometrie de collision.
+  const x=room.hazardX||180,top=42,bottom=356,active=!!room.hazardOn,warning=!active&&room.hazardWarning>0;
+  const t=performance.now()/1000;
+  const emitter=(y,flip)=>{
+   cx.save();cx.translate(x,y);if(flip)cx.rotate(Math.PI);
+   cx.fillStyle='#0b202b';cx.strokeStyle='#668b9a';cx.lineWidth=1.4;
+   cx.fillRect(-13,-7,26,15);cx.strokeRect(-13,-7,26,15);
+   cx.fillStyle=active?'#ff745c':warning?'#ffcc74':'#4e8593';cx.fillRect(-7,-4,14,5);
+   cx.fillStyle='#0a1821';cx.fillRect(-4,5,8,5);cx.restore();
+  };
+  emitter(top,false);emitter(bottom,true);
+  if(active){
+   // Halo contenu, coeur lumineux continu, sans flash plein ecran.
+   cx.strokeStyle='rgba(255,94,70,.16)';cx.lineWidth=18;cx.beginPath();cx.moveTo(x,top+9);cx.lineTo(x,bottom-9);cx.stroke();
+   cx.strokeStyle='rgba(255,121,85,.62)';cx.lineWidth=8;cx.beginPath();cx.moveTo(x,top+9);cx.lineTo(x,bottom-9);cx.stroke();
+   cx.strokeStyle='#ffe5bd';cx.lineWidth=2.5;cx.beginPath();cx.moveTo(x,top+9);cx.lineTo(x,bottom-9);cx.stroke();
+  }else if(warning){
+   cx.setLineDash([9,7]);cx.lineDashOffset=-t*16;cx.strokeStyle='#ffc078';cx.lineWidth=2.5;
+   cx.beginPath();cx.moveTo(x,top+9);cx.lineTo(x,bottom-9);cx.stroke();cx.setLineDash([]);
+  }
+  // En veille, seuls les emetteurs sont visibles : aucun faux rayon dangereux.
  }else if(sec===2){
   cx.beginPath();cx.arc(room.hazardX||240,205,42,0,Math.PI*2);
   cx.fillStyle=room.hazardOn?'#ff773977':room.hazardWarning>0?'#ffd36a55':'#b16d2f33';cx.fill();
   cx.strokeStyle=room.hazardOn?'#ffc178':room.hazardWarning>0?'#ffe1a0':'#a7784c';cx.lineWidth=3;cx.stroke();
-  cx.fillStyle='#ffd6a8';cx.font='10px monospace';cx.textAlign='left';
-  /* Le cercle thermique avertit visuellement du danger. */
  }
  cx.restore();
 }
