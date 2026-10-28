@@ -640,7 +640,7 @@ function ashGearAction(id,remove=false){
  render();msg(remove?'Équipement retiré.':`${item.name} prêt pour la prochaine expédition.`);
 }
 
-const maxHp=()=>100+data.hpLv*15;
+const maxHp=()=>100+data.hpLv*15+labLevel('bio01')*6;
 const damage=()=>data.run.equipped.dmg+data.dmgLv*3+(data.run?.eq2?Math.round((data.run.equipped.dmg||0)*(.06*(data.run.equipped.upgrade||0)+(data.run.equipped.optimized==='dmg'?.05:0))):0);
 
 // V41: une salle logique peut occuper plusieurs cellules locales de 360x400.
@@ -1806,7 +1806,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.5.9-badges-equipe-cachefix-test';
+const ASHFALL_RUNTIME_VERSION='0.9.7.0-laboratoire-k17-alpha';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
@@ -1903,7 +1903,8 @@ function start(){if(data.pendingDebrief){showRunDebrief();return}if(data.run){se
  // Toute nouvelle expédition commence à l'entrée : aucun départ par checkpoint.
  if(!data.eq2&&!e2MigrateWhenSafe()){msg('Migration nécessaire avant de démarrer une nouvelle expédition : '+e2MigrationError);return;}
  if(data.eq2&&!E2.validate(data)){msg('Sauvegarde Équipements 2.0 incohérente : départ bloqué pour préserver les données.');return;}
- data.run=createRun();if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
+ data.run=createRun();data.run.labLevels={...(data.labK17?.levels||{})};if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
+ const mapExtra=Math.floor(labLevel('exp01')/2);if(mapExtra&&data.run){const ids=[];for(const edge of (data.run.edges||[])){const to=edge[0]===0?edge[1]:edge[1]===0?edge[0]:null;if(to!=null&&!ids.includes(to)&&to!==0)ids.push(to);}data.run.intelRooms=[...new Set([...(data.run.intelRooms||[]),...ids.slice(0,mapExtra)])];}
  data.equipped=null;data.insured=null;setPlayer();
  enter(0,null);msg('Expédition lancée. Explore et trouve une extraction.');}
 function activateOutpost(){let r=data.run,room=r.rooms[r.current];if(room.kind!=='outpost'||Math.hypot(player.x-180,player.y-195)>=72)return false;
@@ -2265,10 +2266,10 @@ function renderRefugeCharacter(){
  if($('loadoutWeaponStats'))$('loadoutWeaponStats').textContent=data.equipped?`${data.equipped.rar} · ${data.equipped.dmg} dégâts · ${data.equipped.rate} tirs/s`:'Pas d’arme équipée';
  if($('loadoutInsuranceState'))$('loadoutInsuranceState').textContent=data.insured===data.equipped?.id?'Active':'Inactive';
  if($('loadoutInsuranceHint'))$('loadoutInsuranceHint').textContent=data.insured===data.equipped?.id?'Objet protégé pour la prochaine sortie':`Prime : ${premium()} ¤`;
- if($('loadoutHpLevel'))$('loadoutHpLevel').textContent=`Niveau ${data.hpLv}`;
- if($('loadoutHpBonus'))$('loadoutHpBonus').textContent=`+${data.hpLv*15} PV permanents`;
- if($('loadoutDmgLevel'))$('loadoutDmgLevel').textContent=`Niveau ${data.dmgLv}`;
- if($('loadoutDmgBonus'))$('loadoutDmgBonus').textContent=`+${data.dmgLv*3} dégâts permanents`;
+ if($('loadoutHpLevel'))$('loadoutHpLevel').textContent=`Niveau ${labLevel('bio01')}`;
+ if($('loadoutHpBonus'))$('loadoutHpBonus').textContent=`+${labLevel('bio01')*6} PV permanents`;
+ if($('loadoutDmgLevel'))$('loadoutDmgLevel').textContent=`Niveau ${labLevel('arm01')}`;
+ if($('loadoutDmgBonus'))$('loadoutDmgBonus').textContent=`+${labLevel('arm01')} % dégâts permanents`;
  if($('inventoryEquippedLabel'))$('inventoryEquippedLabel').textContent=data.equipped?`${data.equipped.name} · ${data.equipped.rar}`:'Aucune arme';
  const preview=$('characterReservePreview');
  if(preview){
@@ -2325,7 +2326,56 @@ function renderRefugeProgress(){
 function merchantBuy(i){merchantTab='buy';merchantSelected=i;merchantTransaction();}
 function merchantSell(i){const w=data.stash[i];if(!w)return;merchantTab='sell';merchantSelected=w.id;merchantTransaction();}
 
-function upgrade(t){let lv=t==='hp'?data.hpLv:data.dmgLv,cost=4+lv*4;if(lv>=8||data.research<cost)return;data.research-=cost;if(t==='hp')data.hpLv++;else data.dmgLv++;persist();render()}
+// LAB K-17 V1 — seules les 6 technologies fondamentales sont accessibles.
+const LAB_COSTS=[6,10,15,23,34,50,74,110];
+const LAB_BRANCHES=[
+ {id:'bio',name:'BIOTECHNOLOGIE',icon:'♥',desc:'Résistance et survie',tech:[['bio01','Vitalité renforcée','+6 PV maximum par niveau','+6 PV / niveau'],['bio02','Blindage sous-cutané','Réduction des dégâts reçus','Verrouillé'],['bio03','Protocole de survie','Soin automatique d’urgence','Verrouillé']]},
+ {id:'arm',name:'ARMEMENT',icon:'⌖',desc:'Puissance et précision',tech:[['arm01','Puissance balistique','+1 % de dégâts par niveau','+1 % / niveau'],['arm02','Cadence optimisée','Amélioration de la cadence de tir','Verrouillé'],['arm03','Précision tactique','Réduction de la dispersion','Verrouillé']]},
+ {id:'mob',name:'MOBILITÉ',icon:'➤',desc:'Déplacement et adaptation',tech:[['mob01','Servomoteurs légers','+1 % de vitesse par niveau','+1 % / niveau'],['mob02','Stabilisation motrice','Réduction des ralentissements','Verrouillé'],['mob03','Protection environnementale','Protection contre les pièges','Verrouillé']]},
+ {id:'log',name:'LOGISTIQUE',icon:'▣',desc:'Transport et extraction',tech:[['log01','Compartiments modulaires','+1 place de butin tous les 2 niveaux','+1 place / 2 niveaux'],['log02','Collecteur magnétique','Portée de récupération accrue','Verrouillé'],['log03','Extraction accélérée','Réduction du temps d’extraction','Verrouillé']]},
+ {id:'exp',name:'EXPLORATION',icon:'◈',desc:'Reconnaissance et détection',tech:[['exp01','Cartographie avancée','Révèle 1 salle supplémentaire tous les 2 niveaux','+1 salle / 2 niveaux'],['exp02','Scanner de ressources','Détection améliorée des coffres','Verrouillé'],['exp03','Analyse des menaces','Anticipation des dangers','Verrouillé']]},
+ {id:'ing',name:'INGÉNIERIE',icon:'⚙',desc:'Modules et technologies',tech:[['ing01','Optimisation des modules','+1,5 % sur les effets numériques des modules par niveau','+1,5 % / niveau'],['ing02','Résonance des artefacts','Amplification des artefacts','Verrouillé'],['ing03','Récupération technologique','Récupération de ressources améliorée','Verrouillé']]}
+];
+const LAB_IDS=LAB_BRANCHES.flatMap(b=>b.tech.map(t=>t[0]));
+const labLevel=id=>Math.max(0,Math.min(8,Number(data.labK17?.levels?.[id])||0));
+const labRefund=n=>{n=Math.max(0,Math.min(8,Math.trunc(Number(n)||0)));return 2*n*(n+1)};
+let labSelected='bio',labMigrationError='';
+function labMigrate(){
+ if(data.run||data.labK17?.migrated===true)return true;
+ const before=JSON.stringify(data);
+ try{
+  const oldHp=Math.max(0,Math.min(8,Math.trunc(Number(data.hpLv)||0))),oldDmg=Math.max(0,Math.min(8,Math.trunc(Number(data.dmgLv)||0)));
+  const refund=labRefund(oldHp)+labRefund(oldDmg);
+  // Copie immuable AVANT toute mutation; ne pas utiliser la cle de secours habituelle.
+  const key=KEY+'_lab_k17_before_migration_v1';
+  if(!localStorage.getItem(key)){localStorage.setItem(key,before);if(localStorage.getItem(key)!==before)throw Error('backup mismatch');}
+  data.research+=refund;
+  data.hpLv=0;data.dmgLv=0;
+  data.labK17={version:1,migrated:true,refund,oldHp,oldDmg,levels:Object.fromEntries(LAB_IDS.map(id=>[id,0]))};
+  if(!persist())throw Error('save failed');
+  return true;
+ }catch(e){data=JSON.parse(before);labMigrationError=String(e.message||e);msg('⚠ Migration Laboratoire interrompue : '+labMigrationError);return false;}
+}
+function labBuy(id){
+ if(data.run||!data.labK17?.migrated||!LAB_BRANCHES.some(b=>b.tech[0][0]===id))return;
+ const level=labLevel(id),cost=LAB_COSTS[level];if(level>=8||data.research<cost)return;
+ const snapshot=JSON.stringify(data);data.research-=cost;data.labK17.levels[id]=level+1;
+ if(!persist()){data=JSON.parse(snapshot);msg('Achat annulé : sauvegarde indisponible');return;}
+ labRender();render();msg('✓ Technologie améliorée : niveau '+(level+1));
+}
+function labRender(){
+ const root=$('labK17Root');if(!root)return;const mirror=$('permanentResearchMirror');if(mirror)mirror.textContent=data.research;
+ if(!data.labK17?.migrated){root.innerHTML='<div class="lab-error">Migration en attente. Retourne au refuge et vérifie la sauvegarde.</div>';return;}
+ const all=LAB_IDS.reduce((n,id)=>n+labLevel(id),0),branch=LAB_BRANCHES.find(b=>b.id===labSelected)||LAB_BRANCHES[0];
+ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ root.innerHTML=`<div class="lab-hero"><div class="lab-hero-glow"></div><span class="lab-eyebrow">K-17 // UNITÉ DE RECHERCHE</span><h3>LABORATOIRE</h3><p>Développe les capacités permanentes de ton survivant.</p><div class="lab-hero-bottom"><span>PROGRESSION <b>${all} / 144</b></span><span>RECHERCHE <b>${data.research}</b></span></div><div class="lab-meter"><i style="width:${100*all/144}%"></i></div></div>
+ <div class="lab-heading"><b>STATIONS DE RECHERCHE</b><small>6 branches · 18 technologies</small></div>
+ <div class="lab-stations">${LAB_BRANCHES.map(b=>`<button type="button" class="lab-station ${b.id===labSelected?'selected':''}" data-lab-branch="${b.id}" aria-pressed="${b.id===labSelected}"><span class="lab-station-icon">${b.icon}</span><strong>${b.name}</strong><small>${b.tech.reduce((n,t)=>n+labLevel(t[0]),0)} / 24 NIVEAUX</small></button>`).join('')}</div>
+ <section class="lab-branch"><div class="lab-branch-head"><div><span class="lab-eyebrow">STATION // ${branch.name}</span><h3>${branch.desc}</h3></div><span class="lab-branch-progress">${branch.tech.reduce((n,t)=>n+labLevel(t[0]),0)}/24</span></div>
+ ${branch.tech.map((t,i)=>{const id=t[0],lv=labLevel(id),locked=i!==0,cost=LAB_COSTS[lv],affordable=data.research>=cost;return `<article class="lab-tech ${locked?'lab-locked':''}"><div class="lab-tech-top"><span class="lab-tech-icon">${locked?'🔒':branch.icon}</span><div><strong>${esc(t[1])}</strong><small>${locked?'EN ATTENTE DE MISE À JOUR':'RECHERCHE ACTIVE'}</small></div><span class="lab-tech-level">${locked?'🔒':`NV. ${lv}/8`}</span></div><p>${esc(t[2])}</p>${locked?'<div class="lab-lock-info">🔒 Déblocage par Puissance totale — prochaine mise à jour</div>':`<div class="lab-tech-stats"><span>${esc(t[3])}</span><b>${id==='bio01'?'+'+(lv*6)+' PV':id==='arm01'?'+'+lv+' % dégâts':id==='mob01'?'+'+lv+' % vitesse':id==='log01'?'+'+Math.floor(lv/2)+' places':id==='exp01'?'+'+Math.floor(lv/2)+' salles':'+'+(lv*1.5).toFixed(1).replace('.0','')+' %'}</b></div><div class="lab-meter"><i style="width:${lv/8*100}%"></i></div><button type="button" class="lab-buy" data-lab-buy="${id}" ${lv>=8||!affordable?'disabled':''}>${lv>=8?'NIVEAU MAX':`AMÉLIORER · ${cost} RECHERCHE`}</button>`}</article>`}).join('')}</section>
+ <div class="lab-future"><span>⚡ PUISSANCE TOTALE</span><p>Les douze technologies avancées seront déverrouillées par la puissance de ton survivant lors d'une prochaine mise à jour. Aucun seuil fictif n'est appliqué pour l'instant.</p></div>`;
+}
+function upgrade(t){msg('Améliorations remplacées par le Laboratoire K-17.');}
 function insure(){if(data.eq2){msg('Les équipements acquis sont désormais conservés définitivement.');return;}if(!data.equipped||data.insured===data.equipped.id||data.credits<premium())return;data.credits-=premium();data.insured=data.equipped.id;persist();render();msg('Objet assuré pour la prochaine expédition.')}
 // V56 : empreintes exactes des salles sur la mini-carte et la carte complete.
 // La grille de navigation contient une salle logique par noeud ; chaque noeud
@@ -2394,7 +2444,8 @@ function ashRenderMiniMap(run){
  }
  ashLastMiniSignature=signature;}
 }
-function render(){if(!data.run&&data.eq2&&data.equipmentCatalogV1Migrated!==true)ashEquipmentCatalogMigration();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();if(!data.run&&data.eq2&&data.equipmentCatalogV1Migrated!==true)ashEquipmentCatalogMigration();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+ if(!data.run&&data.labK17?.migrated)labRender();
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';
  if($('dmgUpgradeFill'))$('dmgUpgradeFill').style.width=(data.dmgLv/8*100)+'%';
@@ -3584,7 +3635,7 @@ function transition(){
 }
 function objective(name){let r=data.run;if(!r.objectives.includes(name))r.objectives.push(name)}
 function update(dt){if(!data.run||overlay)return;enforceArena();let r=data.run,room=r.rooms[r.current];if(r.eq2)e2Tick(dt,room);combatFxStep(dt,room);ashSweepFxStep(dt);if(Number.isFinite(r.elapsedSeconds))r.elapsedSeconds+=dt;environment(room);if(room.cleared){room.hazardOn=false;for(let i=bullets.length-1;i>=0;i--)if(bullets[i].enemy)bullets.splice(i,1)}if(sanitizeEnemyPositions(room))persist();let sec=sectorOf(room);room.envPhase+=dt; updateInteractables(room,dt);if(!data.run)return; if(!room.cleared&&!room.hazardDisabled&&room.kind!=='outpost'&&!isExit(r.current,r)&&r.current!==0&&(sec===1||sec===2)){room.hazardCooldown-=dt;if(room.hazardCooldown<=0){room.hazardOn=!room.hazardOn;room.hazardCooldown=room.hazardOn?1.15:2.9;if(!room.hazardOn)room.hazardX=sec===1?pick(105,255):pick(105,255)}if(room.hazardOn){let hit=sec===1?Math.abs(player.x-room.hazardX)<14&&player.y>50&&player.y<350:Math.hypot(player.x-room.hazardX,player.y-205)<42;if(hit){if(!room.hazardTick||room.hazardTick<=0){hurt(sec===1?11:15,'environnement');if(!data.run)return;room.hazardTick=.65}}}room.hazardTick=Math.max(0,(room.hazardTick||0)-dt)}player.inv=Math.max(0,player.inv-dt);player.fire=Math.max(0,player.fire-dt);player.dash=0;player.dashCooldown=Math.max(0,(player.dashCooldown||0)-dt);player.dashFlash=Math.max(0,(player.dashFlash||0)-dt);
-let vx=joy.x+(keyState.ArrowRight||keyState.d?1:0)-(keyState.ArrowLeft||keyState.a?1:0),vy=joy.y+(keyState.ArrowDown||keyState.s?1:0)-(keyState.ArrowUp||keyState.w?1:0),mag=Math.hypot(vx,vy);if(mag>1){vx/=mag;vy/=mag}player.dx=vx;player.dy=vy;if(mag>.15){player.facingX=vx;player.facingY=vy}advanceSolid(player,vx*150*(1+perkBonus('speed')+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,vy*150*(1+perkBonus('speed')+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,12,room);if(transition())return;
+let vx=joy.x+(keyState.ArrowRight||keyState.d?1:0)-(keyState.ArrowLeft||keyState.a?1:0),vy=joy.y+(keyState.ArrowDown||keyState.s?1:0)-(keyState.ArrowUp||keyState.w?1:0),mag=Math.hypot(vx,vy);if(mag>1){vx/=mag;vy/=mag}player.dx=vx;player.dy=vy;if(mag>.15){player.facingX=vx;player.facingY=vy}advanceSolid(player,vx*150*(1+perkBonus('speed')+labLevel('mob01')*.01+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,vy*150*(1+perkBonus('speed')+labLevel('mob01')*.01+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,12,room);if(transition())return;
 updateIncident(room,dt);if(!data.run)return;
 if(room.activated&&isArena(r.current,r)&&room.enemies.length===0&&!room.cleared){room.arenaWave=(room.arenaWave||1)+1;if(room.arenaWave<=3){spawnReinforcement(room,room.arenaWave===2?7:4);if(room.arenaWave===3){const elite=enemiesFor(r.current).find(e=>e.type==='sentinel');const pos=spawnSafe(room,room.enemies,{x:180,y:105});if(elite&&pos)room.enemies.push({...elite,id:uid(),hp:350,max:350,...pos});}player.inv=Math.max(player.inv,.7);msg(`⚠ ARÈNE : vague ${room.arenaWave}/3 !`)}else{room.cleared=true;room.chest='closed';r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};const arenaReward=pick(150,250);r.earnedCredits+=arenaReward;r.economy.arena+=arenaReward;objective('arène');objective('arène-recherche-1');objective('arène-recherche-2');msg('🏆 VICTOIRE : coffre épique en cours d’ouverture !')}persist()}if(isBoss(r.current,r)&&room.spawned&&room.enemies.length===0&&!room.cleared){room.cleared=true;region().bossDefeated=true;data.unlockHelix=true;r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=450;r.economy.boss+=450;objective('boss-k17');objective('boss-recherche');msg('🏆 GARDIEN K-17 VAINCU ! HELIX DÉBLOQUÉ (future région).');persist()}if(!room.cleared&&room.spawned&&room.enemies.length===0&&!isArena(r.current,r)&&!isBoss(r.current,r)&&!incidentBlocksClear(room)){room.cleared=true;if(room.kind!=='start'&&room.kind!=='outpost'){r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=20;r.economy.room+=20;objective('combat-'+r.current)}msg('✓ Salle sécurisée : nouvelles portes ouvertes !');persist()}
 if(room.enemies.length&&player.fire<=0){
@@ -3595,7 +3646,7 @@ if(room.enemies.length&&player.fire<=0){
   const spread=tactical?0:mag>.15?(Math.random()-.5)*.46:(Math.random()-.5)*.09;
   const ang=Math.atan2(target.y-player.y,target.x-player.x)+spread;
   const shotKind=combatFxFire(player.x,player.y,ang,r.equipped);
-  bullets.push({x:player.x,y:player.y,vx:Math.cos(ang)*300,vy:Math.sin(ang)*300,enemy:false,style:shotKind,dmg:damage()*(1+perkBonus('power'))*(1+Math.min(.55,ashRunGear().damage+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killDamage+ashRunGear().frenzy:0))),ttl:1.5});
+  bullets.push({x:player.x,y:player.y,vx:Math.cos(ang)*300,vy:Math.sin(ang)*300,enemy:false,style:shotKind,dmg:damage()*(1+labLevel('arm01')*.01)*(1+perkBonus('power'))*(1+Math.min(.55,ashRunGear().damage+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killDamage+ashRunGear().frenzy:0))),ttl:1.5});
   player.fire=1/(r.equipped.rate*(1+perkBonus('rapid')+ashRunGear().rate+(r.eq2&&r.equipped.optimized==='rate'?.05:0)))
  }}
 for(let e of room.enemies){let d=length(e,player),angle=Math.atan2(player.y-e.y,player.x-e.x);e.wind=e.wind||0;if(ashBossTick(e,room,dt))continue;
@@ -3787,5 +3838,7 @@ document.querySelectorAll('[data-refuge-tab]').forEach(b=>b.addEventListener('cl
 $('refuge-page-chests').addEventListener('click',e=>{const buy=e.target.closest('[data-chest-buy]');if(buy){ashChestPurchase(buy.dataset.chestBuy);return;}if(e.target.closest('#ashChestCollect'))ashChestCollect();});
 $('toolsClose').addEventListener('click',()=>{if(refugeActivePage==='merchant')refugeNavigate('home')});
 
+if(!data.run)labMigrate();
+$('labK17Root')?.addEventListener('click',e=>{const branch=e.target.closest('[data-lab-branch]');if(branch){labSelected=branch.dataset.labBranch;labRender();return;}const buy=e.target.closest('[data-lab-buy]');if(buy)labBuy(buy.dataset.labBuy);});
 if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();if(!data.run)ashEquipmentCatalogMigration();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 })();
