@@ -1275,7 +1275,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1795,7 +1795,10 @@ function triggerFieldEvent(room){
  const ev=room.fieldEvent;if(!ev||ev.state!=='ready')return false;
  if(ASH_DISCOVERY_ROLES.has(ev.kind)&&!data.run?.interactiveV72)return false;
  // La station de soins reste disponible tant que le Nomade n'est pas blesse.
- if(ev.kind==='medic'&&player.hp>=player.max-1)return false;
+ if(ev.kind==='medic'&&data.run?.fieldSupportV2){
+  const threshold=Math.min(15,Math.round(player.max*.10));
+  if(player.max-player.hp<threshold)return false;
+ }else if(ev.kind==='medic'&&player.hp>=player.max-1)return false;
  ev.state='used';ev.hold=0;
  if(ev.kind==='cache'){
   // Nouvelle economie 0.8.9.55 : bonus legerement revalorise dans les secteurs difficiles.
@@ -1809,7 +1812,8 @@ function triggerFieldEvent(room){
   const count=revealFieldIntel(room);
   msg(count?'◈ SCAN TERMINÉ : '+count+' salles inconnues signalées sur la carte.':'◈ SCAN TERMINÉ : aucun nouveau signal accessible.');
  }else if(ev.kind==='medic'){
-  const heal=Math.min(22,player.max-player.hp);player.hp+=heal;
+  const target=data.run?.fieldSupportV2?Math.round(Math.min(45,Math.max(25,player.max*.20))):22;
+  const heal=Math.min(target,player.max-player.hp);player.hp+=heal;
   msg('✚ STATION MÉDICALE : +'+Math.ceil(heal)+' PV.');
  }else if(ev.kind==='stabilizer'){
   const r=data.run;r.hazardShields=Math.min(3,(r.hazardShields||0)+1);
@@ -1819,13 +1823,28 @@ function triggerFieldEvent(room){
   collectXp(5,true);
   msg('RELAIS D’ÉCHO : '+count+' salle'+(count>1?'s':'')+' repérée'+(count>1?'s':'')+' · +5 XP.');
  }else if(ev.kind==='salvage'){
-  const credits=36+room.sector*8+((room.id*3)%13),run=data.run;
+  const run=data.run;
+  // Lot 1A : variantes deterministes, memorisees dans l'evenement pour les rechargements.
+  // L'ancien calcul est conserve pour les expeditions sauvegardees avant ce lot.
+  let credits=36+room.sector*8+((room.id*3)%13);
+  let healTarget=10,variantLabel='';
+  if(run.fieldSupportV2){
+   if(!ev.variant){
+    const roll=(room.id*37+room.sector*17+11)%100;
+    ev.variant=roll<50?'intact':roll<80?'damaged':'preserved';
+   }
+   const baseline=35+Math.max(0,Math.min(3,room.sector))*10+((room.id*7)%21);
+   const multiplier=ev.variant==='damaged'?.70:ev.variant==='preserved'?1.25:1;
+   credits=Math.round(baseline*multiplier);
+   healTarget=ev.variant==='damaged'?5:ev.variant==='preserved'?15:10;
+   variantLabel=ev.variant==='damaged'?' ENDOMMAGÉ':ev.variant==='preserved'?' PRÉSERVÉ':' INTACT';
+  }
   run.earnedCredits+=credits;
   run.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
   run.economy.discovery=(run.economy.discovery||0)+credits;
   collectXp(3,true);
-  const heal=Math.min(10,player.max-player.hp);player.hp+=heal;
-  msg('DÉPÔT EXPLOITÉ : +'+credits+' crédits, +3 XP'+(heal?' et +'+Math.ceil(heal)+' PV':'')+'.');
+  const heal=Math.min(healTarget,player.max-player.hp);player.hp+=heal;
+  msg('DÉPÔT'+variantLabel+' EXPLOITÉ : +'+credits+' crédits, +3 XP'+(heal?' et +'+Math.ceil(heal)+' PV':'')+'.');
  }else if(ev.kind==='distress'){
   // La salle est déjà sécurisée : un signal trompeur attire des renforts.
   // Deux ennemis sont créés avant persistance; aucune prime à l'activation.
@@ -1847,7 +1866,9 @@ function updateFieldEvent(room,dt){
  if(ev.state!=='ready')return;
  const nearby=Math.hypot(player.x-ev.x,player.y-ev.y)<37;
  const unlocked=room.cleared&&(!room.enemies||room.enemies.length===0);
- const healReady=ev.kind!=='medic'||player.hp<player.max-1;
+ const healReady=ev.kind!=='medic'||(data.run?.fieldSupportV2
+  ? player.max-player.hp>=Math.min(15,Math.round(player.max*.10))
+  : player.hp<player.max-1);
  if(nearby&&unlocked&&healReady){
   ev.hold=Math.min(1,ev.hold+dt);
   if(ev.hold>=.9)triggerFieldEvent(room);
