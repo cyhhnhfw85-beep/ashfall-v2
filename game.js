@@ -359,12 +359,7 @@ function ashContractPayout(r,won){
  return {statuses,credits:complete.reduce((n,c)=>n+c.credits,0),research:complete.reduce((n,c)=>n+c.research,0)};
 }
 function ashRenderContractSelection(){
- const host=$('ashContractPicker');if(!host)return;
- if(data.run){
-  const statuses=ashContractStatuses(data.run);
-  host.innerHTML='<div class="home953-heading"><div><span class="home953-eyebrow">MISSION EN COURS</span><h3>MES CONTRATS</h3></div></div><p class="home953-intro">Contrats choisis pour cette expédition. Les objectifs peuvent être modifiés avant la prochaine expédition.</p>'+statuses.map(c=>'<section class="home953-contract"><div class="home953-contract-head"><div><h4>'+uiSafe(c.name)+'</h4><small>'+c.actual+' / '+c.target+' · '+(c.complete?'Terminé':'En cours')+'</small></div></div></section>').join('');
-  return;
- }
+ const host=$('ashContractPicker');if(!host||data.run)return;
  const selected=ashSelectedContracts();
  const groups=[
   {key:'rooms',name:'EXPLORATION',hint:'Parcourir les salles',glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>'},
@@ -761,10 +756,8 @@ function cameraFor(room){
  const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*1);
- const px=Number.isFinite(player?.x)?player.x:g.w/2;
- const py=Number.isFinite(player?.y)?player.y:g.h/2;
- const targetX=g.w<sightW?(g.w-sightW)/2:clamp(px-sightW/2,0,g.w-sightW);
- const targetY=g.h<sightH?(g.h-sightH)/2:clamp(py-sightH/2,0,g.h-sightH);
+ const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
+ const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
  else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.38;roomCamera.zoom=zoom}
  return roomCamera;
@@ -2477,7 +2470,7 @@ function renderRefugeCharacter(){
 }
  // Accueil : résumé dynamique de l'équipement, lecture seule.
  if($('homeWeaponArt'))$('homeWeaponArt').innerHTML=weaponArt(data.equipped);
- if($('homePlayerName'))$('homePlayerName').textContent=ashPlayerNickname();
+ if($('homeWeaponName'))$('homeWeaponName').textContent=data.equipped?.name||'Aucune arme';
  if($('homeWeaponMeta'))$('homeWeaponMeta').textContent=data.equipped?`${data.equipped.rar} · ${data.equipped.dmg+data.dmgLv*3} DGT · ${data.equipped.rate} tirs/s`:'Équipement à préparer';
  if($('homeInsuranceState'))$('homeInsuranceState').textContent=data.eq2?'Équipement acquis':data.equipped&&data.insured===data.equipped.id?'◆ Arme assurée':'Sans assurance';
  if($('homeStashState'))$('homeStashState').textContent=`Réserve : ${data.stash.length}`;
@@ -3963,10 +3956,7 @@ function draw(){let r=data.run;if(!r)return;let room=r.rooms[r.current];combatFx
  const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom*1,-camera.x*camera.zoom,-camera.y*camera.zoom*1);
  cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/(camera.zoom*1));
  // V44: la couche statique couvre toutes les cellules ; aucun effet anime n'entre dans le cache.
- // V2.4.5: rendu direct de la surface pour eviter les canvas secondaires invalides sur iOS.
- // Le cache reste disponible dans le code pour une future optimisation apres tests.
- try { paintStaticSurface(room,sec,theme); }
- catch(surfaceError) { console.warn('ASHFALL floor fallback',surfaceError); cx.fillStyle='#142e39';cx.fillRect(0,0,roomGeom(room).w,roomGeom(room).h); }
+ drawCachedSurface(room,sec,theme);
  drawDynamicHazard(room,sec);
  drawScenicLife(room,sec,theme);
  drawIncidentAmbient(room);
@@ -4224,98 +4214,4 @@ $('toolsClose').addEventListener('click',()=>{if(refugeActivePage==='merchant')r
 if(!data.run)labMigrate();
 $('labK17Root')?.addEventListener('click',e=>{const branch=e.target.closest('[data-lab-branch]');if(branch){labSelected=branch.dataset.labBranch;labRender();return;}const buy=e.target.closest('[data-lab-buy]');if(buy)labBuy(buy.dataset.labBuy);});
 if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();if(!data.run)ashEquipmentCatalogMigration();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
-})();
-
-
-/* ASHFALL V2.4.3 — Identite du survivant : demande au premier lancement. */
-(function(){
- const KEY='ashfall.player.nickname.v1';
- function validName(raw){
-  const value=String(raw||'').trim();
-  return /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_-]{3,16}$/.test(value)?value:null;
- }
- function savedName(){
-  try{return validName(localStorage.getItem(KEY));}catch(e){return null;}
- }
- window.ashPlayerNickname=function(){return savedName()||'NOMADE';};
- function refresh(){
-  const el=document.getElementById('homePlayerName');
-  if(el)el.textContent=window.ashPlayerNickname();
- }
- function openEditor(firstLaunch){
-  if(document.getElementById('ash-nickname-overlay'))return;
-  const overlay=document.createElement('div');
-  overlay.id='ash-nickname-overlay';
-  overlay.setAttribute('role','dialog');
-  overlay.setAttribute('aria-modal','true');
-  overlay.setAttribute('aria-label','Choisir son nom de survivant');
-  overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(2,12,20,.94);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;overflow-y:auto';
-  const panel=document.createElement('div');
-  panel.style.cssText='width:min(100%,420px);background:linear-gradient(155deg,#183645,#0b1a28);border:1px solid #477587;border-radius:20px;padding:28px 22px;box-shadow:0 20px 70px #000a;color:#eef5f7;font-family:inherit;box-sizing:border-box';
-  const kicker=document.createElement('div');
-  kicker.textContent='K-17  /  IDENTIFICATION';
-  kicker.style.cssText='color:#f1b972;font-weight:800;font-size:12px;letter-spacing:2px;margin-bottom:14px';
-  const title=document.createElement('h2');
-  title.textContent=firstLaunch?'BIENVENUE, SURVIVANT':'MODIFIER TON PSEUDO';
-  title.style.cssText='font-size:25px;line-height:1.2;margin:0 0 12px;color:#fff';
-  const desc=document.createElement('p');
-  desc.textContent=firstLaunch?'Choisis ton nom de survivant avant de rejoindre le refuge. Ce choix sera conserve sur cet appareil.':'Choisis un nouveau nom pour ton survivant.';
-  desc.style.cssText='color:#b1cad4;font-size:14px;line-height:1.5;margin:0 0 20px';
-  const label=document.createElement('label');
-  label.textContent='NOM DU SURVIVANT';
-  label.htmlFor='ash-nickname-input';
-  label.style.cssText='display:block;color:#9fdbe6;font-size:12px;letter-spacing:1px;font-weight:700;margin-bottom:8px';
-  const input=document.createElement('input');
-  input.id='ash-nickname-input';
-  input.type='text';
-  input.maxLength=16;
-  input.autocomplete='off';
-  input.spellcheck=false;
-  input.placeholder='Ex. NOMADE';
-  input.value=firstLaunch?'':window.ashPlayerNickname();
-  input.style.cssText='display:block;width:100%;box-sizing:border-box;background:#0b2331;border:1px solid #4d8292;border-radius:10px;color:white;font-size:19px;padding:13px 14px;outline:none';
-  const hint=document.createElement('p');
-  hint.textContent='3 a 16 caracteres : lettres, chiffres, _ ou -';
-  hint.style.cssText='font-size:12px;color:#9db6c1;margin:9px 0 16px';
-  const error=document.createElement('p');
-  error.setAttribute('role','alert');
-  error.style.cssText='font-size:13px;color:#ff9c9c;min-height:18px;margin:0 0 10px';
-  const save=document.createElement('button');
-  save.type='button';
-  save.textContent=firstLaunch?'CONFIRMER MON IDENTITE':'ENREGISTRER';
-  save.style.cssText='width:100%;border:0;border-radius:10px;background:#efba76;color:#10202c;font-weight:900;font-size:14px;letter-spacing:.5px;padding:15px;cursor:pointer';
-  function submit(){
-   const next=validName(input.value);
-   if(!next){error.textContent='Entre un pseudo valide de 3 a 16 caracteres.';return;}
-   try{localStorage.setItem(KEY,next);}
-   catch(e){error.textContent='Impossible de sauvegarder le pseudo. Verifie le stockage du navigateur.';return;}
-   if(savedName()!==next){error.textContent='Le pseudo n’a pas pu etre conserve.';return;}
-   refresh();overlay.remove();
-  }
-  save.addEventListener('click',submit);
-  input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();submit();}});
-  input.addEventListener('input',function(){error.textContent='';});
-  panel.append(kicker,title,desc,label,input,hint,error,save);
-  if(!firstLaunch){
-   const cancel=document.createElement('button');
-   cancel.type='button';cancel.textContent='ANNULER';
-   cancel.style.cssText='display:block;margin:12px auto 0;border:0;background:transparent;color:#a7c1cc;padding:8px;cursor:pointer';
-   cancel.addEventListener('click',function(){overlay.remove();});
-   panel.appendChild(cancel);
-  }
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-  // Do not open the iPhone keyboard automatically: the player can read the message first.
- }
- function setup(){
-  const btn=document.getElementById('homePlayerNameEdit');
-  if(btn&&!btn.dataset.nicknameBound){
-   btn.dataset.nicknameBound='1';
-   btn.addEventListener('click',function(){openEditor(false);});
-  }
-  refresh();
-  if(!savedName())openEditor(true);
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);
- else setup();
 })();
