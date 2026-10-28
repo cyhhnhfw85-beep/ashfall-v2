@@ -10,7 +10,7 @@ function init(){
  root.appendChild(legacy);
  const hero=document.createElement('section');hero.className='sv-hero';hero.innerHTML='<h3>MON SURVIVANT</h3>';
  root.insertBefore(hero,legacy);hero.appendChild(showcase);
- const inv=document.createElement('section');inv.className='sv-inventory';inv.innerHTML='<div class="sv-bar"><h3>INVENTAIRE</h3><button type="button" class="sv-filter active" data-sv-filter="all">TOUT</button><button type="button" class="sv-filter" data-sv-filter="weapons">ARMES</button><button type="button" class="sv-filter" data-sv-filter="gear">ÉQUIPEMENTS</button></div><div class="sv-grid" id="svGrid"></div>';
+ const inv=document.createElement('section');inv.className='sv-inventory';inv.innerHTML='<div class="sv-bar"><h3>INVENTAIRE</h3><div class="ash-filter-row"><button type="button" class="sv-filter ash-filter-icon active" data-sv-filter="all" aria-label="Tout" title="Tout" aria-pressed="true"><span aria-hidden="true">▦</span></button><button type="button" class="sv-filter ash-filter-icon" data-sv-filter="weapon" aria-label="Armes" title="Armes" aria-pressed="false"><span aria-hidden="true">⚔</span></button><button type="button" class="sv-filter ash-filter-icon" data-sv-filter="armor" aria-label="Armures" title="Armures" aria-pressed="false"><span aria-hidden="true">⬡</span></button><button type="button" class="sv-filter ash-filter-icon" data-sv-filter="boots" aria-label="Bottes" title="Bottes" aria-pressed="false"><span aria-hidden="true">♟</span></button><button type="button" class="sv-filter ash-filter-icon" data-sv-filter="bag" aria-label="Sacs" title="Sacs" aria-pressed="false"><span aria-hidden="true">▣</span></button><button type="button" class="sv-filter ash-filter-icon" data-sv-filter="module" aria-label="Modules" title="Modules" aria-pressed="false"><span aria-hidden="true">⌘</span></button><button type="button" class="sv-filter ash-filter-icon" data-sv-filter="artifact" aria-label="Artéfacts" title="Artéfacts" aria-pressed="false"><span aria-hidden="true">◇</span></button></div></div><div class="sv-grid" id="svGrid"></div>';
  root.insertBefore(inv,legacy);
  const dialog=document.createElement('div');dialog.className='sv-layer';dialog.hidden=true;dialog.innerHTML='<div class="sv-scrim" data-sv-close></div><section class="sv-sheet" role="dialog" aria-modal="true" aria-label="Détails équipement"><header><b id="svDialogTitle">ÉQUIPEMENT</b><button type="button" data-sv-close aria-label="Fermer">×</button></header><div class="sv-detail" id="svDetail"></div></section>';document.body.appendChild(dialog);
  const grid=inv.querySelector('#svGrid'), detail=dialog.querySelector('#svDetail'), title=dialog.querySelector('#svDialogTitle');let filter='all',shown=false;
@@ -19,7 +19,7 @@ function init(){
  dialog.querySelectorAll('[data-sv-close]').forEach(b=>b.addEventListener('click',close));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!dialog.hidden)close()});
  const preview=root.querySelector('#characterReservePreview'),selection=root.querySelector('#inventorySelection'),gear=root.querySelector('#ashGearConfigurator');
  function refresh(){if(!dialog.hidden||shown)return;grid.replaceChildren();
-  if(filter!=='gear'&&preview){preview.querySelectorAll('button[data-inventory-index]').forEach((source)=>{
+  if((filter==='all'||filter==='weapon')&&preview){preview.querySelectorAll('button[data-inventory-index]').forEach((source)=>{
    const clone=source.cloneNode(true);clone.classList.remove('inventory-active');clone.removeAttribute('aria-pressed');clone.classList.add('sv-item');clone.addEventListener('click',()=>{
     source.click(); // Existing engine selection, upgrade, sell and equip handlers remain authoritative.
     requestAnimationFrame(()=>{if(selection){selection.hidden=false;open('ARME',selection);}}
@@ -30,7 +30,7 @@ function init(){
    // The equipped weapon is not in the reserve preview, so it needs its own inventory tile.
    const cards=[...gear.querySelectorAll('.eq2-owned-list > .eq2-owned-card')].filter(source=>{
     const weapon=source.closest('.eq2-collection')?.querySelector('summary')?.textContent?.startsWith('Arme équipée');
-    return weapon?filter!=='gear':filter!=='weapons';
+    if(weapon)return filter==='all'||filter==='weapon'; if(filter==='all')return true; const summary=source.closest('.eq2-collection')?.querySelector('summary')?.textContent?.toLowerCase()||''; const aliases={armor:['armure'],boots:['botte'],bag:['sac'],module:['module'],artifact:['artefact','artéfact']}; return (aliases[filter]||[]).some(word=>summary.includes(word));
    });
    for(const source of cards){
     const equipped=source.classList.contains('is-equipped');
@@ -62,7 +62,7 @@ function init(){
  }
  inv.querySelectorAll('[data-sv-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.svFilter;inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x===b));refresh()}));
  // Slot tap opens real equipment configurator, and weapon slot uses existing weapon list.
- showcase.querySelectorAll('[data-eq2-portrait-slot]').forEach(slot=>{slot.setAttribute('role','button');slot.tabIndex=0;const handler=()=>{const isWeapon=slot.dataset.eq2PortraitSlot==='weapon';filter=isWeapon?'weapons':'gear';inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x.dataset.svFilter===filter));if(isWeapon){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'})}else if(gear){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'});}};slot.addEventListener('click',handler);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler()}})});
+ showcase.querySelectorAll('[data-eq2-portrait-slot]').forEach(slot=>{slot.setAttribute('role','button');slot.tabIndex=0;const handler=()=>{const isWeapon=slot.dataset.eq2PortraitSlot==='weapon';filter=slot.dataset.eq2PortraitSlot||'all';inv.querySelectorAll('[data-sv-filter]').forEach(x=>(x.classList.toggle('active',x.dataset.svFilter===filter),x.setAttribute('aria-pressed',String(x.dataset.svFilter===filter))));if(isWeapon){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'})}else if(gear){refresh();inv.scrollIntoView({block:'nearest',behavior:'smooth'});}};slot.addEventListener('click',handler);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler()}})});
  // Engine repaints its UI; reflect results after the engine's own render cycle.
  let queued=false;const observer=new MutationObserver(()=>{if(queued||!dialog.hidden)return;queued=true;requestAnimationFrame(()=>{queued=false;refresh()})});
  if(preview)observer.observe(preview,{childList:true});if(gear)observer.observe(gear,{childList:true,subtree:true});
