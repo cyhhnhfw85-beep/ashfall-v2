@@ -1,0 +1,1 @@
+3D-only rendering when successful; 2D fallback when renderer unavailable/throws/returns false. Preserves V3 models, loot, extraction, gameplay. Syntax/ZIP checked; iPhone testing needed.
