@@ -1,3 +1,34 @@
+
+function ashWorkshopRender(){
+ const host=document.getElementById('ash-workshop-v2-items'),wallet=document.getElementById('ash-workshop-wallet');if(!host||!wallet)return;
+ if(!data.eq2){host.textContent='Atelier indisponible sur cette sauvegarde.';return;}
+ wallet.textContent=`${data.credits} crédits · ${data.eq2.components||0} composants`;
+ const rank={'Mythique':6,'Légendaire':5,'Épique':4,'Rare':3,'Inhabituel':2,'Commun':1};
+ const owned=E2.owned(data).slice().sort((a,b)=>Number(Object.values(data.eq2.slots).includes(b.id))-Number(Object.values(data.eq2.slots).includes(a.id))||(rank[b.rar]||0)-(rank[a.rar]||0));
+ host.replaceChildren();
+ for(const w of owned){
+  const worn=Object.values(data.eq2.slots).includes(w.id),cost=E2.upgradeCost(w),opt=E2.optimizeCost(w),gain=E2.rarityYield(w)+Math.floor((Number(w.investedComponents)||0)*.5);
+  const card=document.createElement('article');card.className='ash-workshop-v2-item';
+  const title=document.createElement('strong');title.textContent=`${w.name} · ${w.rar} · Nv ${w.level||1} · +${w.upgrade||0}`;card.appendChild(title);
+  const status=document.createElement('small');status.textContent=worn?'ÉQUIPÉ · Recyclage protégé':`Recyclage : +${gain} composants (dont remboursement éventuel)`;card.appendChild(status);
+  const actions=document.createElement('div');actions.className='ash-workshop-v2-actions';
+  const upgrade=document.createElement('button');upgrade.type='button';upgrade.textContent=cost?`Améliorer · ${cost.credits} cr / ${cost.components} comp`:'Amélioration maximale';upgrade.disabled=!cost||data.credits<cost.credits||data.eq2.components<cost.components;upgrade.onclick=()=>ashWorkshopAction('upgrade',w.id);actions.appendChild(upgrade);
+  const select=document.createElement('select');select.setAttribute('aria-label','Spécialisation');(w.slot==='weapon'?[['dmg','Dégâts'],['rate','Cadence']]:[['efficiency','Efficacité'],['resilience','Résilience'],['agility','Agilité']]).forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;select.appendChild(o)});if(w.optimized)select.value=w.optimized;actions.appendChild(select);
+  const optimize=document.createElement('button');optimize.type='button';optimize.textContent=`Optimiser · ${opt.credits} cr / ${opt.components} comp`;optimize.disabled=data.credits<opt.credits||data.eq2.components<opt.components;optimize.onclick=()=>ashWorkshopAction('optimize',w.id,select.value);actions.appendChild(optimize);
+  const recycle=document.createElement('button');recycle.type='button';recycle.textContent=`Recycler · +${gain} comp`;recycle.disabled=worn;recycle.onclick=()=>ashWorkshopAction('recycle',w.id);actions.appendChild(recycle);
+  card.appendChild(actions);host.appendChild(card);
+ }
+ if(!owned.length)host.textContent='Aucun équipement disponible.';
+}
+function ashWorkshopAction(op,id,stat){if(data.run||!data.eq2)return;const w=E2.owned(data).find(x=>x.id===id);if(!w)return;
+ if(op==='recycle'&&!confirm(`Recycler définitivement ${w.name} pour ${E2.rarityYield(w)+Math.floor((Number(w.investedComponents)||0)*.5)} composants ?`))return;
+ const before=JSON.stringify(data);let result=op==='upgrade'?E2.applyUpgrade(data,id):op==='optimize'?E2.applyOptimize(data,id,stat):E2.recycle(data,id);
+ if(result===false||result===null){msg('Opération impossible.');return;}
+ if(!E2.validate(data)||!persist()){data=JSON.parse(before);msg('Opération annulée : intégrité ou sauvegarde indisponible.');return;}
+ render();renderRefugeCharacter();msg(op==='recycle'?'Objet recyclé.':op==='upgrade'?'Objet amélioré.':'Optimisation effectuée.');
+}
+function ashRefugeV2Init(){const page=document.getElementById('refuge-page-progress');if(!page)return;page.querySelectorAll('[data-ash-refuge-sub]').forEach(b=>b.addEventListener('click',()=>{const lab=b.dataset.ashRefugeSub==='lab';page.querySelector('#ash-refuge-lab-content').hidden=!lab;page.querySelector('#ash-refuge-workshop').hidden=lab;page.querySelectorAll('[data-ash-refuge-sub]').forEach(x=>x.classList.toggle('active',x===b));if(!lab)ashWorkshopRender();}));}
+
 (()=>{'use strict';
 const $=id=>document.getElementById(id), cv=$('canvas'), KEY='ashfall_pwa_v1';
 const afIcon=name=>window.afIcon?window.afIcon(name):'';
@@ -2727,7 +2758,7 @@ function ashRenderMiniMap(run){
  }
  ashLastMiniSignature=signature;}
 }
-function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();if(!data.run&&data.eq2&&data.equipmentCatalogV1Migrated!==true)ashEquipmentCatalogMigration();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){ashWorkshopRender();if(!data.run&&!data.labK17?.migrated)labMigrate();if(!data.run&&data.eq2&&data.equipmentCatalogV1Migrated!==true)ashEquipmentCatalogMigration();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if(!data.run&&data.labK17?.migrated)labRender();
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';
@@ -2797,6 +2828,7 @@ $('inventorySelection').addEventListener('click',e=>{
  else sell(Number(b.dataset.gridSell));
 });
 $('stash').addEventListener('click',e=>{let b=e.target.closest('[data-op]');if(!b)return;let i=Number(b.dataset.idx);if(b.dataset.op==='equipHome')equipHome(i);else if(b.dataset.op==='sell')sell(i)});
+ashRefugeV2Init();
 $('saveBtn').onclick=()=>persist(false);$('backupBtn').onclick=backup;$('toolsClose').onclick=()=>$('tools').hidden=true;$('rulesBtn').onclick=()=>tool('RÈGLES',`<p>Utilise le joystick semi-mobile en bas au centre pour te déplacer. Les tirs sont automatiques ; ta précision diminue lorsque tu bouges.</p><p>Traverse librement les portes vertes. Une porte orange signalée ARÈNE annonce un combat obligatoire dès l’entrée ; trois vagues, coffre épique garanti en cas de victoire.</p><p>Les coffres s’ouvrent automatiquement après avoir sécurisé la salle, avec un rendu de caisse de butin plus lisible. Les avant-postes s’activent par proximité. SAC et CARTE mettent le combat en pause.</p><p>Reste 3 secondes dans la plateforme d’extraction pour lancer la procédure. Une fois validée, le compte à rebours continue tant que tu restes dans la salle ; sortir du cercle ne l’annule plus. En revanche, quitter la salle annule immédiatement l’extraction. Les blocs solides arrêtent le joueur, les ennemis et les tirs (y compris pendant le dash). Les quatre secteurs possèdent désormais des ennemis, décors et dangers différents (laser et chaleur télégraphiés). Dans les nouvelles expéditions, les barils instables et modules électriques peuvent exploser sous les tirs : éloigne-toi de leur rayon signalé et utilise-les contre les ennemis. K-17 comporte 50 salles irrégulières, trois sorties, trois avant-postes activables et quatre arènes. Les secteurs découverts restent débloqués mais la carte se régénère à chaque nouvelle expédition. Le boss principal débloque Helix pour une version future.</p><p>Extrais-toi depuis une salle d’extraction. ${data.run?!data.run.eq2?'À la mort, une ancienne assurance peut conserver une arme selon les règles historiques.':'À la mort, les équipements acquis restent possédés. Un seul nouvel objet peut être sauvegardé avec le Sac Sécurisateur.':data.eq2?'Les six équipements acquis portés au départ restent possédés après une mort. Les nouvelles trouvailles doivent être extraites ou sécurisées.':'À la mort, une ancienne assurance conserve une arme selon les règles historiques.'}</p><p>Les sauvegardes locales peuvent être effacées par iOS : exporte régulièrement une copie.</p>`);
 // DASH : impulsion immédiate et indépendante du tick d'animation.
 // Conserve la direction du joystick au moment du clic et une direction de secours.
