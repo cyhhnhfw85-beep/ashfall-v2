@@ -1,3 +1,5 @@
+ASHFALL 0.9.7.3 — Actualisation payante du marchand. Voir CHANGELOG_ASHFALL_0_9_7_3.md.
+
 # ASHFALL — Version actuelle 0.9.7.2-laboratoire-k17-stabilisation
 
 **Base :** archive complète fournie par l'utilisateur (`Nouveau dossier.zip`), version 0.9.7.1.

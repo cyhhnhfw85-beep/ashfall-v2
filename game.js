@@ -1806,7 +1806,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.7.2-laboratoire-k17-stabilisation';
+const ASHFALL_RUNTIME_VERSION='0.9.7.3-marchand-actualisation';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
@@ -2122,10 +2122,12 @@ const MERCHANT_CATALOG=[
 const MERCHANT_RANK={Commun:0,Inhabituel:1,Rare:2,'Épique':3,'Légendaire':4,Mythique:5};
 function merchantTier(){let reg=region();return Math.min(4,Math.max(0,Number(reg.maxSector)||0)+(reg.bossDefeated?1:0))}
 function merchantPrice(w){let rk=MERCHANT_RANK[w.rar]||0;return Math.max(100,Math.round((Number(w.dmg)*10+Number(w.rate)*60)*(1+rk*.58)/10)*10)}
-function ensureMerchant(){
+function ensureMerchant(forcePaidRefresh=false){
  if(!data.merchant||!Array.isArray(data.merchant.stock))data.merchant={stock:[],cycle:0,lastRefreshRun:data.runs,highestTier:merchantTier()};
  const m=data.merchant, tier=merchantTier();
- if(!m.stock.length||data.runs-m.lastRefreshRun>=2||tier>m.highestTier){
+ if(forcePaidRefresh||!m.stock.length||data.runs-m.lastRefreshRun>=2||tier>m.highestTier){
+  // Only natural rotation resets the paid refresh allowance.
+  if(!forcePaidRefresh)m.paidRefreshes=0;
   const pool=MERCHANT_CATALOG.filter(w=>(MERCHANT_RANK[w.rar]||0)<=Math.min(4,1+tier));
   // Deterministic rotation by cycle avoids rerolling offers by closing the menu.
   const selected=[];
@@ -2140,6 +2142,39 @@ function ensureMerchant(){
 // Merchant Reborn 9.4.2 — one UI and one transaction surface.
 let merchantTab='buy', merchantCategory='all', merchantSelected=null;
 const MERCHANT_SLOTS=['all','weapon','armor','boots','module','bag','artifact'];
+// Paid stock rerolls: five attempts per natural stock cycle (two expeditions or tier increase).
+const MERCHANT_REFRESH_COSTS=[150,250,400,600,850];
+function merchantPaidRefreshState(){
+ const m=merchantRebornStock();
+ const used=Math.max(0,Math.min(5,Math.floor(Number(m.paidRefreshes)||0)));
+ return {used,price:MERCHANT_REFRESH_COSTS[used]??null};
+}
+function merchantPaidRefresh(){
+ if(data.run||merchantTab!=='buy')return;
+ const state=merchantPaidRefreshState();
+ if(state.price===null){msg('Stock : 5 actualisations utilisées. Attends le prochain cycle.');merchantRender();return;}
+ if(data.credits<state.price){msg('Crédits insuffisants pour actualiser le stock.');merchantRender();return;}
+ if(!confirm(`Actualiser les 12 offres du marchand pour ${state.price} crédits ?\nLes offres actuelles seront remplacées, y compris les objets non achetés.\nActualisation ${state.used+1}/5.`))return;
+ const snapshot=JSON.stringify(data);
+ try{
+  // Recreate all seven weapon offers and five equipment offers, not the sellable inventory.
+  const m=ensureMerchant(true);
+  m.rebornGearCycle=null;
+  merchantRebornStock(false);
+  m.paidRefreshes=state.used+1;
+  data.credits-=state.price;
+  if(data.eq2&&!E2.validate(data))throw Error('équipement invalide');
+  if(!persist())throw Error('sauvegarde impossible');
+  merchantSelected=null;
+  render();merchantRender();
+  msg(`Stock actualisé · ${state.price} CR · ${5-m.paidRefreshes} actualisation(s) restante(s).`);
+ }catch(e){
+  data=JSON.parse(snapshot);
+  persist();
+  merchantRender();msg('Actualisation annulée : aucun crédit débité.');
+ }
+}
+
 function merchantEquipPrice(w){
  if((w.slot||'weapon')==='weapon')return merchantPrice(w);
  const rank=MERCHANT_RANK[w.rar]||0;
@@ -2149,7 +2184,7 @@ function merchantEquipSale(w){
  if((w.slot||'weapon')==='weapon')return salvagePrice(w);
  return Math.min(220,Math.max(12,15*E2.rarityYield(w)));
 }
-function merchantRebornStock(){
+function merchantRebornStock(save=true){
  const m=ensureMerchant();
  if(!data.eq2||!E2)return m;
  // Existing legacy offers are preserved. The extra gear is generated once per
@@ -2162,7 +2197,7 @@ function merchantRebornStock(){
    m.stock.push({...w,id:undefined,offerId:tag+'-'+slot,price:merchantEquipPrice(w),origin:'merchant',sold:false,rebornGear:true});
   }
   m.rebornGearCycle=tag;
-  persist();
+  if(save)persist();
  }
  return m;
 }
@@ -2184,8 +2219,11 @@ function merchantRender(){
  const available=merchantTab==='buy'?items.filter(w=>!w.sold).length:items.length;
  const selected=items.find(w=>String(w._ref)===String(merchantSelected));
  const tab=(name,label)=>`<button type="button" data-merchant-tab="${name}" class="${merchantTab===name?'on':''}" aria-pressed="${merchantTab===name}">${label}</button>`;
+ const refresh=merchantTab==='buy'?merchantPaidRefreshState():null;
+ const refreshUi=refresh?`<div class="mr-refresh"><div class="mr-refresh-info"><strong>↻ Actualiser le stock</strong><small>${refresh.used}/5 actualisations utilisées · prochain renouvellement naturel après 2 expéditions ou progression</small></div><button type="button" data-mr-refresh ${refresh.price===null||data.credits<refresh.price?'disabled':''}>${refresh.price===null?'ÉPUISÉ':`↻ ${refresh.price} CR`}</button></div>`:'';
+
  const iconCard=w=>`<button type="button" class="mr-item ${selected&&String(selected._ref)===String(w._ref)?'mr-selected':''} ${w.sold?'mr-sold':''}" data-mr-view="${uiSafe(String(w._ref))}" aria-label="Voir ${uiSafe(w.name)}" style="--mr-rarity:${tint(w)}"><span class="mr-art">${e2ItemArt(w)}</span><span class="mr-name">${uiSafe(w.name)}</span><span class="mr-cost">${w.sold?'ÉPUISÉ':(w._sell?'+':'')+Number(w._sell?merchantEquipSale(w):w.price)+' CR'}</span></button>`;
- let html=`<div class="mr-shell"><div class="mr-top"><strong>MARCHAND</strong><span class="mr-money">${afIcon('credits')} ${data.credits} CR</span></div><div class="mr-tabs">${tab('buy','ACHETER')}${tab('sell','VENDRE')}</div><div class="mr-categories" aria-label="Types d’équipement">${MERCHANT_SLOTS.map(slot=>`<button type="button" data-mr-category="${slot}" class="${merchantCategory===slot?'on':''}">${slot==='all'?'Tout':e2SlotName(slot)}</button>`).join('')}</div><div class="mr-subtitle">${available} objet${available!==1?'s':''} ${merchantTab==='buy'?'disponibles':'à vendre'}</div><div class="mr-grid">${items.map(iconCard).join('')||'<p class="mr-empty">Aucun objet dans cette catégorie.</p>'}</div>`;
+ let html=`<div class="mr-shell"><div class="mr-top"><strong>MARCHAND</strong><span class="mr-money">${afIcon('credits')} ${data.credits} CR</span></div><div class="mr-tabs">${tab('buy','ACHETER')}${tab('sell','VENDRE')}</div><div class="mr-categories" aria-label="Types d’équipement">${MERCHANT_SLOTS.map(slot=>`<button type="button" data-mr-category="${slot}" class="${merchantCategory===slot?'on':''}">${slot==='all'?'Tout':e2SlotName(slot)}</button>`).join('')}</div><div class="mr-subtitle">${available} objet${available!==1?'s':''} ${merchantTab==='buy'?'disponibles':'à vendre'}</div>${refreshUi}<div class="mr-grid">${items.map(iconCard).join('')||'<p class="mr-empty">Aucun objet dans cette catégorie.</p>'}</div>`;
  if(selected){
   const buy=merchantTab==='buy',value=buy?selected.price:merchantEquipSale(selected),locked=buy&&(selected.sold||data.credits<value);
   html+=`<section class="mr-detail" aria-label="Détail de l’objet"><button type="button" class="mr-close" data-mr-close aria-label="Fermer">✕</button><div class="mr-detail-head"><div class="mr-detail-icon">${e2ItemArt(selected)}</div><div><small>${e2SlotName(selected.slot||'weapon')} · ${uiSafe(selected.rar)}</small><h3>${uiSafe(selected.name)}</h3><strong>${buy?'−':'+'}${value} CR</strong></div></div><p>${uiSafe(e2ItemStats(selected)||'Équipement tactique')}</p><button type="button" class="mr-confirm" data-mr-confirm ${locked?'disabled':''}>${buy?(selected.sold?'INDISPONIBLE':data.credits<value?'CRÉDITS INSUFFISANTS':'ACHETER CET OBJET'):'VENDRE CET OBJET'}</button></section>`;
@@ -2471,7 +2509,8 @@ $('overlay').addEventListener('click',e=>{
   const action=e.target.closest('[data-e2-run-equip],[data-e2-run-drop],[data-e2-secure],[data-e2-transfer],[data-e2-replace],[data-e2-dismiss],[data-e2-inspect]');
   if(action){const ops={'data-e2-run-equip':'equip','data-e2-run-drop':'drop','data-e2-secure':'secure','data-e2-transfer':'transfer','data-e2-replace':'replace','data-e2-dismiss':'dismiss','data-e2-inspect':'inspect'};for(const [attr,op] of Object.entries(ops))if(action.hasAttribute(attr)){e2RunAction(op,action.getAttribute(attr));return;}}
   let b=e.target.closest('[data-op]');if(!b)return;let op=b.dataset.op,idx=Number(b.dataset.idx);if(op==='choosePerk')choosePerk(b.dataset.perk);else if(op==='close'||op==='resume')closeOverlay();else if(op==='equipBag')equipBag(idx);else if(op==='drop')drop(idx);else if(op==='bag'){overlayReturn='pause';openOverlay('bag')}else if(op==='map'){overlayReturn='pause';openOverlay('map')}else if(op==='backPause')openOverlay('pause');else if(op==='retreat')openOverlay('retreatConfirm');else if(op==='confirmRetreat')finish(false,'abandon')});
-function merchantClickHandler(e){const b=e.target.closest('[data-merchant-tab],[data-mr-category],[data-mr-view],[data-mr-close],[data-mr-confirm]');if(!b)return;
+function merchantClickHandler(e){const b=e.target.closest('[data-merchant-tab],[data-mr-category],[data-mr-view],[data-mr-close],[data-mr-confirm],[data-mr-refresh]');if(!b)return;
+ if(b.hasAttribute('data-mr-refresh')){merchantPaidRefresh();return;}
  if(b.hasAttribute('data-merchant-tab')){merchantTab=b.dataset.merchantTab;merchantSelected=null;}
  else if(b.hasAttribute('data-mr-category')){merchantCategory=b.dataset.mrCategory;merchantSelected=null;}
  else if(b.hasAttribute('data-mr-view'))merchantSelected=b.dataset.mrView;
