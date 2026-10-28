@@ -60,3 +60,11 @@
 #survivor-panel-equipment[data-sv947="1"] > .sv-legacy { display:none!important; }
 #survivor-panel-equipment[data-sv947="1"] > .sv-hero,
 #survivor-panel-equipment[data-sv947="1"] > .sv-inventory { display:block!important; }
+
+/* V9.5.9 — Rarity-specific outlines for the six equipped survivor slots.
+   The equipment engine sets --sv-equipped-rarity on each slot on repaint.
+   Override the historical gold filled-slot rule without touching inventory cards. */
+#survivor-panel-equipment .tactical-showcase .equip-square.sv-rarity-equipped {
+  border:2px solid var(--sv-equipped-rarity,#47758b)!important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sv-equipped-rarity,#47758b) 20%,transparent)!important;
+}
