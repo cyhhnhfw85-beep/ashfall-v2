@@ -1,0 +1,9 @@
+ASHFALL — Camera inclinee V1
+Source: ASHFALL_EVOLUTIONS_HYBRIDES_V2.zip.
+25-degree orthographic foreshortening of the entire world rendering layer.
+Includes room floor, walls, objects, enemies, survivor, effects and extraction.
+Camera viewport adjusted to prevent lower-room cropping.
+No world geometry, enemy AI, controls, hitboxes, loot or saves modified.
+Important: this is a 2.5D optical tilt of a 2D canvas world, NOT a true perspective 3D camera.
+On-screen joystick/HUD are not tilted.
+Syntax and ZIP integrity checked; visual/controls on iPhone NOT tested.

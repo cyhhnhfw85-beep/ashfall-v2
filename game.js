@@ -751,11 +751,16 @@ function roomWalls(room){
  wallCache.set(room,walls);return walls;
 }
 // Camera only affects rendering. World coordinates and collision data stay untransformed.
+// Camera 2.5D: 25° off vertical, visually foreshortened room plane.
+// Purely graphical: physics, room layout, aim, doors and enemy positions stay in world coordinates.
+const ASH_CAMERA_TILT_DEG=25;
+const ASH_CAMERA_Y_SCALE=Math.cos(ASH_CAMERA_TILT_DEG*Math.PI/180);
+
 let roomCamera={x:0,y:0,zoom:1,id:-1};
 function cameraFor(room){
  const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
- const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/zoom;
+ const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*ASH_CAMERA_Y_SCALE);
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
  const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
@@ -3907,8 +3912,8 @@ function combatFxPaintHurt(){
 
 function draw(){let r=data.run;if(!r)return;let room=r.rooms[r.current];combatFxReset(room);let sec=sectorOf(room),theme=SECTORS[sec];
  cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,360,cv.height);cx.save();
- const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom,-camera.x*camera.zoom,-camera.y*camera.zoom);
- cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/camera.zoom);
+ const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom*ASH_CAMERA_Y_SCALE,-camera.x*camera.zoom,-camera.y*camera.zoom*ASH_CAMERA_Y_SCALE);
+ cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/(camera.zoom*ASH_CAMERA_Y_SCALE));
  // V44: la couche statique couvre toutes les cellules ; aucun effet anime n'entre dans le cache.
  drawCachedSurface(room,sec,theme);
  drawDynamicHazard(room,sec);
