@@ -1,0 +1,6 @@
+ASHFALL Survivor 3D V1.1 - weapon facing correction
+Corrected conversion between gameplay screen aim vector and projected 3D camera coordinates.
+The barrel (local +Y) now points along the actual screen-space target direction.
+Existing game.js targeting logic (bullet direction, line of sight, tactical target) unchanged.
+No changes to collisions, enemy AI, saves, or GitHub.
+Static JS syntax checked; visual iPhone verification still required.

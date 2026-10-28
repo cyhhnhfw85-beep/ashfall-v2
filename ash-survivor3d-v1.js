@@ -22,7 +22,12 @@ try{
  const stride=clamp(speed/90,0,1)*Math.sin(phase),bob=speed>8?Math.abs(Math.sin(phase))*0.65:Math.sin(phase*.7)*.14;
  last={x:state.x,y:state.y};
  // World Y = character front, world Z = height. Orthographic camera looks down at 55 degrees.
- const heading=Math.atan2(state.fy||0,state.fx||1)+Math.PI/2;
+ // Local weapon barrel points along +Y. Convert screen aim vector into
+ // camera-space world direction, then rotate local +Y onto that vector.
+ // Camera up projects world Y with a factor of eye.z (0.82).
+ const aimX=Number.isFinite(state.fx)?state.fx:1;
+ const aimY=Number.isFinite(state.fy)?state.fy:0;
+ const heading=Math.atan2(-aimY/.82,aimX)-Math.PI/2;
  const ca=Math.cos(heading),sa=Math.sin(heading);
  const eye=norm([0,-.57,.82]);const right=[1,0,0],up=norm(cross(eye,right));
  const scale=.89,origin=[state.x,state.y+7];let polys=[];
@@ -66,5 +71,5 @@ try{
  for(let p of polys){ctx.beginPath();ctx.moveTo(p.vs[0][0],p.vs[0][1]);for(let i=1;i<4;i++)ctx.lineTo(p.vs[i][0],p.vs[i][1]);ctx.closePath();ctx.fillStyle=p.color;ctx.fill();ctx.strokeStyle=p.edge;ctx.lineWidth=.45;ctx.stroke()}
  ctx.restore();return true;
 }catch(e){if(!window.__ash3dErrorLogged){console.warn('ASHFALL 3D fallback',e);window.__ash3dErrorLogged=true;}return false;}}
-window.AshSurvivor3D={draw,version:'1.0-procedural'};
+window.AshSurvivor3D={draw,version:'1.1-aim-alignment'};
 })();
