@@ -2692,7 +2692,7 @@ const MERCHANT_RANK={Commun:0,Inhabituel:1,Rare:2,'Épique':3,'Légendaire':4,My
 function merchantTier(){let reg=region();return Math.min(4,Math.max(0,Number(reg.maxSector)||0)+(reg.bossDefeated?1:0))}
 // Économie 0.9.8.0 — valeur garantie vs coffres aléatoires.
 const ECON_RARITY_BASE=[750,1400,2900,6900,13500,24000];
-function merchantRarityCap(){return Math.min(5,1+merchantTier());}
+function merchantRarityCap(tier=merchantTier()){return Math.min(5,1+Math.max(0,Math.min(4,Math.floor(Number(tier)||0))));}
 function merchantPrice(w){
  const rk=MERCHANT_RANK[w.rar]??0;
  // Le modèle de l'arme compte, sans rendre les armes rapides artificiellement bon marché.
@@ -2774,7 +2774,8 @@ function merchantEquipSale(w){
  return Math.max(0,amount);
 }
 function merchantGenerateGear(slot,tier){
- const cap=merchantRarityCap();
+ // Le plafond dépend du palier demandé, et non d’un état global susceptible de changer.
+ const cap=merchantRarityCap(tier);
  // Rejet borné pour préserver les probabilités relatives sous le plafond.
  let w;
  for(let attempt=0;attempt<100;attempt++){
