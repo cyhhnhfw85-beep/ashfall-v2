@@ -1048,3 +1048,15 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 #ash-v21-workshop-panel .ash-ws-section-help{font-size:12px;color:#a9bfcb;line-height:1.5;margin:0 0 14px}
 #ash-v21-workshop-panel .ash-ws-footer-hint{font-size:11px;color:#95b4c1;margin:15px 0 0;text-align:center}
 #ash-v21-workshop-panel .ash-ws-filters{margin-bottom:15px}
+
+/* ASHFALL V2.7 — atelier, comparaison réelle avant/après */
+.ash-ws-compare{margin:14px 0;padding:12px;border:1px solid #446b7b;border-radius:12px;background:rgba(5,24,38,.45);color:#e5f0f3}
+.ash-ws-compare-title{font-weight:800;letter-spacing:.07em;font-size:12px;color:#e9bd79;margin-bottom:12px}
+.ash-ws-compare-head,.ash-ws-stat-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,1fr);gap:8px;align-items:center}
+.ash-ws-compare-head{font-size:10px;letter-spacing:.06em;color:#9fbac4;font-weight:700;padding-bottom:8px;border-bottom:1px solid #355668}
+.ash-ws-stat-row{padding:10px 0;border-bottom:1px solid rgba(120,162,179,.16);font-size:12px}
+.ash-ws-stat-row span:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}
+.ash-ws-stat-row .ash-ws-gain{color:#86e3bf;font-weight:700}
+.ash-ws-stat-row em{font-size:10px;font-style:normal;white-space:nowrap}
+.ash-ws-compare-note{display:block;color:#9cb7c2;font-size:11px;line-height:1.5;margin-top:10px}
+@media(max-width:390px){.ash-ws-compare{padding:9px}.ash-ws-stat-row{font-size:11px}.ash-ws-compare-head,.ash-ws-stat-row{gap:5px}}
