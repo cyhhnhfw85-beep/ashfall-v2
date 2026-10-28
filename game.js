@@ -1215,7 +1215,13 @@ function createRun(){
   const room=window[pick(0,window.length-1)];
   room.fieldRole=spec.role;assigned.add(room.id);
  }
- m.rooms.filter(z=>z.kind==='secret').forEach(z=>{z.fieldRole='cache'});
+ // Lot 1C : quota explicite de 2 a 4 caches par expedition V31.
+ // Les autres salles secretes conservent leur nature, sans recompense de cache supplementaire.
+ const secretRooms=m.rooms.filter(z=>z.kind==='secret');
+ const cacheCount=Math.min(secretRooms.length,Math.max(2,Math.min(4,secretRooms.length)));
+ const cachePool=secretRooms.slice();
+ for(let i=cachePool.length-1;i>0;i--){const j=pick(0,i);[cachePool[i],cachePool[j]]=[cachePool[j],cachePool[i]];}
+ cachePool.slice(0,cacheCount).forEach(z=>{z.fieldRole='cache'});
  // Phase Exploration 0.8.9.73 : sept découvertes facultatives, réparties entre
  // les secteurs et distinctes des terminaux, incidents, boss et caches existants.
  // Une salle gardée compatible sert de secours si un secteur manque de salles ordinaires.
