@@ -367,7 +367,7 @@ function ashRenderContractSelection(){
   {key:'kills',name:'COMBAT',hint:'Éliminer les menaces',glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/></svg>'},
   {key:'quality',name:'MATÉRIEL',hint:'Extraire du butin rare',glyph:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 6-10 11L2 10zM2 10h20M9 4l3 6 3-6"/></svg>'}
  ];
- host.innerHTML='<div class="home953-heading"><div><span class="home953-eyebrow">PRÉPARATION DE MISSION</span><h3>MES CONTRATS</h3></div><span class="home953-count">3 ACTIFS</span></div><p class="home953-intro">Choisis un objectif dans chaque catégorie. Les primes sont indépendantes et obtenues après extraction.</p>'+
+ host.innerHTML=''+
  groups.map((g,i)=>'<section class="home953-contract home953-'+g.key+'" aria-label="'+g.name+'"><div class="home953-contract-head"><span class="home953-glyph">'+g.glyph+'</span><div><h4>'+g.name+'</h4><small>'+g.hint+'</small></div><span class="home953-selected">'+(selected[i].target||1)+' '+(g.key==='rooms'?'salles':g.key==='kills'?'ennemis':'objet(s)')+'</span></div><div class="home953-options" role="group" aria-label="Choix '+g.name+'">'+ASH_CONTRACTS.filter(c=>c.group===g.key).map(c=>'<button type="button" class="home953-option '+(selected[i].id===c.id?'is-active':'')+'" data-contract-choice="'+c.id+'" aria-pressed="'+(selected[i].id===c.id)+'"><strong>'+(g.key==='quality'?uiSafe(c.rar)+' ×'+c.target:c.target)+'</strong><span class="home953-rewards"><b>+'+c.credits+' CR</b><small>+'+c.research+' RECH.</small></span></button>').join('')+'</div></section>').join('')+'<div class="home953-footnote">Les trois objectifs sont suivis pendant l’expédition.</div>';
 }
 
@@ -440,7 +440,7 @@ function ashRenderSurvivorProgress(){
  const root=$('ashSurvivorProgress');if(!root)return;
  const p=ashSurvivorProgress(),needed=ashSurvivorThreshold(p.level),max=p.level>=50;
  const percent=max?100:Math.min(100,100*p.xp/needed);
- root.innerHTML=`<div class="ash-sp-head"><strong>SURVIVANT · NIVEAU ${p.level} / 50</strong><span>${max?'NIVEAU MAX':p.xp.toLocaleString('fr-FR')+' / '+needed.toLocaleString('fr-FR')+' XP'}</span></div><div class="ash-sp-track"><div style="width:${percent}%"></div></div><small>Expérience permanente · puissance d'équipement indépendante</small>${p.chestVouchers.length?`<button type="button" id="ashSurvivorClaim">RÉCUPÉRER UN COFFRE DE NIVEAU (${p.chestVouchers.length})</button>`:''}`;
+ root.innerHTML=`<div class="ash-sp-head"><strong>SURVIVANT · NIVEAU ${p.level} / 50</strong><span>${max?'NIVEAU MAX':p.xp.toLocaleString('fr-FR')+' / '+needed.toLocaleString('fr-FR')+' XP'}</span></div><div class="ash-sp-track"><div style="width:${percent}%"></div></div>${p.chestVouchers.length?`<button type="button" id="ashSurvivorClaim">RÉCUPÉRER UN COFFRE DE NIVEAU (${p.chestVouchers.length})</button>`:''}`;
  root.querySelector('#ashSurvivorClaim')?.addEventListener('click',ashSurvivorClaimChest);
 }
 function ashRegisterCareer(summary){

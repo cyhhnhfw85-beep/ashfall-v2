@@ -1087,3 +1087,23 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 .ash-prep-actions{display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-top:12px}.ash-prep-actions button{min-height:50px;border-radius:12px;font-weight:800;font-size:12px;cursor:pointer}.ash-prep-actions #ashPrepCancel{background:#183245;border:1px solid #526d7c;color:#d8e7ef}.ash-prep-actions #ashPrepConfirm{background:#edc28a;color:#14202b;border:0}
 body.ash-prep-open{overflow:hidden}#refuge-page-home .ash-sp-home{display:block;margin:0 0 14px;padding:14px;border-radius:13px;background:linear-gradient(145deg,#142f40,#0e2433);border:1px solid #496b7c}#refuge-page-home .ash-sp-home .ash-sp-head{flex-wrap:wrap;gap:5px}
 @media(max-width:390px){.ash-prep-card{padding:10px}.ash-prep-actions{gap:7px}.ash-prep-actions button{font-size:11px;padding:8px 5px}}
+
+/* ASHFALL — Premium UI polish V1: one surface, less chrome, clearer hierarchy */
+#refuge-page-home .home-play-panel{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin-top:16px!important}
+#refuge-page-home .ash-sp-home{margin:0 0 15px!important;padding:12px 2px 14px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+#refuge-page-home .ash-sp-home .ash-sp-head{align-items:baseline;gap:8px;font-size:12px;letter-spacing:.02em}
+#refuge-page-home .ash-sp-home .ash-sp-head strong{font-size:13px;letter-spacing:.08em;color:#e9c28c}
+#refuge-page-home .ash-sp-home .ash-sp-head span{color:#b6cbd6;font-variant-numeric:tabular-nums}
+#refuge-page-home .ash-sp-home .ash-sp-track{height:6px;margin:12px 0 0;background:rgba(108,148,164,.24);border-radius:99px}
+#refuge-page-home .ash-sp-home .ash-sp-track>div{background:linear-gradient(90deg,#d9a963,#f1cb92)}
+.ash-prep-overlay{padding:16px 12px;align-items:center}
+.ash-prep-card{border:1px solid rgba(105,151,168,.34);border-radius:22px;background:linear-gradient(160deg,#142c3d,#0b1c2a 76%);padding:20px 18px;box-shadow:0 24px 70px rgba(0,0,0,.62)}
+.ash-prep-header .ui-eyebrow{font-size:11px;letter-spacing:.18em;color:#e9bc7d}
+.ash-prep-header h2{font-size:23px;letter-spacing:.025em;margin:8px 0 7px}
+.ash-prep-header p{font-size:12px;line-height:1.45;margin:0 0 18px;color:#a7bdc9}
+.ash-contract-picker .home953-heading,.ash-contract-picker .home953-intro{display:none!important}
+.ash-contract-picker .home953-contract{margin-bottom:10px!important;border-color:rgba(104,149,167,.24)!important;background:rgba(9,27,39,.45)!important;box-shadow:none!important}
+.ash-contract-picker .home953-contract:last-child{margin-bottom:0!important}
+.ash-prep-actions{margin-top:17px;gap:10px}
+.ash-prep-actions button{min-height:52px}
+@media(max-width:390px){.ash-prep-card{padding:16px 12px}.ash-prep-header h2{font-size:21px}}
