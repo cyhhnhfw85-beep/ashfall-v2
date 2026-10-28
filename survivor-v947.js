@@ -28,7 +28,7 @@ function init(){
   if(gear){
    // Reuse the authoritative equipment-engine cards, including the equipped weapon.
    // The equipped weapon is not in the reserve preview, so it needs its own inventory tile.
-   const cards=[...gear.querySelectorAll('.eq2-owned-list > .eq2-owned-card')].filter(source=>{
+   const cards=[...gear.querySelectorAll('.eq2-owned-list .eq2-owned-card')].filter(source=>{
     const weapon=source.closest('.eq2-collection')?.querySelector('summary')?.textContent?.startsWith('Arme équipée');
     if(weapon)return filter==='all'||filter==='weapon'; if(filter==='all')return true; return source.dataset.eq2Slot===filter;
    });
