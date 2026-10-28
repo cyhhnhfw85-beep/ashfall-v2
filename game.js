@@ -3037,20 +3037,25 @@ function ashLabRecon(run){
 }
 function ashMapMarkup(run,mini=false){
  if(!run||!run.rooms||!run.rooms.some(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy)))return mini?'<span class="ash-map-unavailable">—</span>':'';
- const base=mini?48:44, sx=base,sy=base*1.06,subx=mini?24:23,suby=mini?25:24;
+ const base=mini?46:50, sx=base,sy=base*1.06,subx=mini?40:45,suby=mini?42:47;
  const current=run.rooms[run.current],mapNodes=run.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));
  // 0.8.9.57: la mini-carte est un journal permanent, non une fenetre +/- 1 salle.
  // visited est conservé comme source de verité lors de la reprise d'anciennes sauvegardes.
  const visited=new Set(run.visited||[]),intel=new Set([...(run.intelRooms||[]),...ashLabRecon(run)]);
  const known=z=>!!z.seen||visited.has(z.id)||intel.has(z.id)||z.id===run.current;
- const nodes=mapNodes.filter(z=>known(z)&&(!mini||(Math.abs(z.gx-current.gx)<=2&&Math.abs(z.gy-current.gy)<=2)));
- const bounds=mini?[{gx:current.gx-2,gy:current.gy-2},{gx:current.gx+2,gy:current.gy+2}]:(nodes.length?nodes:[current]);
+ const nodes=mapNodes.filter(z=>known(z)&&(!mini||(Math.abs(z.gx-current.gx)<=1.6&&Math.abs(z.gy-current.gy)<=1.6)));
+ const bounds=mini?[{gx:current.gx-1.45,gy:current.gy-1.45},{gx:current.gx+1.45,gy:current.gy+1.45}]:(nodes.length?nodes:[current]);
  const minx=Math.min(...bounds.map(z=>z.gx));
  const miny=Math.min(...bounds.map(z=>z.gy));
  const maxx=Math.max(...bounds.map(z=>z.gx+(run.geometryVersion===25?roomGeom(z).w/CELL_W-1:0)));
  const maxy=Math.max(...bounds.map(z=>z.gy+(run.geometryVersion===25?roomGeom(z).h/CELL_H-1:0)));
- const pad=mini?8:34, annotationGutter=mini?0:166, W=(maxx-minx)*sx+2*pad+2*subx+annotationGutter,H=(maxy-miny)*sy+2*pad+2*suby;
- const center=z=>({x:(z.gx-minx)*sx+pad+subx/2,y:(z.gy-miny)*sy+pad+suby/2});
+ const pad=mini?7:22, annotationGutter=mini?0:142;
+ const naturalW=(maxx-minx)*sx+2*pad+subx, naturalH=(maxy-miny)*sy+2*pad+suby;
+ const W=mini?Math.max(156,naturalW):Math.max(340,naturalW+annotationGutter);
+ const H=mini?Math.max(156,naturalH):Math.max(300,naturalH);
+ const offsetX=mini?(W-naturalW)/2:Math.max(0,(W-annotationGutter-naturalW)/2);
+ const offsetY=(H-naturalH)/2;
+ const center=z=>({x:(z.gx-minx)*sx+pad+offsetX+subx/2,y:(z.gy-miny)*sy+pad+offsetY+suby/2});
  const visibleIds=new Set(nodes.map(z=>z.id));
  const links=(run.edges||[]).filter(e=>e.length>=2&&visibleIds.has(e[0])&&visibleIds.has(e[1])).map(e=>{
   const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);
@@ -3064,7 +3069,7 @@ function ashMapMarkup(run,mini=false){
  }).join('');
  const labRecon=ashLabRecon(run),reconLv=Math.max(0,Math.min(8,Number(run?.labLevels?.exp01)||0));
  const tiles=nodes.map(z=>{
-  const px=(z.gx-minx)*sx+pad,py=(z.gy-miny)*sy+pad;
+  const px=(z.gx-minx)*sx+pad+offsetX,py=(z.gy-miny)*sy+pad+offsetY;
   const type=roomGeom(z).type, scanned=!z.seen&&!(run.visited||[]).includes(z.id)&&z.id!==run.current,here=z.id===run.current;
   const sector=Number.isFinite(z.sector)?z.sector:Math.min(3,Math.floor(z.id/13));
   const fill=scanned?'#253847':here?'#234e62':isExit(z.id,run)?'#0d6174':isArena(z.id,run)?'#80502c':isBoss(z.id,run)?'#79353e':z.kind==='outpost'?'#4b5279':ASH_MAP_COLORS[sector]||ASH_MAP_COLORS[0];
@@ -3073,26 +3078,29 @@ function ashMapMarkup(run,mini=false){
    
    `M${px} ${py}h${subx}v${suby}h${-subx}z`;
   const reconScanned=!!run.fieldReconV2&&scanned&&(run.intelRooms||[]).includes(z.id);
-  const reconLabel=reconScanned?(isBoss(z.id,run)?'B?':isArena(z.id,run)?'A?':z.kind==='secret'?'S?':z.kind==='guarded'?'C?':z.kind==='outpost'?'P?':'?'):null;
-  const label=here?'●':scanned?(reconLabel||(labRecon.has(z.id)&&reconLv>=7&&isBoss(z.id,run)?'B?':labRecon.has(z.id)&&reconLv>=4&&isArena(z.id,run)?'A?':'?')):isBoss(z.id,run)?'B':isArena(z.id,run)?'A':isExit(z.id,run)?'E':z.kind==='outpost'?'P':(!scanned&&ASH_DISCOVERY_ROLES.has(z.fieldRole)?(z.fieldEvent?.state==='used'?'d':'D'):'');
-  const cx=px+subx/2,cy=py+suby/2;
+  const reconLabel=reconScanned?(isBoss(z.id,run)?'B':isArena(z.id,run)?'A':z.kind==='secret'?'S':z.kind==='guarded'?'C':z.kind==='outpost'?'P':''):null;
+  const label=here?'':scanned?(reconLabel||(labRecon.has(z.id)&&reconLv>=7&&isBoss(z.id,run)?'B':labRecon.has(z.id)&&reconLv>=4&&isArena(z.id,run)?'A':'')):isBoss(z.id,run)?'B':isArena(z.id,run)?'A':isExit(z.id,run)?'E':z.kind==='outpost'?'P':(!scanned&&ASH_DISCOVERY_ROLES.has(z.fieldRole)?(z.fieldEvent?.state==='used'?'d':'D'):'');
+  const cells=roomGeom(z).cells;
+  const cellScale=run.geometryVersion===31?1/3:1;
+  const cx=px+(Math.min(...cells.map(c=>c[0]))+Math.max(...cells.map(c=>c[0]))+1)*subx*cellScale/2;
+  const cy=py+(Math.min(...cells.map(c=>c[1]))+Math.max(...cells.map(c=>c[1]))+1)*suby*cellScale/2;
   const knownExit=!scanned&&isExit(z.id,run);
   const exitMarker=knownExit?`<circle cx="${cx}" cy="${cy}" r="${mini?8:10}" fill="none" stroke="#79f4dc" stroke-width="${mini?2:2.5}"/>`:'';
-  return `<g><path d="${shape}" fill="${fill}" fill-opacity="${scanned?.52:.96}" stroke="${here?'#ffffff':knownExit?'#72f5ec':!scanned&&isArena(z.id,run)?'#ffc174':!scanned&&isBoss(z.id,run)?'#ff9292':'#9eb8c7'}" stroke-width="${here?1.8:.9}" stroke-linejoin="round"/>${exitMarker}${here?`<circle cx="${cx}" cy="${cy}" r="${mini?3.7:4.9}" fill="#11202a"/><circle cx="${cx}" cy="${cy}" r="${mini?2:2.7}" fill="#fff0ca"/>`:label?`<text x="${cx}" y="${cy+3}" fill="#f8f6ee" font-size="${mini?8:11}" text-anchor="middle" font-weight="900">${label}</text>`:''}</g>`;
+  return `<g><path d="${shape}" fill="${fill}" fill-opacity="${scanned?.52:.96}" stroke="${here?'#ffffff':knownExit?'#72f5ec':!scanned&&isArena(z.id,run)?'#ffc174':!scanned&&isBoss(z.id,run)?'#ff9292':'#9eb8c7'}" stroke-width="${here?1.8:.9}" stroke-linejoin="round"/>${exitMarker}${here?`<circle cx="${cx}" cy="${cy}" r="${mini?8:9}" fill="#11202a"/><circle cx="${cx}" cy="${cy}" r="${mini?5:6}" fill="#fff0ca"/>`:label?`<text x="${cx}" y="${cy+3}" fill="#f8f6ee" font-size="${mini?15:17}" text-anchor="middle" font-weight="900">${label}</text>`:''}</g>`;
  }).join('');
- if(mini)return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" focusable="false"><rect width="${W}" height="${H}" rx="6" fill="#0b1b25"/>${links}${routeLines}${tiles}</svg>`;
+ if(mini)return `<svg class="ash-map-mini-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" focusable="false"><rect width="${W}" height="${H}" rx="6" fill="#0b1b25"/>${links}${routeLines}${tiles}</svg>`;
  // Annotations anchored to known objectives only, placed in a separate right-hand rail.
  const points=nodes.filter(z=>z.seen||visited.has(z.id)||z.id===run.current).map(z=>{
   const name=isExit(z.id,run)?'EXTRACTION':isArena(z.id,run)?'ARÈNE':isBoss(z.id,run)?'BOSS':z.kind==='outpost'?'BALISE':null;
   if(!name)return null;
   return {z,name,color:name==='EXTRACTION'?'#71f5e5':name==='ARÈNE'?'#ffc174':name==='BOSS'?'#ff9292':'#a6a3ff',at:center(z)};
  }).filter(Boolean).sort((a,b)=>a.at.y-b.at.y);
- const railX=W-annotationGutter+13, gap=29;
+ const railX=W-annotationGutter+9, gap=27;
  const annotations=points.map((p,i)=>{
-  const y=Math.max(24,Math.min(H-16,24+i*gap));
+  const y=Math.max(22,Math.min(H-16,22+i*gap));
   return `<g class="ash-map-annotation"><path d="M${p.at.x} ${p.at.y} L${railX-12} ${y} L${railX} ${y}" fill="none" stroke="${p.color}" stroke-opacity=".7" stroke-width="1.6"/><circle cx="${railX+5}" cy="${y}" r="4.5" fill="${p.color}"/><text x="${railX+17}" y="${y+4}" fill="${p.color}" font-size="12" font-weight="800">${p.name}</text></g>`;
  }).join('');
- return `<svg class="ash-map-full-svg" xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(W)}" height="${Math.ceil(H)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Carte des salles découvertes, avec leurs formes réelles">${links}${routeLines}${tiles}${annotations}</svg>`;
+ return `<svg class="ash-map-full-svg" xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(Math.max(340,W))}" height="${Math.ceil(H)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Carte des salles découvertes, avec leurs formes réelles">${links}${routeLines}${tiles}${annotations}</svg>`;
 }
 let ashLastMiniSignature='';
 function ashRenderMiniMap(run){

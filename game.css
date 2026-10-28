@@ -1131,3 +1131,10 @@ body.ash-prep-open{overflow:hidden}#refuge-page-home .ash-sp-home{display:block;
 .ash-map-v2-help{font-size:11px;color:#93b2c5;margin:7px 0}
 #afHudBar #ashMiniMap svg{filter:drop-shadow(0 1px 2px #0008)}
 @media(max-width:440px){.ash-map-scroll{padding:8px;max-height:60dvh}.ash-map-v2-legend{gap:8px 10px}}
+
+/* Tactical Map V2.1 — cartographic legibility */
+.ash-map-scroll{min-height:290px;max-height:58dvh;justify-content:center;align-items:center;overflow:auto;padding:12px!important;background:#081a27!important}
+.ash-map-full-svg{display:block;max-width:none;min-width:100%;height:auto;flex-shrink:0}
+#afHudBar #ashMiniMap svg,.ash-map-mini-svg{display:block;width:100%!important;height:100%!important;max-width:none;filter:none!important}
+.ash-map-annotation text{paint-order:stroke;stroke:#071923;stroke-width:3px;stroke-linejoin:round}
+@media(max-width:440px){.ash-map-scroll{min-height:270px;max-height:55dvh;padding:8px!important}}
