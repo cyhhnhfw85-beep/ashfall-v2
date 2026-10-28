@@ -1,0 +1,1 @@
+V1.2: Fix actual rendering coordinate bug: V1.1 overlay was drawn while the legacy enemy renderer canvas context was still translated to the enemy local origin. The overlay now draws from the room-level canvas context after drawEnemyGameplay returns. Legacy 2D remains visible underneath as a safety fallback. Visual verification on iPhone pending.
