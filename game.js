@@ -283,7 +283,7 @@ function e2GearAction(op,id,statOverride=null){if(data.run||!data.eq2)return;con
   data.eq2.slots[w.slot]=id;
  }else if(op==='sell'){
   if(!confirm(`Vendre définitivement ${w.name} ?`))return;
-  if(E2.sell(data,id,salvagePrice)===null)return;
+  if(E2.sell(data,id,salvagePrice,merchantEquipSale)===null)return;
  }
  if(!E2.validate(data)){data=JSON.parse(before);msg('Intégrité équipement incohérente, modification annulée');return;}
  if(!persist()){data=JSON.parse(before);msg('Modification annulée : sauvegarde indisponible');}render();renderRefugeCharacter();
@@ -1645,6 +1645,16 @@ function igniteInteractable(room,obj){
  return true;
 }
 function runnableKill(run){if(Number.isFinite(run.kills))run.kills++;ashRefreshContractHud(run);}
+function awardEnemyDefeat(room,enemy){
+ if(!enemy||enemy.lootDropped)return false;
+ enemy.lootDropped=true;
+ e2OnKill();
+ if(data.run)runnableKill(data.run);
+ lootSpawn(room,'xp',enemy.x,enemy.y,null,pick(2,5));
+ lootSpawn(room,'credits',enemy.x,enemy.y,null,pick(4,10));
+ if(Math.random()<.055)lootSpawn(room,'weapon',enemy.x,enemy.y,makeWeapon(sectorOf(room)));
+ return true;
+}
 function updateInteractables(room,dt){
  for(const obj of room.interactables||[]){
   if(obj.fx>0)obj.fx=Math.max(0,obj.fx-dt);
@@ -1658,10 +1668,7 @@ function updateInteractables(room,dt){
    if(Math.hypot(enemy.x-obj.x,enemy.y-obj.y)<=range){
     enemy.hp-=dmg;
     if(enemy.hp<=0&&!enemy.lootDropped){
-     enemy.lootDropped=true;
-     if(data.run)runnableKill(data.run);
-     lootSpawn(room,'xp',enemy.x,enemy.y,null,pick(2,5));
-     lootSpawn(room,'credits',enemy.x,enemy.y,null,pick(4,10));
+     awardEnemyDefeat(room,enemy);
     }
    }
   }
@@ -1806,7 +1813,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.7.3-marchand-actualisation';
+const ASHFALL_RUNTIME_VERSION='0.9.8.0-equilibrage-economique';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
@@ -2121,21 +2128,30 @@ const MERCHANT_CATALOG=[
 ];
 const MERCHANT_RANK={Commun:0,Inhabituel:1,Rare:2,'Épique':3,'Légendaire':4,Mythique:5};
 function merchantTier(){let reg=region();return Math.min(4,Math.max(0,Number(reg.maxSector)||0)+(reg.bossDefeated?1:0))}
-function merchantPrice(w){let rk=MERCHANT_RANK[w.rar]||0;return Math.max(100,Math.round((Number(w.dmg)*10+Number(w.rate)*60)*(1+rk*.58)/10)*10)}
+// Économie 0.9.8.0 — valeur garantie vs coffres aléatoires.
+const ECON_RARITY_BASE=[750,1400,2900,6900,13500,24000];
+function merchantRarityCap(){return Math.min(5,1+merchantTier());}
+function merchantPrice(w){
+ const rk=MERCHANT_RANK[w.rar]??0;
+ // Le modèle de l'arme compte, sans rendre les armes rapides artificiellement bon marché.
+ const power=Math.max(1,(Math.max(0,Number(w.dmg)||0)*Math.max(.35,Number(w.rate)||1)));
+ const factor=Math.max(.88,Math.min(1.22,.94+power/360));
+ return Math.round(ECON_RARITY_BASE[rk]*factor/10)*10;
+}
 function ensureMerchant(forcePaidRefresh=false){
  if(!data.merchant||!Array.isArray(data.merchant.stock))data.merchant={stock:[],cycle:0,lastRefreshRun:data.runs,highestTier:merchantTier()};
  const m=data.merchant, tier=merchantTier();
  if(forcePaidRefresh||!m.stock.length||data.runs-m.lastRefreshRun>=2||tier>m.highestTier){
   // Only natural rotation resets the paid refresh allowance.
   if(!forcePaidRefresh)m.paidRefreshes=0;
-  const pool=MERCHANT_CATALOG.filter(w=>(MERCHANT_RANK[w.rar]||0)<=Math.min(4,1+tier));
+  const pool=MERCHANT_CATALOG.filter(w=>(MERCHANT_RANK[w.rar]||0)<=Math.min(5,1+tier));
   // Deterministic rotation by cycle avoids rerolling offers by closing the menu.
   const selected=[];
   for(let i=0;i<7;i++){
     const entry=pool[(i*3+m.cycle*2+Math.floor(i/3))%pool.length];
     selected.push({...entry,offerId:'offer-'+m.cycle+'-'+i,price:merchantPrice(entry),sold:false});
   }
-  m.stock=selected;m.lastRefreshRun=data.runs;m.highestTier=tier;m.cycle++;
+  m.stock=selected;m.lastRefreshRun=data.runs;m.highestTier=tier;m.cycle++;m.economyVersion=1;
  }
  return m;
 }
@@ -2177,12 +2193,35 @@ function merchantPaidRefresh(){
 
 function merchantEquipPrice(w){
  if((w.slot||'weapon')==='weapon')return merchantPrice(w);
- const rank=MERCHANT_RANK[w.rar]||0;
- return Math.round((210+Math.max(1,Number(w.level)||1)*65)*(1+rank*.65)/10)*10;
+ const rank=MERCHANT_RANK[w.rar]??0;
+ const level=Math.max(1,Math.min(4,Math.floor(Number(w.level)||1)));
+ const model=E2.model(w);
+ // Les artefacts et les modèles ont une valeur d'usage différente.
+ const categoryFactor={armor:1,boots:.94,module:1.06,bag:1.04,artifact:1.13}[w.slot]||1;
+ const modelFactor=model?Math.max(.94,Math.min(1.12,1+(Number(model.base)||0)*.12)):1;
+ return Math.round(ECON_RARITY_BASE[rank]*categoryFactor*modelFactor*(1+.16*(level-1))/10)*10;
 }
 function merchantEquipSale(w){
  if((w.slot||'weapon')==='weapon')return salvagePrice(w);
- return Math.min(220,Math.max(12,15*E2.rarityYield(w)));
+ const rank=MERCHANT_RANK[w.rar]??0;
+ const level=Math.max(1,Math.min(4,Math.floor(Number(w.level)||1)));
+ // Revente du loot utile, mais jamais plus de 25 % d'un achat documenté.
+ let amount=Math.round(([35,65,140,300,550,900][rank])*(1+.15*(level-1))/5)*5;
+ if(Number.isFinite(Number(w.purchasePrice))&&Number(w.purchasePrice)>0)
+  amount=Math.min(amount,Math.floor(Number(w.purchasePrice)*.25));
+ return Math.max(0,amount);
+}
+function merchantGenerateGear(slot,tier){
+ const cap=merchantRarityCap();
+ // Rejet borné pour préserver les probabilités relatives sous le plafond.
+ let w;
+ for(let attempt=0;attempt<100;attempt++){
+  w=E2.generate(slot,tier);
+  if((MERCHANT_RANK[w.rar]??0)<=cap)return w;
+ }
+ // Secours extrêmement improbable : pas d'objet hors progression.
+ w.rar=Object.keys(MERCHANT_RANK).find(k=>MERCHANT_RANK[k]===cap)||'Commun';
+ return w;
 }
 function merchantRebornStock(save=true){
  const m=ensureMerchant();
@@ -2193,10 +2232,34 @@ function merchantRebornStock(save=true){
  if(m.rebornGearCycle!==tag){
   m.stock=m.stock.filter(w=>!w.rebornGear);
   for(const slot of ['armor','boots','module','bag','artifact']){
-   const w=E2.generate(slot,merchantTier());
+   const w=merchantGenerateGear(slot,merchantTier());
    m.stock.push({...w,id:undefined,offerId:tag+'-'+slot,price:merchantEquipPrice(w),origin:'merchant',sold:false,rebornGear:true});
   }
   m.rebornGearCycle=tag;
+  if(save)persist();
+ }
+ // Les stocks historiques sont conservés, mais leurs offres non vendues sont
+ // recalculées et les raretés illégales remplacées une seule fois.
+ if(m.economyVersion!==1){
+  const cap=merchantRarityCap();
+  for(const offer of m.stock){
+   if(offer.sold)continue;
+   if((MERCHANT_RANK[offer.rar]??0)>cap){
+    const slot=offer.slot||'weapon';
+    if(slot==='weapon'){
+     const pool=MERCHANT_CATALOG.filter(x=>(MERCHANT_RANK[x.rar]??0)<=cap);
+     const replacement=pool[Math.floor(Math.random()*pool.length)];
+     if(replacement)Object.assign(offer,replacement);
+    }else{
+     const replacement=merchantGenerateGear(slot,merchantTier());
+     const preservedId=offer.offerId;
+     Object.assign(offer,replacement,{offerId:preservedId,rebornGear:true,origin:'merchant'});
+     delete offer.id;
+    }
+   }
+   offer.price=merchantEquipPrice(offer);
+  }
+  m.economyVersion=1;
   if(save)persist();
  }
  return m;
@@ -2249,7 +2312,7 @@ function merchantTransaction(){
   const id=w.id,owned=merchantAllSellable().find(x=>x.id===id);if(!owned)return;
   if(!confirm(`Vendre définitivement ${owned.name} pour ${merchantEquipSale(owned)} crédits ?`))return;
   const snapshot=JSON.stringify(data);
-  if(data.eq2){if(E2.sell(data,id,salvagePrice)===null)return;}
+  if(data.eq2){if(E2.sell(data,id,salvagePrice,merchantEquipSale)===null)return;}
   else{const i=data.stash.findIndex(x=>x.id===id);if(i<0)return;data.stash.splice(i,1);data.credits+=salvagePrice(owned);}
   if((data.eq2&&!E2.validate(data))||!persist()){data=JSON.parse(snapshot);msg('Vente annulée : sauvegarde ou équipement invalide.');return;}
   msg(`${owned.name} vendu.`);
@@ -3705,7 +3768,7 @@ for(let b of bullets){
   if(collidesSolid(b.x,b.y,4,room)){combatFxWall(b.x,b.y,b);window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:b.x,y:b.y,enemy:b.enemy}}));b.ttl=0;break}
  }
  if(b.ttl<=0)continue;
- b.ttl-=dt;if(b.enemy){if(length(b,player)<16){hurt(b.dmg);if(!data.run)return;b.ttl=0}}else{for(let e of room.enemies){if(length(b,e)<15){e.hp-=b.dmg;combatFxHit(e,b.dmg,e.hp<=0,b);window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:e.hp<=0?'death':'impact',x:e.x,y:e.y}}));b.ttl=0;if(e.hp<=0&&!e.lootDropped){e2OnKill();e.lootDropped=true;if(data.run)runnableKill(data.run);lootSpawn(room,'xp',e.x,e.y,null,pick(2,5));lootSpawn(room,'credits',e.x,e.y,null,pick(4,10));if(Math.random()<.055){lootSpawn(room,'weapon',e.x,e.y,makeWeapon(sectorOf(room)))}}break}}}}
+ b.ttl-=dt;if(b.enemy){if(length(b,player)<16){hurt(b.dmg);if(!data.run)return;b.ttl=0}}else{for(let e of room.enemies){if(length(b,e)<15){e.hp-=b.dmg;combatFxHit(e,b.dmg,e.hp<=0,b);window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:e.hp<=0?'death':'impact',x:e.x,y:e.y}}));b.ttl=0;if(e.hp<=0&&!e.lootDropped){awardEnemyDefeat(room,e)}break}}}}
 room.enemies=room.enemies.filter(e=>e.hp>0);
 // À la fin d’un combat, supprimer immédiatement les tirs hostiles et désarmer les dangers de salle.
 // Une arène non terminée garde ses vagues : le nettoyage ne valide jamais une salle prématurément.

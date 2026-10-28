@@ -153,9 +153,9 @@
   const gain=rarityYield(w)+Math.floor((Number(w.investedComponents)||0)*.5);
   pool.splice(index,1);d.eq2.components+=gain;return gain;
  }
- function sell(d,id,weaponPrice){if(!eq2State(d)||Object.values(d.eq2.slots).includes(id))return null;
+ function sell(d,id,weaponPrice,gearPrice){if(!eq2State(d)||Object.values(d.eq2.slots).includes(id))return null;
   let pool=(d.stash||[]),index=pool.findIndex(x=>x.id===id);let w;if(index>=0)w=pool[index];else{pool=d.eq2.gear;index=pool.findIndex(x=>x.id===id);if(index<0)return null;w=pool[index]}
-  const gain=w.slot==='weapon'?weaponPrice(w):Math.min(220,Math.max(12,15*rarityYield(w)));
+  const gain=w.slot==='weapon'?weaponPrice(w):(typeof gearPrice==='function'?gearPrice(w):Math.min(220,Math.max(12,15*rarityYield(w))));
   pool.splice(index,1);d.credits+=gain;return gain;
  }
  root.AshEquipment2=Object.freeze({SLOTS,CATALOG,LEGACY,CATALOG_ALL,WEIGHTS,emptySlots,model,buff,owned,gearItems,current,migrate,validate,start,validateRun,runItem,active,profile,generate,rollDrop,canEquip,equip,pickup,canPickup,clearRoom,secure,transfer,renounce,drop,finalize,rarityYield,recycle,sell,normalizeWeapon,capacity,BAG_CAPACITY});
