@@ -1880,9 +1880,9 @@ function revealFieldIntel(room,limit=3,strictRadius=false){
 }
 function ashResolveDistress(room){
  const ev=room?.fieldEvent,run=data.run;
- if(!run?.interactiveV72||ev?.kind!=='distress'||ev.state!=='active'||room.enemies?.length)return false;
+ if(!run?.interactiveV72||ev?.kind!=='distress'||ev.state!=='active'||ev.rewardGranted||room.enemies?.length)return false;
  // Atomic completion: mark consumed before saving the granted credit and XP.
- ev.state='used';ev.hold=0;
+ ev.state='used';ev.rewardGranted=true;ev.hold=0;
  const credits=70+Math.min(3,sectorOf(room))*12;
  run.earnedCredits+=credits;
  run.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
@@ -4428,8 +4428,8 @@ if(room.enemies.length===0){
  if(!isArena(r.current,r)||room.arenaWave>=3)room.hazardOn=false;
 }
 // Après sécurisation, ouverture automatique des coffres (y compris la récompense d'arène).
-if(room.chest==='closed'&&room.cleared&&room.enemies.length===0&&!locked()&&!incidentBlocksClear(room)){
- room.chest='opened';room.chestFx=1.15;
+if(room.chest==='closed'&&!room.chestRewardGranted&&room.cleared&&room.enemies.length===0&&!locked()&&!incidentBlocksClear(room)){
+ room.chest='opened';room.chestRewardGranted=true;room.chestFx=1.15;
  const g=makeWeapon(freeChestWeaponLevel(r,room));
  g._ashFromChest=true; // Rarity is rolled centrally, never forced to Epic/Rare.
  lootSpawn(room,'weapon',180,118,g);lootSpawn(room,'credits',177,122,null,pick(12,24));
@@ -4446,7 +4446,7 @@ if(isExit(r.current,r)&&!r.exitStarted){
  if(r.exitCharge>=3){r.exitStarted=true;r.exitTime=12;r.exitWave=1;r.exitRoom=r.current;spawnReinforcement(room,2);msg('Extraction lancée : procédure de 12 s. Tu peux sortir du cercle ; quitter la salle annule l’extraction.');persist();}
 }
 if(room.cleared&&room.enemies.length===0)ashSweepRoomResources(room);lootUpdate(room,dt);bullets=bullets.filter(b=>b.ttl>0&&b.x>-10&&b.x<roomGeom(room).w+10&&b.y>-10&&b.y<roomGeom(room).h+10);
-if(r.exitStarted&&isExit(r.current,r)){let contested=room.enemies.some(e=>length(e,{x:180,y:195})<105);if(!contested)r.exitTime-=dt;if(r.exitWave===1&&r.exitTime<=6){r.exitWave=2;spawnReinforcement(room,2);msg('Deuxième vague : défends le terminal !')}if(r.exitTime<=0){finish(true);return}}
+if(r.exitStarted&&isExit(r.current,r)){let contested=room.enemies.some(e=>length(e,{x:180,y:195})<105);if(!contested)r.exitTime-=dt;if(r.exitWave===1&&r.exitTime<=6){r.exitWave=2;spawnReinforcement(room,2);msg('Deuxième vague : défends le terminal !')}if(r.exitTime<=0){if(r.exitRoom===r.current&&isExit(r.current,r)){finish(true);return}else{cancelExtraction(r,'zone de sortie invalide');}}}
 drawTime+=dt;if(drawTime>.12){drawTime=0;render()}tickSave+=dt;if(tickSave>4){tickSave=0;persist()}}
 // Joystick semi-mobile, limité à 36 px autour du centre inférieur.
 const joystickZone=$('joystickZone'),joyBase=$('joyBase'),joyKnob=$('joyKnob');
@@ -4523,7 +4523,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){if(data.ru
 window.addEventListener('pagehide',()=>persist());
 window.addEventListener('freeze',()=>persist());
 if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js?v=hud938fix2',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});
-if(data.run){runProgress();data.run.exitWave=data.run.exitWave||(data.run.exitStarted?1:0);if(data.run.exitStarted&&!Number.isInteger(data.run.exitRoom))data.run.exitRoom=data.run.current;setPlayer();if(data.run.exitStarted&&!isExit(data.run.current,data.run))cancelExtraction(data.run,'tu as quitté la salle');sanitizeEnemyPositions(data.run.rooms[data.run.current]);if(isArena(data.run.current,data.run))enforceArena();else{let cr=data.run.rooms[data.run.current];if(cr&&cr.spawned&&!isBoss(data.run.current,data.run))autoSecure(cr)}if(!player||!data.run.rooms[data.run.current]){data.run=null;data.equipped=data.equipped||starter();msg('Ancienne expédition incompatible : refuge récupéré.')}else{openOverlay('pause');msg('Expédition retrouvée : appuie sur Reprendre.')}}
+if(data.run){runProgress();data.run.exitWave=data.run.exitWave||(data.run.exitStarted?1:0);if(data.run.exitStarted&&!Number.isInteger(data.run.exitRoom))data.run.exitRoom=data.run.current;setPlayer();if(data.run.exitStarted&&(!isExit(data.run.current,data.run)||data.run.exitRoom!==data.run.current))cancelExtraction(data.run,'tu as quitté la salle');sanitizeEnemyPositions(data.run.rooms[data.run.current]);if(isArena(data.run.current,data.run))enforceArena();else{let cr=data.run.rooms[data.run.current];if(cr&&cr.spawned&&!isBoss(data.run.current,data.run))autoSecure(cr)}if(!player||!data.run.rooms[data.run.current]){data.run=null;data.equipped=data.equipped||starter();msg('Ancienne expédition incompatible : refuge récupéré.')}else{openOverlay('pause');msg('Expédition retrouvée : appuie sur Reprendre.')}}
 
 // Initial training: self-contained guide. The flag is intentionally separate from ashfall_pwa_v1.
 const TUTORIAL_KEY='ashfall_tutorial_v1';
