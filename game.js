@@ -2056,9 +2056,13 @@ for(const [kind,states] of Object.entries(ashEnvV31States)){
   const im=new Image();im.src='assets/env-v3/'+kind+'_'+state+'.png';ashEnvV3Images[kind+'_'+state]=im;
  }
 }
+function ashEnvV3Ready(kind,state){
+ const im=ashEnvV3Images[kind+'_'+state]||ashEnvV3Images[kind+'_ready'];
+ return !!(im&&im.complete&&im.naturalWidth>0&&im.naturalHeight>0);
+}
 function ashEnvV3Paint(kind,state,x,y,size=52){
  const im=ashEnvV3Images[kind+'_'+state]||ashEnvV3Images[kind+'_ready'];
- if(!im||!im.complete||!im.naturalWidth)return false;
+ if(!ashEnvV3Ready(kind,state))return false;
  cx.drawImage(im,x-size/2,y-size/2,size,size);return true;
 }
 
@@ -2072,6 +2076,9 @@ function drawFieldEvent(room){
  const accent=cache?'#e8bb72':ev.kind==='medic'?'#8be5b6':ev.kind==='stabilizer'?'#f3a869':ev.kind==='salvage'?'#e8b96b':ev.kind==='distress'?'#f6a77a':'#81dced';
  cx.save();cx.translate(ev.x,ev.y);
  cx.fillStyle='#03141b66';cx.beginPath();cx.ellipse(0,15,28,10,0,0,7);cx.fill();
+ const spriteState=used?'used':ev.state==='active'?'active':'ready';
+ const spriteKind=ashEnvV31States[ev.kind]?ev.kind:'scanner';
+ if(!ashEnvV3Ready(spriteKind,spriteState)){
  cx.fillStyle=used?'#283842':'#142f3d';cx.fillRect(-19,-19,38,38);
  cx.strokeStyle=used?'#536470':accent;cx.lineWidth=2;cx.strokeRect(-19,-19,38,38);
  if(cache){
@@ -2094,6 +2101,7 @@ function drawFieldEvent(room){
 
   cx.fillStyle='#678b9a';cx.fillRect(-11,13,22,4);
  }
+ }
  if(ev.state==='active'){
   cx.strokeStyle=accent;cx.lineWidth=2.5;cx.setLineDash([5,4]);cx.beginPath();cx.arc(0,0,27+2*Math.sin(performance.now()/120),0,7);cx.stroke();cx.setLineDash([]);
  }
@@ -2104,7 +2112,7 @@ function drawFieldEvent(room){
    cx.strokeStyle=accent;cx.lineWidth=4;cx.beginPath();cx.arc(0,0,25,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,ev.hold/.9));cx.stroke();
   }
  }
- ashEnvV3Paint(ashEnvV31States[ev.kind]?ev.kind:'scanner',used?'used':ev.state==='active'?'active':'ready',0,0,46);
+ ashEnvV3Paint(spriteKind,spriteState,0,0,46);
  cx.restore();
 }
 function igniteInteractable(room,obj){
@@ -2169,6 +2177,9 @@ function drawInteractables(room){
    cx.strokeStyle=electric?'#8bf4ff':'#ffbb76';cx.lineWidth=5*(1-t)+1;
    cx.beginPath();cx.arc(0,0,(electric?83:78)*t,0,7);cx.stroke();cx.globalAlpha=1;
   }
+  const spriteKind=electric?'capacitor':'barrel';
+  const spriteState=obj.state==='spent'?'spent':obj.state==='primed'?'primed':'ready';
+  if(!ashEnvV3Ready(spriteKind,spriteState)){
   if(obj.state==='spent'){
    cx.fillStyle='#1c2d32';cx.beginPath();cx.ellipse(0,8,18,7,0,0,7);cx.fill();
    cx.fillStyle=electric?'#294b57':'#5c3d30';cx.fillRect(-16,-1,32,8);
@@ -2190,7 +2201,8 @@ function drawInteractables(room){
     cx.globalAlpha=.45+.55*Math.sin(clock*18);cx.strokeStyle='#fff0c0';cx.lineWidth=3;cx.strokeRect(-20,-20,40,42);cx.globalAlpha=1;
    }
   }
-  ashEnvV3Paint(obj.kind==='capacitor'?'capacitor':'barrel',obj.state==='spent'?'spent':obj.state==='primed'?'primed':'ready',0,0,48);
+  }
+  ashEnvV3Paint(spriteKind,spriteState,0,0,48);
   cx.restore();
  }
 }
@@ -4387,6 +4399,12 @@ function drawRefinedChest(room,r){
 function drawRefinedOutpost(room){
  const active=!!(room.activated||region().outposts.includes(room.sector));
  const t=performance.now()/1000;
+ if(ashEnvV3Ready('outpost',active?'active':'ready')){
+  cx.save();cx.translate(180,195);
+  ashEnvV3Paint('outpost',active?'active':'ready',0,0,60);
+  if(active){cx.strokeStyle='#84e7d0';cx.lineWidth=2;cx.beginPath();cx.arc(0,-33,11+2*Math.sin(t*2),0,Math.PI*2);cx.stroke();}
+  cx.restore();return;
+ }
  cx.save();cx.translate(180,195);
  cx.fillStyle='rgba(4,15,21,.48)';cx.beginPath();cx.ellipse(0,17,40,15,0,0,Math.PI*2);cx.fill();
  cx.strokeStyle=active?'#84e7d0':'#49768e';cx.lineWidth=2.5;cx.beginPath();cx.arc(0,0,38,0,Math.PI*2);cx.stroke();
@@ -4403,7 +4421,7 @@ function drawRefinedOutpost(room){
  if(active){cx.globalAlpha=.36;cx.strokeStyle='#7af8db';cx.lineWidth=2;cx.beginPath();cx.arc(0,-33,11+2*Math.sin(t*2),-Math.PI*.85,Math.PI*.15);cx.stroke();cx.restore();}
  else cx.restore();
  cx.save();cx.textAlign='center';cx.fillStyle=active?'#a0f7e2':'#d4e8ee';cx.font='bold 10px sans-serif';
- /* La lumière de la balise indique son état, sans étiquette. */ashEnvV3Paint('outpost',active?'active':'ready',0,0,60);
+ /* Fallback vectoriel : aucun sprite chargé. */
  cx.restore();
 }
 
