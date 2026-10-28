@@ -2919,6 +2919,8 @@ const ENEMY_SECTOR_SKINS=[
  {armor:'#76658b',dark:'#383549',metal:'#ada0bf',shine:'#d9bae4'}  // Citadelle
 ];
 function drawEnemyGameplay(enemy,sector,seconds,isBoss=false){
+ if(window.AshBestiary3D?.draw(cx,enemy,sector,performance.now()/1000,isBoss,player))return;
+
  const family=enemy.type;
  const s=ENEMY_SECTOR_SKINS[Math.max(0,Math.min(3,sector|0))];
  const sw=Math.sin(seconds*9+(enemy.x||0)*.031), stride=sw*2.4;
