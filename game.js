@@ -3052,7 +3052,17 @@ function ashMapMarkup(run,mini=false){
  const visited=new Set(run.visited||[]),intel=new Set([...(run.intelRooms||[]),...ashLabRecon(run)]);
  const known=z=>!!z.seen||visited.has(z.id)||intel.has(z.id)||z.id===run.current;
  const nodes=run.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy)&&known(z));
- const display=mini?nodes.filter(z=>Math.abs(z.gx-current.gx)<=1.25&&Math.abs(z.gy-current.gy)<=1.25):nodes;
+ // V2.4: preserve partially visible rooms. Intersection uses the actual room cells,
+ // not the origin of the room (which may be outside the mini-map viewport).
+ const miniScale=run.geometryVersion===31?1/3:1;
+ const miniVisible=z=>{
+  const cells=roomGeom(z).cells||[[0,0]];
+  return cells.some(([dx,dy])=>{
+   const l=z.gx+dx*miniScale,t=z.gy+dy*miniScale;
+   return l<current.gx+1.18&&l+miniScale>current.gx-.48&&t<current.gy+1.18&&t+miniScale>current.gy-.48;
+  });
+ };
+ const display=mini?nodes.filter(miniVisible):nodes;
  // A unit on the topology is one room-grid step; geometry V31 cells are thirds of that unit.
  const step=mini?125:104,unit=step,cellScale=run.geometryVersion===31?1/3:1;
  const extents=z=>{const cells=roomGeom(z).cells||[[0,0]];return {left:z.gx+Math.min(...cells.map(c=>c[0]))*cellScale,top:z.gy+Math.min(...cells.map(c=>c[1]))*cellScale,right:z.gx+(Math.max(...cells.map(c=>c[0]))+1)*cellScale,bottom:z.gy+(Math.max(...cells.map(c=>c[1]))+1)*cellScale};};
@@ -4233,6 +4243,12 @@ function drawRefinedChest(room,r){
  const fx=Math.max(0,Math.min(1,(room.chestFx||0)/1.15)),time=performance.now()/1000;
  const accent=epic?'#bc8af0':guarded?'#ff8866':'#7bddd5';
  cx.save();cx.translate(180,110);
+ // V2.4: draw one chest only. The legacy Canvas crate must not sit under the PNG.
+ if(ashEnvV3Paint('chest',opened?'used':'ready',0,0,60)){
+  if(fx>0){cx.globalAlpha=fx*.75;cx.strokeStyle=accent;cx.lineWidth=2.5;cx.beginPath();cx.arc(0,1,30+(1-fx)*16,0,Math.PI*2);cx.stroke();cx.globalAlpha=1;}
+  cx.restore();return;
+ }
+ // Legacy fallback only when the asset is not yet loaded.
  // Industrial extraction crate: solid perspective, mechanical hinges and lid.
  cx.fillStyle='rgba(0,6,11,.54)';cx.beginPath();cx.ellipse(2,26,37,11,0,0,Math.PI*2);cx.fill();
  if(epic||fx){cx.globalAlpha=.09+(epic?.09:0)+fx*.17;cx.fillStyle=accent;cx.beginPath();cx.ellipse(0,14,38,23,0,0,Math.PI*2);cx.fill();cx.globalAlpha=1;}
@@ -4278,7 +4294,6 @@ function drawRefinedChest(room,r){
  if(fx>0){
   cx.globalAlpha=fx;cx.strokeStyle=accent;cx.lineWidth=2.5;cx.beginPath();cx.arc(0,1,30+(1-fx)*16,0,Math.PI*2);cx.stroke();cx.globalAlpha=1;
  }
- ashEnvV3Paint('chest',opened?'used':'ready',0,0,60);
  cx.restore();
 }
 
