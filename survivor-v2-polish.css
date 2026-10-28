@@ -16,3 +16,8 @@
 #refuge-page-character .loadout-slot span{font-size:11px!important;line-height:1.35!important}
 #refuge-page-character .tactical-inventory{gap:9px!important}
 @media(max-width:380px){#refuge-page-character .tactical-showcase{grid-template-columns:64px minmax(0,1fr) 64px!important}#refuge-page-character .tactical-showcase .equip-square{min-height:68px!important;max-height:68px!important}#refuge-page-character .tactical-showcase .survivor-portrait{height:260px!important;min-height:260px!important}#refuge-page-character .tactical-showcase .premium-portrait .nomade-stage{height:260px!important}#refuge-page-character .tactical-showcase .nomade-complete{height:255px!important}}
+
+/* Atelier V2.5 — filtres par emplacement, grille mobile */
+.ash-ws-filters{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+.ash-ws-filters button{min-width:0!important;padding:11px 5px!important;font-size:clamp(11px,2.8vw,15px)!important;white-space:nowrap}
+@media(min-width:650px){.ash-ws-filters{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
