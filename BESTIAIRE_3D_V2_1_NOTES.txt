@@ -1,0 +1,1 @@
+3D enemy overlay rendered on top of guaranteed 2D sprites. This prioritizes visibility while testing 3D models; may show overlapping 2D/3D until renderer is validated. No gameplay changes. Syntax and archive validated; iPhone test pending.
