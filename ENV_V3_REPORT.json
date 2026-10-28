@@ -1,0 +1,16 @@
+{
+  "project": "ASHFALL Environmental Graphics V3",
+  "base": "ASHFALL_LOTS_0_A_6_CANDIDAT_VALIDATION.zip",
+  "sprite_count": 30,
+  "mode": "PNG transparent 64x64 + Canvas existing effects",
+  "modified_code": [
+    "game.js"
+  ],
+  "notes": [
+    "No gameplay logic, collision, loot, or save schema changes",
+    "PNG draw overlay with fallback to original Canvas",
+    "Only field events and explosive/capacitor objects are integrated in this first technical pass",
+    "Other assets supplied for subsequent integration",
+    "Browser and iPhone not tested"
+  ]
+}

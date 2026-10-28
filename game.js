@@ -2012,6 +2012,20 @@ function updateFieldEvent(room,dt){
   if(ev.hold>=.9)triggerFieldEvent(room);
  }else ev.hold=0;
 }
+
+// ENV V3: image layer only; old Canvas shapes remain as fallback.
+const ashEnvV3Images={};
+for(const kind of ['barrel','capacitor','medic','scanner','relay','salvage','cache','stabilizer','distress','laser','thermal','regulator','outpost','chest']){
+ for(const state of ['ready','used','primed','spent']){
+  const im=new Image();im.src='assets/env-v3/'+kind+'_'+state+'.png';ashEnvV3Images[kind+'_'+state]=im;
+ }
+}
+function ashEnvV3Paint(kind,state,x,y,size=52){
+ const im=ashEnvV3Images[kind+'_'+state]||ashEnvV3Images[kind+'_ready'];
+ if(!im||!im.complete||!im.naturalWidth)return false;
+ cx.drawImage(im,x-size/2,y-size/2,size,size);return true;
+}
+
 function drawFieldEvent(room){
  const ev=room.fieldEvent;
  if(!ev||ev.state==='unavailable')return;
@@ -2054,6 +2068,7 @@ function drawFieldEvent(room){
    cx.strokeStyle=accent;cx.lineWidth=4;cx.beginPath();cx.arc(0,0,25,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,ev.hold/.9));cx.stroke();
   }
  }
+ ashEnvV3Paint(ev.kind==='medic'?'medic':ev.kind==='cache'?'cache':ev.kind==='relay'?'relay':ev.kind==='salvage'?'salvage':ev.kind==='stabilizer'?'stabilizer':ev.kind==='distress'?'distress':'scanner',used?'used':'ready',0,0,46);
  cx.restore();
 }
 function igniteInteractable(room,obj){
@@ -2139,6 +2154,7 @@ function drawInteractables(room){
     cx.globalAlpha=.45+.55*Math.sin(clock*18);cx.strokeStyle='#fff0c0';cx.lineWidth=3;cx.strokeRect(-20,-20,40,42);cx.globalAlpha=1;
    }
   }
+  ashEnvV3Paint(obj.kind==='capacitor'?'capacitor':'barrel',obj.state==='spent'?'spent':obj.state==='primed'?'primed':'ready',0,0,48);
   cx.restore();
  }
 }
