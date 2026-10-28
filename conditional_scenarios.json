@@ -1,0 +1,74 @@
+[
+  {
+    "rooms": 10,
+    "success_rate": 0.3,
+    "mean_credits": 605,
+    "mean_sale_if_all_sold": 496,
+    "mean_research": 6.1,
+    "mean_extracted_items": 2.8
+  },
+  {
+    "rooms": 10,
+    "success_rate": 0.6,
+    "mean_credits": 1183,
+    "mean_sale_if_all_sold": 964,
+    "mean_research": 10.1,
+    "mean_extracted_items": 5.4
+  },
+  {
+    "rooms": 10,
+    "success_rate": 0.85,
+    "mean_credits": 1674,
+    "mean_sale_if_all_sold": 1370,
+    "mean_research": 13.4,
+    "mean_extracted_items": 7.6
+  },
+  {
+    "rooms": 25,
+    "success_rate": 0.3,
+    "mean_credits": 1098,
+    "mean_sale_if_all_sold": 545,
+    "mean_research": 8.0,
+    "mean_extracted_items": 3.0
+  },
+  {
+    "rooms": 25,
+    "success_rate": 0.6,
+    "mean_credits": 2206,
+    "mean_sale_if_all_sold": 1095,
+    "mean_research": 14.0,
+    "mean_extracted_items": 6.1
+  },
+  {
+    "rooms": 25,
+    "success_rate": 0.85,
+    "mean_credits": 3078,
+    "mean_sale_if_all_sold": 1521,
+    "mean_research": 18.7,
+    "mean_extracted_items": 8.5
+  },
+  {
+    "rooms": 50,
+    "success_rate": 0.3,
+    "mean_credits": 2133,
+    "mean_sale_if_all_sold": 544,
+    "mean_research": 14.3,
+    "mean_extracted_items": 3.0
+  },
+  {
+    "rooms": 50,
+    "success_rate": 0.6,
+    "mean_credits": 4261,
+    "mean_sale_if_all_sold": 1080,
+    "mean_research": 26.6,
+    "mean_extracted_items": 6.1
+  },
+  {
+    "rooms": 50,
+    "success_rate": 0.85,
+    "mean_credits": 5960,
+    "mean_sale_if_all_sold": 1513,
+    "mean_research": 36.4,
+    "mean_extracted_items": 8.5
+  }
+]

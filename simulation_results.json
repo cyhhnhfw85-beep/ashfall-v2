@@ -1,0 +1,112 @@
+{
+  "merchant": [
+    {
+      "tier": 0,
+      "cap": "Inhabituel",
+      "distribution": {
+        "Commun": 13356,
+        "Inhabituel": 6644,
+        "Rare": 0,
+        "Épique": 0,
+        "Légendaire": 0,
+        "Mythique": 0
+      },
+      "meanPrice": 1034
+    },
+    {
+      "tier": 1,
+      "cap": "Rare",
+      "distribution": {
+        "Commun": 9772,
+        "Inhabituel": 4759,
+        "Rare": 5469,
+        "Épique": 0,
+        "Légendaire": 0,
+        "Mythique": 0
+      },
+      "meanPrice": 1856
+    },
+    {
+      "tier": 2,
+      "cap": "Épique",
+      "distribution": {
+        "Commun": 8959,
+        "Inhabituel": 4062,
+        "Rare": 4878,
+        "Épique": 2101,
+        "Légendaire": 0,
+        "Mythique": 0
+      },
+      "meanPrice": 2913
+    },
+    {
+      "tier": 3,
+      "cap": "Légendaire",
+      "distribution": {
+        "Commun": 8689,
+        "Inhabituel": 4050,
+        "Rare": 4654,
+        "Épique": 2058,
+        "Légendaire": 549,
+        "Mythique": 0
+      },
+      "meanPrice": 3769
+    },
+    {
+      "tier": 4,
+      "cap": "Mythique",
+      "distribution": {
+        "Commun": 8605,
+        "Inhabituel": 4118,
+        "Rare": 4590,
+        "Épique": 2028,
+        "Légendaire": 497,
+        "Mythique": 162
+      },
+      "meanPrice": 3994
+    }
+  ],
+  "chests": [
+    {
+      "price": 750,
+      "epicPlus": 0.03956,
+      "legendary": 0.00196,
+      "avgCostEpicPlus": 18959
+    },
+    {
+      "price": 2400,
+      "epicPlus": 0.18074,
+      "legendary": 0.02042,
+      "avgCostEpicPlus": 13279
+    },
+    {
+      "price": 6200,
+      "epicPlus": 0.75194,
+      "legendary": 0.12974,
+      "avgCostEpicPlus": 8245
+    }
+  ],
+  "weaponExamples": [
+    {
+      "name": "KALDOR",
+      "dmg": 63,
+      "rate": 0.9,
+      "rar": "Épique",
+      "price": 7570
+    },
+    {
+      "name": "KORVEX",
+      "dmg": 35,
+      "rate": 3,
+      "rar": "Mythique",
+      "price": 29280
+    },
+    {
+      "name": "VARKEN",
+      "dmg": 23,
+      "rate": 1.5,
+      "rar": "Commun",
+      "price": 780
+    }
+  ]
+}

@@ -52,3 +52,7 @@ body.ashfall-expedition.ash25-fullscreen #stage #canvas{
   width:100%!important;object-fit:fill!important;aspect-ratio:auto!important;
   transform:none!important;
 }
+
+/* 0.9.8.1: la mini-carte reste une cible tactile unique sur iPhone. */
+body.ashfall-expedition #afHudBar #mapBtn{pointer-events:auto!important;z-index:3!important;-webkit-tap-highlight-color:transparent!important;}
+body.ashfall-expedition #afHudBar #mapBtn *{pointer-events:none!important;}

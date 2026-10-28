@@ -1813,7 +1813,7 @@ function ashChestIcon(tier){
  return `<img class="ash-chest-art" src="${ASH_CHEST_IMAGE_DATA[tier.id].closed}" alt="Coffre ${tier.name}" loading="eager" decoding="async">`;
 }
 
-const ASHFALL_RUNTIME_VERSION='0.9.8.0-equilibrage-economique';
+const ASHFALL_RUNTIME_VERSION='0.9.8.1-correctif-minicarte';
 window.__ASHFALL_RUNTIME_VERSION=ASHFALL_RUNTIME_VERSION;
 (function checkAssetVersion(){
  const el=document.getElementById('ashVersion');
@@ -2566,6 +2566,20 @@ function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.str
 $('ashContractPicker').addEventListener('click',e=>{const b=e.target.closest('[data-contract-choice]');if(b)ashSelectContract(b.dataset.contractChoice);});
 $('upHp').onclick=()=>upgrade('hp');$('upDmg').onclick=()=>upgrade('dmg');$('insure').onclick=insure;$('merchantLaunch').onclick=()=>merchantOpen();$('start').onclick=start;
 $('bagBtn').onclick=()=>openOverlay('bag');$('mapBtn').onclick=()=>openOverlay('map');$('pauseBtn').onclick=()=>openOverlay('pause');
+// iOS/PWA: la carte doit répondre au toucher même lorsqu'un autre doigt utilise le joystick.
+// pointerup ouvre directement le panneau; click reste disponible au clavier et à la souris.
+let ashMapPointerHandled=false;
+$('mapBtn').addEventListener('pointerup',e=>{
+ if(!data.run||e.pointerType==='mouse'||(e.pointerType==='pen'&&e.button!==0))return;
+ ashMapPointerHandled=true;
+ e.preventDefault();
+ e.stopPropagation();
+ openOverlay('map');
+});
+$('mapBtn').addEventListener('click',e=>{
+ if(ashMapPointerHandled){ashMapPointerHandled=false;e.preventDefault();return;}
+ if(data.run)openOverlay('map');
+});
 // Le clic synthetique iOS peut etre annule quand un autre doigt tient le joystick.
 $('overlay').addEventListener('click',e=>{
   const chosen=e.target.closest('[data-e2-select]');if(chosen){e2BagSelectionId=chosen.getAttribute('data-e2-select')||null;e2OpenBag();return;}
