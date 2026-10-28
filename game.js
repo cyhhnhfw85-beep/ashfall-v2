@@ -2439,7 +2439,7 @@ function merchantTransaction(){
 }
 let selectedInventoryId=null;
 let inventoryPage=0;
-let inventorySortMode="default";
+let inventorySortMode="rarity";
 let inventoryRarity="all";
 let inventoryQuery="";
 const INVENTORY_PAGE_SIZE=20;
