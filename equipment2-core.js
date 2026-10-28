@@ -27,8 +27,32 @@
   {id:'artifact-noyau-instable',slot:'artifact',name:'Noyau instable',effect:'frenzy',base:0.045,desc:'Renforce les enchaînements offensifs'},
   {id:'artifact-fragment-ether',slot:'artifact',name:'Fragment d’éther',effect:'xp',base:0.12,desc:'Expérience gagnée améliorée'},
  ];
- const LEGACY=[]; // Les anciennes familles ne sont plus disponibles.
- const CATALOG_ALL=CATALOG;
+ const LEGACY=[]; // Legacy loadout migration disabled; no implicit item conversion.
+// Compatibility records for restored pre-catalogue items. These are NOT added to loot pools.
+// The historical balancing tables are unavailable: effects use the nearest current family
+// as an explicit provisional fallback, retaining each item's original model/rarity/level.
+ const LEGACY_MODEL_ALIASES=Object.freeze({
+  'armor-bastion': 'armor-bastion-x',
+  'armor-predator': 'armor-reactor',
+  'armor-regenerator': 'armor-sentinelle',
+  'boots-scout': 'boots-velocis',
+  'boots-spectre': 'boots-impulsion',
+  'boots-anchor': 'boots-ancrage',
+  'module-tesla': 'module-amplificateur',
+  'module-aegis': 'module-stabilisateur',
+  'module-medic': 'module-regenerateur',
+  'bag-prospector': 'bag-scout',
+  'bag-reclaimer': 'bag-raven',
+  'bag-securizer': 'bag-dastion',
+  'artifact-resonance': 'artifact-oeil-vide',
+  'artifact-vitality': 'artifact-coeur-cendre',
+  'artifact-frenzy': 'artifact-noyau-instable',
+ });
+ const LEGACY_COMPAT=Object.freeze(Object.entries(LEGACY_MODEL_ALIASES).map(([id,reference])=>{
+  const base=CATALOG.find(m=>m.id===reference);
+  return Object.freeze({...base,id,name:id,legacyCompatibility:true});
+ }));
+ const CATALOG_ALL=[...CATALOG,...LEGACY_COMPAT];
  const RANK={Commun:0,Inhabituel:1,Rare:2,'Épique':3,'Légendaire':4,Mythique:5};
  const SAFE_ID=s=>String(s||'').replace(/[^a-zA-Z0-9-_]/g,'').slice(0,120);
  const copy=x=>JSON.parse(JSON.stringify(x));

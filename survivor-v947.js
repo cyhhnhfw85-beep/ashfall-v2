@@ -66,7 +66,7 @@ function init(){
   tiles.forEach(tile=>grid.appendChild(tile));
   if(!grid.children.length){const empty=document.createElement('p');empty.className='sv-empty';empty.textContent='Aucun objet dans cette catégorie.';grid.appendChild(empty);}
  }
- inv.querySelectorAll('[data-sv-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.svFilter;inv.querySelectorAll('[data-sv-filter]').forEach(x=>x.classList.toggle('active',x===b));refresh()}));
+ inv.querySelectorAll('[data-sv-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.svFilter;inv.querySelectorAll('[data-sv-filter]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});refresh()}));
  // Slot tap opens real equipment configurator, and weapon slot uses existing weapon list.
  showcase.querySelectorAll('[data-eq2-portrait-slot]').forEach(slot=>{slot.setAttribute('role','button');slot.tabIndex=0;const handler=()=>{const target=slot.dataset.eq2PortraitSlot||'all';filter=target;inv.querySelectorAll('[data-sv-filter]').forEach(x=>(x.classList.toggle('active',x.dataset.svFilter===filter),x.setAttribute('aria-pressed',String(x.dataset.svFilter===filter))));refresh();const equipped=[...grid.querySelectorAll('.sv-item.sv-is-equipped')].find(x=>x.dataset.svSlot===target);if(equipped){equipped.click();return;}inv.scrollIntoView({block:'nearest',behavior:'smooth'});} ;slot.addEventListener('click',handler);slot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler()}})});
  // Engine repaints its UI; reflect results after the engine's own render cycle.

@@ -6,7 +6,7 @@ let cx=cv.getContext('2d'); // V44: le contexte est temporairement redirige pend
 const pick=(a,b)=>Math.floor(a+Math.random()*(b-a+1)), clamp=(n,a,b)=>Math.max(a,Math.min(b,n)), length=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const uid=()=> 'af-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
 const starter=()=>({id:uid(),name:'VARKEN',rar:'Commun',dmg:19,rate:2.15,level:1});
-const fresh=()=>({version:1,credits:400,research:0,hpLv:0,dmgLv:0,runs:0,equipped:starter(),stash:[],insured:null,run:null,stats:{extractions:0,deaths:0}});
+const fresh=()=>({version:1,credits:400,research:0,hpLv:0,dmgLv:0,runs:0,equipped:starter(),stash:[],insured:null,run:null,stats:{extractions:0,deaths:0},arsenalV957:true});
 let data=fresh(), player=null, bullets=[],sparks=[],joy={x:0,y:0,pointer:null,cx:0,cy:0},keyState={},overlay='',overlayReturn='',last=0,drawTime=0,tickSave=0;
 function msg(v){const host=$('log'),d=window.afDecorateStatus?window.afDecorateStatus(v):{text:String(v),icon:null};host.textContent=d.text;if(d.icon&&window.afIcon)host.insertAdjacentHTML('afterbegin',window.afIcon(d.icon));}
 function valid(d){return d&&d.version===1&&Number.isFinite(d.credits)&&Number.isFinite(d.research)&&Array.isArray(d.stash)&&((d.equipped&&typeof d.equipped.id==='string')||(d.run&&d.run.equipped&&typeof d.run.equipped.id==='string'))&&(!d.run||(Array.isArray(d.run.rooms)&&d.run.rooms.length>0&&Number.isInteger(d.run.current)&&d.run.rooms[d.run.current]&&d.run.player))}
@@ -20,20 +20,10 @@ function ashWeaponRoll(level=1,rarity=null,model=null){
  return {id:uid(),name,model:name.toLowerCase(),slot:'weapon',rar,level:Math.max(1,Math.min(4,Number(level)||1)),dmg:Math.round((base+Math.max(0,level-1)*2)*(1+tier*.19)),rate:Math.round(rate*100)/100};
 }
 function ashArsenalReset(){
- if(data.arsenalV957===true)return;
- // L'ancienne session peut contenir des references aux armes retirees.
- // Les devises, Recherche, ameliorations, statistiques, secteurs et equipements restent.
- if(data.run){data.run=null;player=null;}
- data.equipped=ashWeaponRoll(1,'Commun','VARKEN');data.stash=[];data.insured=null;
- if(data.eq2){
-  data.eq2.gear=(data.eq2.gear||[]).filter(x=>x && x.slot!=='weapon');
-  data.eq2.slots=data.eq2.slots||{};data.eq2.slots.weapon=data.equipped.id;
- }
- if(data.merchant){data.merchant.stock=[];data.merchant.rebornGearCycle=null;}
- if(data.longTerm){data.longTerm.families=[];}
- data.chestPending=null;
- data.arsenalV957=true;
- persist();
+ // Clean & Stable V1: never erase owned weapons, stash or an active expedition.
+ // Old arsenal migrations must be explicitly consented to in a separate future workflow.
+ // A fresh save already starts with VARKEN; existing saves keep their original data.
+ return true;
 }
 // Two verified snapshots protect against incomplete or invalid primary saves.
 const RECOVERY_KEY=KEY+'_recovery', SAVE_STATUS_KEY=KEY+'_lastok';
@@ -87,7 +77,7 @@ function ashRecoverCatalogEquipment(){
  try{old=JSON.parse(raw);}catch(_){msg('Sauvegarde historique illisible.');return;}
  if(!old?.eq2||!Array.isArray(old.eq2.gear)||!data.eq2){msg('Aucun équipement récupérable dans cette sauvegarde.');return;}
  const currentIds=new Set(E2.owned(data).map(w=>w.id));
- const missing=old.eq2.gear.filter(w=>w&&w.slot!=='weapon'&&typeof w.id==='string'&&!currentIds.has(w.id));
+ const missing=old.eq2.gear.filter(w=>w&&['armor','boots','module','bag','artifact'].includes(w.slot)&&typeof w.id==='string'&&w.id.length>0&&!currentIds.has(w.id));
  if(!missing.length){msg('Aucun équipement supplémentaire à restaurer.');return;}
  if(!confirm('Restaurer '+missing.length+' équipement(s) de l’ancienne sauvegarde ? Les armes, crédits et progression actuels seront conservés.'))return;
  const before=JSON.stringify(data);
@@ -173,6 +163,23 @@ const ASH_EQUIPMENT_V1_IMAGES=Object.freeze({
  'artifact-noyau-instable': 'NOYAU_INSTABLE',
  'artifact-fragment-ether': 'FRAGMENT_ETHER',
 });
+const ASH_EQUIPMENT_LEGACY_VISUALS=Object.freeze({
+ 'armor-bastion': 'BASTION-X',
+ 'armor-predator': 'REACTOR',
+ 'armor-regenerator': 'SENTINELLE',
+ 'boots-scout': 'VELOCIS',
+ 'boots-spectre': 'VELOCIS',
+ 'boots-anchor': 'ANCRAGE',
+ 'module-tesla': 'AMPLIFICATEUR',
+ 'module-aegis': 'STABILISATEUR',
+ 'module-medic': 'REGENERATEUR',
+ 'bag-prospector': 'SCOUT',
+ 'bag-reclaimer': 'RAVEN',
+ 'bag-securizer': 'DASTION',
+ 'artifact-resonance': 'OEIL_DU_VIDE',
+ 'artifact-vitality': 'COEUR_DE_CENDRE',
+ 'artifact-frenzy': 'NOYAU_INSTABLE',
+});
 const ASH_EQUIPMENT_V1_RARITIES=Object.freeze({
  'Commun':'Commun','Inhabituel':'Inhabituel','Rare':'Rare',
  'Épique':'Epique','Légendaire':'Legendaire','Mythique':'Mythique'
@@ -180,7 +187,7 @@ const ASH_EQUIPMENT_V1_RARITIES=Object.freeze({
 function e2ItemArt(w){
  if(e2PickWeapon(w))return weaponArt(w);
  const key=String(w?.model||'').replace(/[^a-zA-Z0-9-]/g,'');
- const visual=ASH_EQUIPMENT_V1_IMAGES[key];
+ const visual=ASH_EQUIPMENT_V1_IMAGES[key]||ASH_EQUIPMENT_LEGACY_VISUALS[key];
  const rarity=ASH_EQUIPMENT_V1_RARITIES[w?.rar]||'Commun';
  if(visual)return `<img class="ash952-gear-img" src="assets/equipment_v1/${visual}_${rarity}.png" aria-hidden="true" alt="" loading="lazy">`;
  return `<span class="ash925-gear-art" aria-hidden="true">${e2GearGlyph(w.slot,w.model)}</span>`;
@@ -3195,7 +3202,7 @@ function ashRenderMiniMap(run){
  // Do not zoom twice: that clipped large rooms and disconnected the position marker.
  ashLastMiniSignature=signature;}
 }
-function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();if(!data.run&&data.eq2&&data.equipmentCatalogV1Migrated!==true)ashEquipmentCatalogMigration();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if(!data.run&&data.labK17?.migrated)labRender();
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';
@@ -4996,5 +5003,5 @@ $('toolsClose').addEventListener('click',()=>{if(refugeActivePage==='merchant')r
 
 if(!data.run)labMigrate();
 $('labK17Root')?.addEventListener('click',e=>{const branch=e.target.closest('[data-lab-branch]');if(branch){labSelected=branch.dataset.labBranch;labRender();return;}const buy=e.target.closest('[data-lab-buy]');if(buy)labBuy(buy.dataset.labBuy);});
-if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();if(!data.run)ashEquipmentCatalogMigration();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
+if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 })();
