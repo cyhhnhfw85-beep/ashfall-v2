@@ -1075,3 +1075,6 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 /* Compact optimization selectors — all equipment categories */
 .ash-ws-opt-v2 .ash-ws-opt-choices{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .ash-ws-opt-v2 .ash-ws-opt-choices button{box-sizing:border-box;flex:0 1 auto!important;min-width:94px!important;min-height:36px!important;height:36px!important;padding:6px 13px!important;border-radius:8px!important;font-size:12px!important;line-height:1.15!important}
+
+/* Progression permanente du Survivant V1 */
+.ash-survivor-progress{margin:12px 10px;padding:14px;border:1px solid rgba(84,195,210,.35);border-radius:12px;background:rgba(10,29,40,.82);color:#e6f7fa}.ash-sp-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}.ash-sp-track{height:8px;margin:10px 0 7px;background:#273d48;border-radius:9px;overflow:hidden}.ash-sp-track>div{height:100%;background:#43bed4;border-radius:9px}.ash-survivor-progress small{display:block;color:#a5c1cb;font-size:11px}.ash-survivor-progress button{margin-top:10px;width:100%;padding:9px;border:1px solid #55bbcb;border-radius:7px;background:#153c4c;color:#e6f7fa;font-weight:700}.ash-sp-debrief{padding:10px 12px;margin:10px 0;border:1px solid rgba(84,195,210,.4);border-radius:8px;color:#c8f2fa;font-size:13px}.ash-sp-debrief strong{font-size:18px}
