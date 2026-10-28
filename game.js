@@ -12,7 +12,7 @@ function msg(v){const host=$('log'),d=window.afDecorateStatus?window.afDecorateS
 function valid(d){return d&&d.version===1&&Number.isFinite(d.credits)&&Number.isFinite(d.research)&&Array.isArray(d.stash)&&((d.equipped&&typeof d.equipped.id==='string')||(d.run&&d.run.equipped&&typeof d.run.equipped.id==='string'))&&(!d.run||(Array.isArray(d.run.rooms)&&d.run.rooms.length>0&&Number.isInteger(d.run.current)&&d.run.rooms[d.run.current]&&d.run.player))}
 // Refonte arsenal V9.5.7 : migration ciblée unique, autres ressources conservées.
 const ASH_NEW_WEAPON_NAMES=['VARKEN','STRYGA','KALDOR','VALTIS','KORVEX','NEXAR'];
-const ASH_NEW_WEAPON_STATS={VARKEN:[20,2.2],STRYGA:[13,3.7],KALDOR:[40,0.9],VALTIS:[46,0.8],KORVEX:[18,3.0],NEXAR:[31,1.75]};
+const ASH_NEW_WEAPON_STATS={VARKEN:[20,2.2],STRYGA:[13,3.7],KALDOR:[49,0.9],VALTIS:[57,0.8],KORVEX:[16,3.0],NEXAR:[27,1.75]};
 const ASH_NEW_RARITIES=['Commun','Inhabituel','Rare','Épique','Légendaire','Mythique'];
 function ashWeaponRoll(level=1,rarity=null,model=null){
  const name=model||ASH_NEW_WEAPON_NAMES[pick(0,5)];const rar=rarity||(['Commun','Commun','Inhabituel','Rare','Épique','Légendaire','Mythique'][pick(0,6)]);
@@ -2219,30 +2219,30 @@ const MERCHANT_CATALOG=[
  {name:'STRYGA',rar:'Épique',dmg:20,rate:3.70},
  {name:'STRYGA',rar:'Légendaire',dmg:23,rate:3.70},
  {name:'STRYGA',rar:'Mythique',dmg:25,rate:3.70},
- {name:'KALDOR',rar:'Commun',dmg:40,rate:0.90},
- {name:'KALDOR',rar:'Inhabituel',dmg:48,rate:0.90},
- {name:'KALDOR',rar:'Rare',dmg:55,rate:0.90},
- {name:'KALDOR',rar:'Épique',dmg:63,rate:0.90},
- {name:'KALDOR',rar:'Légendaire',dmg:70,rate:0.90},
- {name:'KALDOR',rar:'Mythique',dmg:78,rate:0.90},
- {name:'VALTIS',rar:'Commun',dmg:46,rate:0.80},
- {name:'VALTIS',rar:'Inhabituel',dmg:55,rate:0.80},
- {name:'VALTIS',rar:'Rare',dmg:63,rate:0.80},
- {name:'VALTIS',rar:'Épique',dmg:72,rate:0.80},
- {name:'VALTIS',rar:'Légendaire',dmg:81,rate:0.80},
- {name:'VALTIS',rar:'Mythique',dmg:90,rate:0.80},
- {name:'KORVEX',rar:'Commun',dmg:18,rate:3.00},
- {name:'KORVEX',rar:'Inhabituel',dmg:21,rate:3.00},
- {name:'KORVEX',rar:'Rare',dmg:25,rate:3.00},
- {name:'KORVEX',rar:'Épique',dmg:28,rate:3.00},
- {name:'KORVEX',rar:'Légendaire',dmg:32,rate:3.00},
- {name:'KORVEX',rar:'Mythique',dmg:35,rate:3.00},
- {name:'NEXAR',rar:'Commun',dmg:31,rate:1.75},
- {name:'NEXAR',rar:'Inhabituel',dmg:37,rate:1.75},
- {name:'NEXAR',rar:'Rare',dmg:43,rate:1.75},
- {name:'NEXAR',rar:'Épique',dmg:49,rate:1.75},
- {name:'NEXAR',rar:'Légendaire',dmg:55,rate:1.75},
- {name:'NEXAR',rar:'Mythique',dmg:60,rate:1.75},
+ {name:'KALDOR',rar:'Commun',dmg:49,rate:0.90},
+ {name:'KALDOR',rar:'Inhabituel',dmg:58,rate:0.90},
+ {name:'KALDOR',rar:'Rare',dmg:68,rate:0.90},
+ {name:'KALDOR',rar:'Épique',dmg:77,rate:0.90},
+ {name:'KALDOR',rar:'Légendaire',dmg:86,rate:0.90},
+ {name:'KALDOR',rar:'Mythique',dmg:96,rate:0.90},
+ {name:'VALTIS',rar:'Commun',dmg:57,rate:0.80},
+ {name:'VALTIS',rar:'Inhabituel',dmg:68,rate:0.80},
+ {name:'VALTIS',rar:'Rare',dmg:79,rate:0.80},
+ {name:'VALTIS',rar:'Épique',dmg:89,rate:0.80},
+ {name:'VALTIS',rar:'Légendaire',dmg:100,rate:0.80},
+ {name:'VALTIS',rar:'Mythique',dmg:111,rate:0.80},
+ {name:'KORVEX',rar:'Commun',dmg:16,rate:3.00},
+ {name:'KORVEX',rar:'Inhabituel',dmg:19,rate:3.00},
+ {name:'KORVEX',rar:'Rare',dmg:22,rate:3.00},
+ {name:'KORVEX',rar:'Épique',dmg:25,rate:3.00},
+ {name:'KORVEX',rar:'Légendaire',dmg:28,rate:3.00},
+ {name:'KORVEX',rar:'Mythique',dmg:31,rate:3.00},
+ {name:'NEXAR',rar:'Commun',dmg:27,rate:1.75},
+ {name:'NEXAR',rar:'Inhabituel',dmg:32,rate:1.75},
+ {name:'NEXAR',rar:'Rare',dmg:37,rate:1.75},
+ {name:'NEXAR',rar:'Épique',dmg:42,rate:1.75},
+ {name:'NEXAR',rar:'Légendaire',dmg:48,rate:1.75},
+ {name:'NEXAR',rar:'Mythique',dmg:53,rate:1.75},
 ];
 const MERCHANT_RANK={Commun:0,Inhabituel:1,Rare:2,'Épique':3,'Légendaire':4,Mythique:5};
 function merchantTier(){let reg=region();return Math.min(4,Math.max(0,Number(reg.maxSector)||0)+(reg.bossDefeated?1:0))}
