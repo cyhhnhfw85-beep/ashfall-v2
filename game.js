@@ -168,7 +168,7 @@ const ASH_EQUIPMENT_LEGACY_VISUALS=Object.freeze({
  'armor-predator': 'REACTOR',
  'armor-regenerator': 'SENTINELLE',
  'boots-scout': 'VELOCIS',
- 'boots-spectre': 'VELOCIS',
+ 'boots-spectre': 'IMPULSION',
  'boots-anchor': 'ANCRAGE',
  'module-tesla': 'AMPLIFICATEUR',
  'module-aegis': 'STABILISATEUR',
