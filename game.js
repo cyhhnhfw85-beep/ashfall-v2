@@ -3041,24 +3041,24 @@ function ashMapMarkup(run,mini=false){
  const visited=new Set(run.visited||[]),intel=new Set([...(run.intelRooms||[]),...ashLabRecon(run)]);
  const known=z=>!!z.seen||visited.has(z.id)||intel.has(z.id)||z.id===run.current;
  const nodes=run.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy)&&known(z));
- const display=mini?nodes.filter(z=>Math.abs(z.gx-current.gx)<=1.7&&Math.abs(z.gy-current.gy)<=1.7):nodes;
+ const display=mini?nodes.filter(z=>Math.abs(z.gx-current.gx)<=1.25&&Math.abs(z.gy-current.gy)<=1.25):nodes;
  // A unit on the topology is one room-grid step; geometry V31 cells are thirds of that unit.
- const step=mini?105:104,unit=step,cellScale=run.geometryVersion===31?1/3:1;
+ const step=mini?125:104,unit=step,cellScale=run.geometryVersion===31?1/3:1;
  const extents=z=>{const cells=roomGeom(z).cells||[[0,0]];return {left:z.gx+Math.min(...cells.map(c=>c[0]))*cellScale,top:z.gy+Math.min(...cells.map(c=>c[1]))*cellScale,right:z.gx+(Math.max(...cells.map(c=>c[0]))+1)*cellScale,bottom:z.gy+(Math.max(...cells.map(c=>c[1]))+1)*cellScale};};
  const all=display.length?display:[current],bounds=all.map(extents);
- const minx=mini?current.gx-1.05:Math.min(...bounds.map(b=>b.left));
- const miny=mini?current.gy-1.05:Math.min(...bounds.map(b=>b.top));
- const maxx=mini?current.gx+2.05:Math.max(...bounds.map(b=>b.right));
- const maxy=mini?current.gy+2.05:Math.max(...bounds.map(b=>b.bottom));
- const pad=mini?5:26,gutter=mini?0:158;
- const mapW=Math.max(mini?220:290,(maxx-minx)*unit+2*pad),mapH=Math.max(mini?220:290,(maxy-miny)*unit+2*pad);
+ const minx=mini?current.gx-.48:Math.min(...bounds.map(b=>b.left));
+ const miny=mini?current.gy-.48:Math.min(...bounds.map(b=>b.top));
+ const maxx=mini?current.gx+1.18:Math.max(...bounds.map(b=>b.right));
+ const maxy=mini?current.gy+1.18:Math.max(...bounds.map(b=>b.bottom));
+ const pad=mini?3:26,gutter=0;
+ const mapW=mini?210:Math.max(290,(maxx-minx)*unit+2*pad),mapH=mini?210:Math.max(290,(maxy-miny)*unit+2*pad);
  const W=mapW+gutter,H=mapH;
  const xy=(x,y)=>({x:(x-minx)*unit+pad,y:(y-miny)*unit+pad});
  const center=z=>{const e=extents(z);return xy((e.left+e.right)/2,(e.top+e.bottom)/2);};
  const ids=new Set(display.map(z=>z.id));
- const links=(run.edges||[]).filter(e=>Array.isArray(e)&&ids.has(e[0])&&ids.has(e[1])).map(e=>{const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);return `<path d="M${a.x} ${a.y} L${b.x} ${b.y}" stroke="#668da1" stroke-width="${mini?5:7}" stroke-linecap="round" opacity=".9"/>`;}).join('');
+ const links=(run.edges||[]).filter(e=>Array.isArray(e)&&ids.has(e[0])&&ids.has(e[1])).map(e=>{const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);return `<path d="M${a.x} ${a.y} L${b.x} ${b.y}" stroke="#668da1" stroke-width="${mini?2.5:3.2}" stroke-linecap="round" opacity=".65"/>`;}).join('');
  const route=ashKnownExtractionRoute(run)||[],routeEdges=new Set(route.slice(1).map((id,i)=>[id,route[i]].sort((a,b)=>a-b).join(':')));
- const routeLines=(run.edges||[]).filter(e=>Array.isArray(e)&&ids.has(e[0])&&ids.has(e[1])&&routeEdges.has([e[0],e[1]].sort((a,b)=>a-b).join(':'))).map(e=>{const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);return `<path d="M${a.x} ${a.y}L${b.x} ${b.y}" stroke="#76f2e4" stroke-width="${mini?3:5}" stroke-dasharray="7 5" fill="none"/>`;}).join('');
+ const routeLines=(run.edges||[]).filter(e=>Array.isArray(e)&&ids.has(e[0])&&ids.has(e[1])&&routeEdges.has([e[0],e[1]].sort((a,b)=>a-b).join(':'))).map(e=>{const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);return `<path d="M${a.x} ${a.y}L${b.x} ${b.y}" stroke="#76f2e4" stroke-width="${mini?2.5:3.5}" stroke-dasharray="6 5" fill="none"/>`;}).join('');
  const markers=[];
  const tiles=display.map(z=>{
   const seen=!!z.seen||visited.has(z.id)||z.id===run.current,here=z.id===run.current;
@@ -3073,7 +3073,15 @@ function ashMapMarkup(run,mini=false){
   const symbol=!here&&name?`<circle cx="${c.x}" cy="${c.y}" r="${mini?6:8}" fill="${color}" stroke="#091a26" stroke-width="2"/>`:'';
   return `<g><path d="${paths}" fill="${fill}" fill-opacity="${seen?'.98':'.55'}" stroke="${here?'#a2f3ff':name?color:'#7c9bae'}" stroke-width="${here?3:1.8}" stroke-linejoin="round"/>${symbol}${playerMark}</g>`;
  }).join('');
- const annotations=mini?'':markers.sort((a,b)=>a.c.y-b.c.y).map((m,i)=>{const y=Math.min(H-22,Math.max(26,26+i*32)),x=mapW+8;return `<g class="ash-map-annotation"><path d="M${m.c.x} ${m.c.y} L${x-10} ${y} L${x+3} ${y}" fill="none" stroke="${m.color}" stroke-width="1.8" opacity=".8"/><circle cx="${x+8}" cy="${y}" r="5" fill="${m.color}"/><text x="${x+20}" y="${y+4}" fill="${m.color}" font-size="13" font-weight="800">${m.name}</text></g>`;}).join('');
+ // Compact objective badges are anchored to their rooms: no map-spanning leader lines.
+ // For dense maps, the journal below the map is the full readable index.
+ const annotations=mini?'':markers.map(m=>{
+  const label=m.name==='EXTRACTION'?'EXTRACTION':m.name;
+  const textWidth=Math.max(48,label.length*7.1+18);
+  const x=Math.max(4,Math.min(mapW-textWidth-4,m.c.x+17));
+  const y=Math.max(16,Math.min(mapH-8,m.c.y-13));
+  return `<g class="ash-map-label" pointer-events="none"><rect x="${x}" y="${y-13}" width="${textWidth}" height="19" rx="5" fill="#091e2b" stroke="${m.color}" stroke-opacity=".65"/><circle cx="${x+9}" cy="${y-3}" r="3" fill="${m.color}"/><text x="${x+16}" y="${y+1}" fill="${m.color}" font-size="11" font-weight="800">${label}</text></g>`;
+ }).join('');
  const svg=`<svg class="${mini?'ash-map-mini-svg':'ash-map-full-svg'}" xmlns="http://www.w3.org/2000/svg" ${mini?'':`width="${Math.ceil(W)}" height="${Math.ceil(H)}"`} viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte tactique des salles connues"><defs><pattern id="ash-map-grid-${mini?'mini':'full'}" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" fill="none" stroke="#2a4556" stroke-width=".6" opacity=".5"/></pattern></defs><rect width="${W}" height="${H}" fill="#0b1e2c"/><rect width="${W}" height="${H}" fill="url(#ash-map-grid-${mini?'mini':'full'})"/>${links}${routeLines}${tiles}${annotations}</svg>`;
  return svg;
 }
@@ -3082,9 +3090,30 @@ function ashMapPoiJournal(run){
  const known=run.rooms.filter(z=>z.seen||visited.has(z.id)||z.id===run.current);
  const items=known.map(z=>{const name=isExit(z.id,run)?'Extraction':isArena(z.id,run)?'Arène':isBoss(z.id,run)?'Boss':z.kind==='outpost'?'Balise':/med|heal|soin/i.test(String(z.kind||'')+' '+String(z.fieldRole||''))?'Soins':null;return name?{name,id:z.id}:null;}).filter(Boolean);
  if(!items.length)return '<div class="ash-map-poi-empty">Aucun point d’intérêt identifié pour le moment.</div>';
- return '<div class="ash-map-poi-list">'+items.map(p=>`<span class="ash-map-poi">${p.name} · salle ${p.id+1}</span>`).join('')+'</div>';
+ return '<div class="ash-map-poi-list">'+items.map(p=>`<button type="button" class="ash-map-poi ash-map-poi-action" data-ash-map-room="${p.id}" aria-label="Centrer la carte sur ${p.name}, salle ${p.id+1}">${p.name} · salle ${p.id+1} ⌖</button>`).join('')+'</div>';
 }
 
+// Map POI interaction uses the existing map overlay; no gameplay button is added.
+document.addEventListener('click',function(event){
+ const btn=event.target.closest?.('[data-ash-map-room]');if(!btn)return;
+ const roomId=Number(btn.dataset.ashMapRoom),run=data?.run;
+ if(!run||!Number.isInteger(roomId))return;
+ const room=run.rooms?.[roomId];if(!room)return;
+ const viewport=document.querySelector('.ash-map-scroll');const svg=viewport?.querySelector('svg');
+ if(!viewport||!svg)return;
+ const rect=svg.getBoundingClientRect();const bounds=svg.viewBox?.baseVal;
+ if(!bounds||!rect.width)return;
+ // Determine room center using the same world grid and geometry as ashMapMarkup.
+ const known=new Set([...(run.visited||[]),run.current,...(run.intelRooms||[]),...ashLabRecon(run)]);
+ const nodes=run.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy)&&(z.seen||known.has(z.id)));
+ const scale=run.geometryVersion===31?1/3:1;
+ const ex=z=>{const c=roomGeom(z).cells||[[0,0]];return {l:z.gx+Math.min(...c.map(p=>p[0]))*scale,t:z.gy+Math.min(...c.map(p=>p[1]))*scale,r:z.gx+(Math.max(...c.map(p=>p[0]))+1)*scale,b:z.gy+(Math.max(...c.map(p=>p[1]))+1)*scale};};
+ if(!nodes.length)return;
+ const boundsRooms=nodes.map(ex),target=ex(room);
+ const x=((target.l+target.r)/2-Math.min(...boundsRooms.map(e=>e.l)))*104+26;
+ const y=((target.t+target.b)/2-Math.min(...boundsRooms.map(e=>e.t)))*104+26;
+ viewport.scrollTo({left:Math.max(0,x*rect.width/bounds.width-viewport.clientWidth/2),top:Math.max(0,y*rect.height/bounds.height-viewport.clientHeight/2),behavior:'smooth'});
+});
 let ashLastMiniSignature='';
 function ashRenderMiniMap(run){
  const target=$('ashMiniMap');if(!target)return;
