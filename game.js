@@ -2015,8 +2015,9 @@ function updateFieldEvent(room,dt){
 
 // ENV V3: image layer only; old Canvas shapes remain as fallback.
 const ashEnvV3Images={};
-for(const kind of ['barrel','capacitor','medic','scanner','relay','salvage','cache','stabilizer','distress','laser','thermal','regulator','outpost','chest']){
- for(const state of ['ready','used','primed','spent']){
+const ashEnvV31States={barrel:['ready','primed','spent'],capacitor:['ready','primed','spent'],medic:['ready','active','used'],scanner:['ready','active','used'],relay:['ready','active','used'],salvage:['ready','active','used'],cache:['ready','active','used'],stabilizer:['ready','active','used'],distress:['ready','active','used'],laser:['ready','active','used'],thermal:['ready','active','used'],regulator:['ready','active','used'],outpost:['ready','active','used'],chest:['ready','active','used']};
+for(const [kind,states] of Object.entries(ashEnvV31States)){
+ for(const state of states){
   const im=new Image();im.src='assets/env-v3/'+kind+'_'+state+'.png';ashEnvV3Images[kind+'_'+state]=im;
  }
 }
@@ -2068,7 +2069,7 @@ function drawFieldEvent(room){
    cx.strokeStyle=accent;cx.lineWidth=4;cx.beginPath();cx.arc(0,0,25,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,ev.hold/.9));cx.stroke();
   }
  }
- ashEnvV3Paint(ev.kind==='medic'?'medic':ev.kind==='cache'?'cache':ev.kind==='relay'?'relay':ev.kind==='salvage'?'salvage':ev.kind==='stabilizer'?'stabilizer':ev.kind==='distress'?'distress':'scanner',used?'used':'ready',0,0,46);
+ ashEnvV3Paint(ashEnvV31States[ev.kind]?ev.kind:'scanner',used?'used':ev.state==='active'?'active':'ready',0,0,46);
  cx.restore();
 }
 function igniteInteractable(room,obj){
@@ -4087,6 +4088,7 @@ function drawRefinedChest(room,r){
  if(fx>0){
   cx.globalAlpha=fx;cx.strokeStyle=accent;cx.lineWidth=2.5;cx.beginPath();cx.arc(0,1,30+(1-fx)*16,0,Math.PI*2);cx.stroke();cx.globalAlpha=1;
  }
+ ashEnvV3Paint('chest',opened?'used':'ready',0,0,60);
  cx.restore();
 }
 
@@ -4109,7 +4111,8 @@ function drawRefinedOutpost(room){
  if(active){cx.globalAlpha=.36;cx.strokeStyle='#7af8db';cx.lineWidth=2;cx.beginPath();cx.arc(0,-33,11+2*Math.sin(t*2),-Math.PI*.85,Math.PI*.15);cx.stroke();cx.restore();}
  else cx.restore();
  cx.save();cx.textAlign='center';cx.fillStyle=active?'#a0f7e2':'#d4e8ee';cx.font='bold 10px sans-serif';
- /* La lumière de la balise indique son état, sans étiquette. */cx.restore();
+ /* La lumière de la balise indique son état, sans étiquette. */ashEnvV3Paint('outpost',active?'active':'ready',0,0,60);
+ cx.restore();
 }
 
 function extractionContested(room){return room.enemies.some(e=>length(e,{x:180,y:195})<105);}

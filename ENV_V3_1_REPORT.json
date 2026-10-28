@@ -1,0 +1,32 @@
+{
+  "version": "V3.1",
+  "base": "ASHFALL_ENV_GRAPHICS_V3_INTEGRE.zip",
+  "new_active_states": [
+    "medic",
+    "scanner",
+    "relay",
+    "salvage",
+    "cache",
+    "stabilizer",
+    "distress",
+    "laser",
+    "thermal",
+    "regulator",
+    "outpost",
+    "chest"
+  ],
+  "render_wiring": [
+    "field events active/ready/used",
+    "chests open/closed",
+    "outposts active/inactive",
+    "barrels and capacitors existing primed/spent"
+  ],
+  "not_wired": [
+    "laser/thermal standalone sprites (hazard geometry generated elsewhere)",
+    "regulator standalone sprite (existing event uses stabilizer)",
+    "extraction pad remains procedural for progress fidelity"
+  ],
+  "browser_test": "not performed",
+  "iphone_test": "not performed",
+  "gameplay_logic_changed": false
+}
