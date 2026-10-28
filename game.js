@@ -2485,11 +2485,16 @@ function ashPowerReport(){
 }
 function ashRenderPower(){
  const host=document.getElementById('ashPowerV3');if(!host||data.run)return;
+ const wasOpen=!!host.querySelector('details[open]');
  const p=ashPowerReport();
+ const active=p.synergies.filter(s=>s.active);
  host.innerHTML='<div class="ash-power-head"><span>PUISSANCE TOTALE</span><strong>'+p.total.toLocaleString('fr-BE')+'</strong></div>'+
- '<div class="ash-power-grid"><span>⚔ Offensive <b>'+p.offense+'</b></span><span>♥ Survie <b>'+p.survival+'</b></span><span>➤ Mobilité <b>'+p.mobility+'</b></span><span>◈ Utilité <b>'+p.utility+'</b></span></div>'+
+ '<div class="ash-power-grid"><span>⚔ <em>Att.</em> <b>'+p.offense+'</b></span><span>♥ <em>Survie</em> <b>'+p.survival+'</b></span><span>➤ <em>Mobil.</em> <b>'+p.mobility+'</b></span><span>◈ <em>Util.</em> <b>'+p.utility+'</b></span></div>'+
+ '<div class="ash-power-active"><span>Compatibilités actives</span><b>'+active.length+' / '+p.synergies.length+'</b></div>'+
+ (active.length?'<div class="ash-power-active-list">'+active.map(s=>'<span>◆ '+s.name+'</span>').join('')+'</div>':'')+
+ '<details class="ash-power-details"'+(wasOpen?' open':'')+'><summary>Détails de puissance et synergies</summary>'+
  '<div class="ash-power-synergy"><b>COMPATIBILITÉS D’ÉQUIPEMENT</b>'+p.synergies.map(s=>'<div class="'+(s.active?'active':'')+'">'+(s.active?'◆':'◇')+' '+s.name+' <small>'+(s.active?'Association détectée — bonus non activé':'Non assemblée')+'</small></div>').join('')+'</div>'+
- '<p class="ash-power-note">Score expérimental · ne déverrouille encore aucun contenu. Synergies détectées sans bonus de combat.</p>';
+ '<p class="ash-power-note">Score expérimental · ne déverrouille encore aucun contenu. Synergies détectées sans bonus de combat.</p></details>';
 }
 
 function renderRefugeCharacter(){
