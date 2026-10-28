@@ -1002,3 +1002,32 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 .ash933-loot-bag .ash927-compare{text-align:center}
 /* Catalogue V1 : véritables illustrations d'objets au bilan de mission. */
 .ash-end-item-art .ash952-gear-img{display:block;width:56px;height:56px;max-width:100%;max-height:100%;object-fit:contain}
+
+/* ASHFALL Refuge V2.3 — atelier compact, mobile-first */
+#ash-v21-workshop-panel .ash-ws-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 8px}
+#ash-v21-workshop-panel .ash-ws-kicker{font-size:10px;letter-spacing:.16em;color:#e4b574;font-weight:800}
+#ash-v21-workshop-panel .ash-ws-header h2{margin:5px 0;font-size:23px}
+#ash-v21-workshop-panel .ash-ws-subtitle{margin:0;color:#a7c0ce;font-size:13px}
+#ash-v21-workshop-panel .ash-ws-resource{flex-shrink:0;min-width:90px;padding:12px;border:1px solid #38637b;border-radius:14px;background:#122e40;text-align:center}
+#ash-v21-workshop-panel .ash-ws-resource small{display:block;color:#a9c7d3;font-size:9px;letter-spacing:.07em}
+#ash-v21-workshop-panel .ash-ws-resource strong{font-size:23px;color:#80dfd3}
+#ash-v21-workshop-panel .ash-ws-wallet{color:#b4cbd7;font-size:12px;margin:0 0 14px}
+#ash-v21-workshop-panel .ash-ws-filters{display:flex;gap:7px;margin-bottom:13px}
+#ash-v21-workshop-panel .ash-ws-filters button{flex:1;min-width:0;padding:10px 5px;border-radius:10px;background:#112c3d;border:1px solid #35586c;color:#c9d9e1;font-size:12px;font-weight:700}
+#ash-v21-workshop-panel .ash-ws-filters button.active{background:#205267;border-color:#75c9d4;color:white}
+#ash-v21-workshop-panel .ash-ws-instruction{font-size:12px;color:#a5bac5;line-height:1.45;margin:0 0 12px}
+#ash-v21-workshop-panel .ash-ws-list{display:grid;gap:8px}
+#ash-v21-workshop-panel details.ash-ws-compact{display:block;margin:0;padding:0;border:1px solid #35596e;border-radius:13px;background:#112d3e;overflow:hidden}
+#ash-v21-workshop-panel details.ash-ws-compact[hidden]{display:none}
+#ash-v21-workshop-panel .ash-ws-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;padding:13px 14px;list-style:none;min-height:64px}
+#ash-v21-workshop-panel .ash-ws-summary::-webkit-details-marker{display:none}
+#ash-v21-workshop-panel .ash-ws-summary-info{display:grid;gap:4px;min-width:0}
+#ash-v21-workshop-panel .ash-ws-summary-info strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ash-v21-workshop-panel .ash-ws-summary-info small{font-size:11px;color:#a9c3d1}
+#ash-v21-workshop-panel .ash-ws-summary-side{display:flex;align-items:center;gap:8px;flex-shrink:0}
+#ash-v21-workshop-panel .ash-ws-equipped{font-size:9px;letter-spacing:.02em}
+#ash-v21-workshop-panel .ash-ws-chevron{color:#86cdd2;font-size:24px;line-height:1;transition:transform .15s}
+#ash-v21-workshop-panel details[open] .ash-ws-chevron{transform:rotate(180deg)}
+#ash-v21-workshop-panel .ash-ws-detail{border-top:1px solid #35596e;padding:13px;display:grid;gap:10px}
+#ash-v21-workshop-panel .ash-ws-detail-hint{font-size:12px;color:#a7d6d4;margin:0}
+#ash-v21-workshop-panel .ash-ws-detail button{min-height:44px}

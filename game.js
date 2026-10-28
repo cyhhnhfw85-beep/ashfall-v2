@@ -4226,9 +4226,9 @@ function ashWorkshopRender(){
   const actions=`<button type="button" data-ash-ws-action="upgrade" data-ash-ws-id="${safe(w.id)}" ${!up||data.credits<up.credits||comps<up.components?'disabled':''}>${up?`Améliorer · ${up.credits} crédits + ${up.components} composants`:'Amélioration maximale'}</button>`+
    `<div class="ash-ws-opt"><small>Optimisation · ${opt.credits} crédits + ${opt.components} composants</small>${opts.map(([key,label])=>`<button type="button" data-ash-ws-action="optimize" data-ash-ws-id="${safe(w.id)}" data-ash-ws-stat="${key}" ${w.optimized===key||data.credits<opt.credits||comps<opt.components?'disabled':''}>${safe(label)}${w.optimized===key?' ✓':''}</button>`).join('')}</div>`+
    (on?'<small>Objet équipé : recyclage désactivé</small>':`<button type="button" class="ash-ws-recycle" data-ash-ws-action="recycle" data-ash-ws-id="${safe(w.id)}">Recycler · +${yieldComponents} composants</button>`);
-  return `<article class="ash-ws-card"><div><strong>${safe(w.name)}</strong> ${on?'<span class="ash-ws-equipped">ÉQUIPÉ</span>':''}<small>${safe(w.rar)} · Niveau ${Number(w.level)||1} · +${Number(w.upgrade)||0}/5</small></div><div class="ash-ws-actions">${actions}</div></article>`;
+  return `<details class="ash-ws-card ash-ws-compact" data-ash-ws-type="${w.slot==='weapon'?'weapon':'gear'}"><summary class="ash-ws-summary"><span class="ash-ws-summary-info"><strong>${safe(w.name)}</strong><small>${safe(w.rar)} · Nv ${Number(w.level)||1} · +${Number(w.upgrade)||0}/5</small></span><span class="ash-ws-summary-side">${on?'<span class="ash-ws-equipped">ÉQUIPÉ</span>':''}<span class="ash-ws-chevron" aria-hidden="true">⌄</span></span></summary><div class="ash-ws-actions ash-ws-detail"><p class="ash-ws-detail-hint">${up?`Prochaine amélioration : +${Number(w.upgrade||0)+1} · ${up.credits} crédits et ${up.components} composants`:'Amélioration maximale atteinte'}</p>${actions}</div></details>`;
  }).join('');
- panel.innerHTML=`<h2>ATELIER</h2><p class="ash-ws-balance">${data.credits} crédits · <strong>${comps} composants</strong></p><p>Améliore, optimise ou recycle ton matériel. Les objets équipés ne peuvent pas être recyclés.</p><div class="ash-ws-list">${cards||'<p>Aucun équipement disponible.</p>'}</div>`;
+ panel.innerHTML=`<div class="ash-ws-header"><div><span class="ash-ws-kicker">REFUGE / FABRICATION</span><h2>ATELIER</h2><p class="ash-ws-subtitle">Renforce et recycle ton équipement.</p></div><div class="ash-ws-resource"><small>COMPOSANTS</small><strong>${comps}</strong></div></div><div class="ash-ws-wallet">${data.credits} crédits disponibles</div><div class="ash-ws-filters" role="group" aria-label="Filtrer les équipements"><button type="button" data-ash-ws-filter="all" class="active" aria-pressed="true">Tout</button><button type="button" data-ash-ws-filter="weapon" aria-pressed="false">Armes</button><button type="button" data-ash-ws-filter="gear" aria-pressed="false">Équipements</button></div><p class="ash-ws-instruction">Sélectionne un objet pour afficher ses actions. Les objets équipés sont protégés du recyclage.</p><div class="ash-ws-list">${cards||'<p>Aucun équipement disponible.</p>'}</div>`;
 }
 function ashWorkshopAction(op,id,stat){
  if(data.run||!data.eq2)return;
@@ -4250,6 +4250,12 @@ document.getElementById('ash-v21-workshop-panel')?.addEventListener('click',e=>{
  const button=e.target.closest('[data-ash-ws-action]');if(!button)return;
  ashWorkshopAction(button.dataset.ashWsAction,button.dataset.ashWsId,button.dataset.ashWsStat);
 });
+ document.getElementById('ash-v21-workshop-panel')?.addEventListener('click',e=>{
+  const filterButton=e.target.closest('[data-ash-ws-filter]');if(!filterButton)return;
+  const panel=document.getElementById('ash-v21-workshop-panel');const chosen=filterButton.dataset.ashWsFilter;
+  panel.querySelectorAll('[data-ash-ws-filter]').forEach(b=>{const selected=b===filterButton;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));});
+  panel.querySelectorAll('[data-ash-ws-type]').forEach(card=>{card.hidden=chosen!=='all'&&card.dataset.ashWsType!==chosen;});
+ });
 document.getElementById('ash-v21-workshop')?.addEventListener('click',()=>ashWorkshopRender());
 
 // 0.8.9.8 — Navigation du refuge dans la même portée que l'état du jeu.
