@@ -2227,13 +2227,15 @@ function canTargetInteractable(px,py,obj,room){
 }
 function tryHitInteractable(room,x,y){
  for(const obj of room.interactables||[]){
-  if(obj.state!=='spent'&&Math.hypot(x-obj.x,y-obj.y)<obj.radius+4){
-   igniteInteractable(room,obj);return true;
+  if(obj.state==='intact'&&Math.hypot(x-obj.x,y-obj.y)<obj.radius+4){
+   return igniteInteractable(room,obj);
   }
  }
  return false;
 }
-function enter(id,from){let r=data.run,room=r.rooms[id];combatFxReset(room);
+function enter(id,from){let r=data.run,room=r?.rooms?.[id];
+ if(!room){msg('⚠ Transition impossible : salle introuvable.');return false;}
+ combatFxReset(room);
  // Une extraction n'a jamais le droit de survivre à un changement de salle.
  if(r.exitStarted||r.exitCharge)cancelExtraction(r,from===null?'':'tu as quitté la salle');
  r.current=id;room.seen=true;if(!r.visited.includes(id))r.visited.push(id);
@@ -2413,8 +2415,8 @@ function enforceArena(){let r=data.run;if(!r||!isArena(r.current,r))return false
 function locked(){let r=data.run;return !!(r&&((isArena(r.current,r)||isBoss(r.current,r))&&!r.rooms[r.current].cleared))}
 function autoSecure(room){if(room&&!room.cleared&&room.spawned&&room.enemies.length===0&&room.kind!=='arena'&&room.kind!=='boss'&&!incidentBlocksClear(room)){room.cleared=true;return true}return false}
 function canPassDoor(to){
- let r=data.run;if(!r||locked())return false;
- let room=r.rooms[r.current];
+ let r=data.run;if(!r||locked()||!Number.isInteger(to)||!r.rooms?.[to])return false;
+ let room=r.rooms[r.current];if(!room)return false;
  // Retour en arriere possible ; pas de progression vers une salle inexploree avant la fin des renforts.
  if(incidentBlocksClear(room)&&!r.visited.includes(to))return false;
  return !!(room.cleared||r.visited.includes(to)||r.rooms[to].seen);
