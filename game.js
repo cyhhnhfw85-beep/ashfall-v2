@@ -751,11 +751,17 @@ function roomWalls(room){
  wallCache.set(room,walls);return walls;
 }
 // Camera only affects rendering. World coordinates and collision data stay untransformed.
+// Experimental 2.5D foreshortening. URL ?camera=off disables it; ?camera=on enables it.
+// The preference is saved locally; this is NOT a true 3D perspective camera.
+const ASH_CAMERA_TILT_DEG=25;
+let ashCameraTiltEnabled=(()=>{try{const q=new URLSearchParams(location.search).get('camera');if(q==='off'||q==='on'){localStorage.setItem('ashfall-camera-tilt',q);return q==='on'}return localStorage.getItem('ashfall-camera-tilt')!=='off'}catch(_){return true}})();
+function ashCameraYScale(){return ashCameraTiltEnabled?Math.cos(ASH_CAMERA_TILT_DEG*Math.PI/180):1;}
+window.ashfallSetCameraTilt=(enabled)=>{ashCameraTiltEnabled=!!enabled;try{localStorage.setItem('ashfall-camera-tilt',enabled?'on':'off')}catch(_){ }roomCamera.id=-1;};
 let roomCamera={x:0,y:0,zoom:1,id:-1};
 function cameraFor(room){
  const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
- const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/zoom;
+ const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*ashCameraYScale());
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
  const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
@@ -3953,8 +3959,8 @@ function combatFxPaintHurt(){
 
 function draw(){let r=data.run;if(!r)return;let room=r.rooms[r.current];combatFxReset(room);let sec=sectorOf(room),theme=SECTORS[sec];
  cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,360,cv.height);cx.save();
- const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom,-camera.x*camera.zoom,-camera.y*camera.zoom);
- cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/camera.zoom);
+ const camera=cameraFor(room);window.__ashfallCamera={x:camera.x,y:camera.y,zoom:camera.zoom};cx.setTransform(camera.zoom,0,0,camera.zoom*ashCameraYScale(),-camera.x*camera.zoom,-camera.y*camera.zoom*ashCameraYScale());
+ cx.fillStyle='#091b25';cx.fillRect(camera.x,camera.y,360/camera.zoom,cv.height/(camera.zoom*ashCameraYScale()));
  // V44: la couche statique couvre toutes les cellules ; aucun effet anime n'entre dans le cache.
  drawCachedSurface(room,sec,theme);
  drawDynamicHazard(room,sec);
