@@ -1031,3 +1031,20 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 #ash-v21-workshop-panel .ash-ws-detail{border-top:1px solid #35596e;padding:13px;display:grid;gap:10px}
 #ash-v21-workshop-panel .ash-ws-detail-hint{font-size:12px;color:#a7d6d4;margin:0}
 #ash-v21-workshop-panel .ash-ws-detail button{min-height:44px}
+
+/* ASHFALL Atelier V2.6 — cohérence visuelle avec Laboratoire K-17 */
+#ash-v21-workshop-panel .ash-ws-hero{position:relative;overflow:hidden;border:1px solid #376176;border-radius:16px;padding:23px 18px 18px;margin-bottom:23px;background:radial-gradient(ellipse at 83% 22%,#315261 0%,transparent 47%),linear-gradient(145deg,#112d3d,#091924 78%);box-shadow:inset 0 0 38px #091c29;isolation:isolate}
+#ash-v21-workshop-panel .ash-ws-hero-mark{position:absolute;right:15px;top:4px;font-size:112px;line-height:1;color:#e9b772;opacity:.12;pointer-events:none;transform:rotate(-15deg);z-index:-1}
+#ash-v21-workshop-panel .ash-ws-hero .ash-ws-kicker{font-size:10px;letter-spacing:2px;font-weight:800;color:#e9b772}
+#ash-v21-workshop-panel .ash-ws-hero h2{font-size:27px;letter-spacing:2px;margin:12px 0 6px;color:#f0f5f9}
+#ash-v21-workshop-panel .ash-ws-hero p{font-size:13px;line-height:1.55;max-width:270px;color:#b6cad5;margin:0 0 25px}
+#ash-v21-workshop-panel .ash-ws-hero-stats{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10px;font-weight:800;letter-spacing:1px;color:#b7cdd9}
+#ash-v21-workshop-panel .ash-ws-hero-stats b{font-size:15px;color:#8ce1d6;letter-spacing:0}
+#ash-v21-workshop-panel .ash-ws-hero-meter{height:7px;border-radius:12px;background:#284657;margin-top:10px;overflow:hidden}
+#ash-v21-workshop-panel .ash-ws-hero-meter i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#996f42,#e9b772);opacity:.85}
+#ash-v21-workshop-panel .ash-ws-section-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 9px}
+#ash-v21-workshop-panel .ash-ws-section-heading strong{font-size:12px;letter-spacing:1.3px;color:#e8f0f4}
+#ash-v21-workshop-panel .ash-ws-section-heading small{font-size:10px;color:#a8bfcb;text-align:right}
+#ash-v21-workshop-panel .ash-ws-section-help{font-size:12px;color:#a9bfcb;line-height:1.5;margin:0 0 14px}
+#ash-v21-workshop-panel .ash-ws-footer-hint{font-size:11px;color:#95b4c1;margin:15px 0 0;text-align:center}
+#ash-v21-workshop-panel .ash-ws-filters{margin-bottom:15px}
