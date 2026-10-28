@@ -1,0 +1,37 @@
+ASHFALL — AUDIT GÉNÉRAL / BUILD DE DÉPLOIEMENT — 28/10/2026
+
+SOURCE : archive utilisateur « ashfall-v2 - Copie.zip » (dossier GitHub Desktop complet).
+
+CONSTATS CONFIRMÉS
+1. Trois fichiers vitaux (game.js, index.html, service-worker.js) contenaient des marqueurs Git <<<<<<< / ======= / >>>>>>>, même dans le commit HEAD local. Ces marqueurs invalident le JavaScript.
+2. Le ZIP original incluait le dossier interne .git et son historique. Ne jamais copier .git dans un paquet de publication GitHub Pages.
+3. La version de code intégrée au conflit contenait deux branches concurrentes pour l'affichage des ennemis. Branche retenue : affichage 2D de sécurité (ennemis visibles), en attendant un vrai correctif 3D.
+4. Les effets de loot (afLootGlow) et le terminal d'extraction V2 sont présents dans la base corrigée.
+5. 146 fichiers historiques / rapports / scripts .md, .txt, .py sont écartés de ce paquet de déploiement, sans supprimer les sources originales.
+6. Les fichiers HTML, JS, CSS, assets, audio et images du jeu sont conservés. Aucun fichier de ressource utilisé n'est supprimé volontairement.
+
+CORRECTIONS EFFECTUÉES
+- Résolution des trois conflits en sélectionnant la branche HEAD de chaque section.
+- Suppression des marqueurs de conflit.
+- Désactivation du chargement du module expérimental des ennemis 3D (le fichier est conservé pour développement ultérieur).
+- Version de cache Service Worker et paramètre de game.js renouvelés.
+- ZIP à racine plate : index.html directement à la racine, aucun dossier .git ni dossier imbriqué « ashfall-v2 - Copie ».
+
+VÉRIFICATIONS AUTOMATISÉES
+- Analyse syntaxique Node.js de tous les fichiers JS conservés.
+- Vérification des références locales statiques src/href de index.html.
+- Test CRC ZIP.
+
+LIMITES
+- Aucun test iPhone ou navigateur réel n'a été exécuté.
+- Aucun test automatisé du gameplay, des sauvegardes ou des performances n'a été exécuté.
+- Les assets historiques non référencés n'ont PAS été supprimés : leur utilisation dynamique ne peut pas être exclue par un contrôle statique simple.
+- Ce ZIP ne résout pas automatiquement le conflit Git en cours dans GitHub Desktop. Il faut d'abord annuler le merge et conserver une sauvegarde avant remplacement.
+
+PUBLICATION PRUDENTE
+1. Sauvegarder séparément le dossier de dépôt local et les sauvegardes du jeu.
+2. Dans GitHub Desktop : Abort merge si une fusion est en cours.
+3. Copier uniquement le contenu du ZIP à la RACINE du dépôt (pas le ZIP lui-même ni un sous-dossier supplémentaire).
+4. Ne pas supprimer .git du dossier de travail GitHub Desktop. Le ZIP l'exclut uniquement pour la livraison.
+5. Examiner les changements dans GitHub Desktop avant commit ; ne pas supprimer des fichiers du dépôt sans contrôle.
+6. Tester sur iPhone AVANT de considérer la version comme stable.

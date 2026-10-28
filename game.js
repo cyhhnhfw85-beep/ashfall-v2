@@ -3891,19 +3891,8 @@ if(room.enemies.length){
  if(tactical){cx.save();cx.strokeStyle='#f8d68b';cx.lineWidth=2;cx.setLineDash([4,3]);cx.beginPath();cx.arc(tactical.x,tactical.y,25,0,Math.PI*2);cx.stroke();cx.setLineDash([]);cx.fillStyle='#ffe8b3';cx.font='bold 9px sans-serif';cx.textAlign='center';/* La cible tactique est identifiée par un anneau doré en pointillés. */cx.restore()}
 }
 drawFieldEvent(room);drawRefinedChest(room,r);if(room.kind==='outpost')drawRefinedOutpost(room);if(isExit(r.current,r))drawExtractionGround(r,room)
-<<<<<<< HEAD
 lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);/* Extraction V2.1 safety: legacy enemies rendered unconditionally until the 3D renderer is validated on iPhone. */
  drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
-=======
-lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);let bestiary3DRendered=false;
- if(window.AshBestiary3D && typeof window.AshBestiary3D.draw==='function'){
-   cx.save();
-   try{bestiary3DRendered=window.AshBestiary3D.draw(cx,e,sec,performance.now()/1000,guardian,player)===true;}
-   catch(err){if(!window.__ashBestiaryErrorLogged){console.warn('ASHFALL 3D enemy renderer:',err);window.__ashBestiaryErrorLogged=true;}}
-   finally{cx.restore();}
- }
- if(!bestiary3DRendered)drawEnemyGameplay(e,sec,performance.now()/1000+(e.x*.04),guardian);const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(e.x-bw/2,e.y+bhy,bw,5);cx.fillStyle=guardian?'#c99de5':'#79e0a1';cx.fillRect(e.x-bw/2,e.y+bhy,bw*Math.max(0,e.hp/e.max),5)}combatFxPaintBullets();if(isExit(r.current,r)&&r.exitStarted)drawExtractionCountdown(r,room);if((player.dashFlash||0)>0){cx.strokeStyle='#a5faff';cx.lineWidth=5;cx.beginPath();cx.arc(player.x,player.y,18+25*player.dashFlash/.22,0,Math.PI*2);cx.stroke()}if(player.inv<=0||Math.floor(player.inv*14)%2===0){
->>>>>>> cd5366b844fbafa093a2773b83ad885585f06c21
  // Graphics P2: read-only visual adapter, old drawing retained as atomic fallback.
  let aimX=player.facingX||1,aimY=player.facingY||0;
  // The last real player bullet supplies the actual fired direction, including spread.
