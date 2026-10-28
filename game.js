@@ -1024,7 +1024,7 @@ function freeChestWeaponLevel(run,room){
  if(run?.freeChestLootRule==='sector-v1'&&isLarge(run))return sectorOf(room);
  return run.current===6?3:run.current===7?2:run.current===5?1:0;
 }
-function environment(room){if(!room)return;let sec=sectorOf(room);if(room.envPhase===undefined)room.envPhase=0;if(room.hazardCooldown===undefined)room.hazardCooldown=2.5;if(room.hazardOn===undefined)room.hazardOn=false;if(room.hazardX===undefined)room.hazardX=sec===1?180:sec===2?240:180;}
+function environment(room){if(!room)return;let sec=sectorOf(room);if(room.envPhase===undefined)room.envPhase=0;if(room.hazardCooldown===undefined)room.hazardCooldown=2.5;if(room.hazardOn===undefined)room.hazardOn=false;if(room.hazardX===undefined)room.hazardX=sec===1?180:sec===2?240:180;if(data.run?.environmentV2&&room.hazardWarning===undefined)room.hazardWarning=0;}
 // Les ennemis ne peuvent pas apparaitre dans une hitbox solide.
 // La geometrie utilisee ici est celle du moteur de collisions joueur/projectiles.
 // Entry fairness V1: keep hostile spawns away from every connected doorway.
@@ -1281,7 +1281,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1633,7 +1633,7 @@ function prepareRoomInteractables(room){
    const y=cell[1]*CELL_H+70+((room.id*43+i*89+k*71)%245);
    const radius=17;
    const collides=roomWalls(room).some(rect=>rectTouches(x,y,radius+6,rect))||roomObstacles(room).some(rect=>rectTouches(x,y,radius+8,rect));
-   const nearDoor=doors(room.id).some(d=>{let p=roomDoor(room,d);return Math.hypot(x-p.x,y-p.y)<105});
+   const nearDoor=doors(room.id).some(d=>{let p=roomDoor(room,d);return Math.hypot(x-p.x,y-p.y)<(run.environmentV2?135:105)});
    const reserved=Math.hypot(x-180,y-110)<90||Math.hypot(x-180,y-195)<65;
    const crowded=room.interactables.some(o=>Math.hypot(x-o.x,y-o.y)<125);
    if(!collides&&!nearDoor&&!reserved&&!crowded){chosen={x,y};break}
@@ -2029,7 +2029,7 @@ function drawFieldEvent(room){
 }
 function igniteInteractable(room,obj){
  if(!obj||obj.state!=='intact')return false;
- obj.state='primed';obj.fuse=.85;
+ obj.state='primed';obj.fuse=data.run?.environmentV2?1.35:.85;
  window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:obj.x,y:obj.y}}));
  msg(obj.kind==='capacitor'?'⚡ Module instable : éloigne-toi !':'⚠ Baril instable : explosion imminente !');
  return true;
@@ -2067,7 +2067,7 @@ function updateInteractables(room,dt){
    if(other!==obj&&other.state==='intact'&&Math.hypot(other.x-obj.x,other.y-obj.y)<range)igniteInteractable(room,other);
   }
   window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:obj.x,y:obj.y}}));
-  if(player&&Math.hypot(player.x-obj.x,player.y-obj.y)<=range){hurt(obj.kind==='capacitor'?10:12,'explosion');}
+  if(player&&Math.hypot(player.x-obj.x,player.y-obj.y)<=range){hurt(data.run?.environmentV2?(obj.kind==='capacitor'?9:11):(obj.kind==='capacitor'?10:12),'explosion');}
   persist();
  }
 }
@@ -2122,7 +2122,7 @@ function tacticalObjectToTarget(room,visibleEnemies){
  for(const obj of objects){
   const range=obj.kind==='capacitor'?83:78;
   const playerDistance=Math.hypot(obj.x-player.x,obj.y-player.y);
-  if(playerDistance<=range+28)continue;
+  if(playerDistance<=range+(data.run?.environmentV2?48:28))continue;
   if(!canTargetInteractable(player.x,player.y,obj,room))continue;
   // Une réaction en chaîne proche du Nomade est aussi dangereuse.
   const riskyChain=objects.some(other=>other!==obj&&Math.hypot(other.x-obj.x,other.y-obj.y)<range&&Math.hypot(other.x-player.x,other.y-player.y)<(other.kind==='capacitor'?83:78)+28);
@@ -2160,7 +2160,7 @@ if(isLarge(r)){let reg=region();reg.maxSector=Math.max(reg.maxSector,room.sector
 environment(room);
 // Charge de securite du regulateur : desactive UN futur laser/event thermique, une fois.
 if(r.interactiveV51&&(r.hazardShields||0)>0&&(sectorOf(room)===1||sectorOf(room)===2)&&room.kind!=='exit'&&room.kind!=='outpost'&&room.kind!=='start'&&!room.cleared&&!room.hazardDisabled){
- room.hazardDisabled=true;room.hazardOn=false;r.hazardShields--;
+ room.hazardDisabled=true;room.hazardOn=false;if(r.environmentV2)room.hazardWarning=0;r.hazardShields--;
  room.hazardNeutralizedByTerminal=true;
 }
 prepareRoomInteractables(room);prepareRoomFieldEvent(room);initializeIncident(room);if(!room.spawned){room.spawned=true;room.enemies=enemiesFor(id);}
@@ -3974,14 +3974,14 @@ function drawDynamicHazard(room,sec){
  if(room.cleared||room.hazardDisabled)return;
  cx.save();
  if(sec===1){
-  cx.strokeStyle=room.hazardOn?'#7fe8ff':'#418baa';cx.lineWidth=room.hazardOn?7:2;
+  cx.strokeStyle=room.hazardOn?'#7fe8ff':room.hazardWarning>0?'#ffdb81':'#418baa';cx.lineWidth=room.hazardOn?7:room.hazardWarning>0?4:2;
   cx.beginPath();cx.moveTo(room.hazardX||180,42);cx.lineTo(room.hazardX||180,356);cx.stroke();
   cx.fillStyle='#bfeeff';cx.font='10px monospace';cx.textAlign='left';
   /* Le faisceau avertit visuellement du danger. */
  }else if(sec===2){
   cx.beginPath();cx.arc(room.hazardX||240,205,42,0,Math.PI*2);
-  cx.fillStyle=room.hazardOn?'#ff773977':'#b16d2f33';cx.fill();
-  cx.strokeStyle=room.hazardOn?'#ffc178':'#a7784c';cx.lineWidth=3;cx.stroke();
+  cx.fillStyle=room.hazardOn?'#ff773977':room.hazardWarning>0?'#ffd36a55':'#b16d2f33';cx.fill();
+  cx.strokeStyle=room.hazardOn?'#ffc178':room.hazardWarning>0?'#ffe1a0':'#a7784c';cx.lineWidth=3;cx.stroke();
   cx.fillStyle='#ffd6a8';cx.font='10px monospace';cx.textAlign='left';
   /* Le cercle thermique avertit visuellement du danger. */
  }
@@ -4356,7 +4356,7 @@ function transition(){
  return false;
 }
 function objective(name){let r=data.run;if(!r.objectives.includes(name))r.objectives.push(name)}
-function update(dt){if(!data.run||overlay)return;enforceArena();let r=data.run,room=r.rooms[r.current];if(r.eq2)e2Tick(dt,room);combatFxStep(dt,room);ashSweepFxStep(dt);if(Number.isFinite(r.elapsedSeconds))r.elapsedSeconds+=dt;environment(room);room._entryGrace=Math.max(0,(room._entryGrace||0)-dt);if(room.cleared){room.hazardOn=false;for(let i=bullets.length-1;i>=0;i--)if(bullets[i].enemy)bullets.splice(i,1)}if(sanitizeEnemyPositions(room))persist();let sec=sectorOf(room);room.envPhase+=dt; updateInteractables(room,dt);if(!data.run)return; if(!room.cleared&&!room.hazardDisabled&&room.kind!=='outpost'&&!isExit(r.current,r)&&r.current!==0&&(sec===1||sec===2)){room.hazardCooldown-=dt;if(room.hazardCooldown<=0){room.hazardOn=!room.hazardOn;room.hazardCooldown=room.hazardOn?1.15:2.9;if(!room.hazardOn)room.hazardX=sec===1?pick(105,255):pick(105,255)}if(room.hazardOn&&!(room._entryGrace>0)){let hit=sec===1?Math.abs(player.x-room.hazardX)<14&&player.y>50&&player.y<350:Math.hypot(player.x-room.hazardX,player.y-205)<42;if(hit){if(!room.hazardTick||room.hazardTick<=0){hurt(sec===1?11:15,'environnement');if(!data.run)return;room.hazardTick=.65}}}room.hazardTick=Math.max(0,(room.hazardTick||0)-dt)}player.inv=Math.max(0,player.inv-dt);player.fire=Math.max(0,player.fire-dt);player.dash=0;player.dashCooldown=Math.max(0,(player.dashCooldown||0)-dt);player.dashFlash=Math.max(0,(player.dashFlash||0)-dt);
+function update(dt){if(!data.run||overlay)return;enforceArena();let r=data.run,room=r.rooms[r.current];if(r.eq2)e2Tick(dt,room);combatFxStep(dt,room);ashSweepFxStep(dt);if(Number.isFinite(r.elapsedSeconds))r.elapsedSeconds+=dt;environment(room);room._entryGrace=Math.max(0,(room._entryGrace||0)-dt);if(room.cleared){room.hazardOn=false;if(r.environmentV2)room.hazardWarning=0;for(let i=bullets.length-1;i>=0;i--)if(bullets[i].enemy)bullets.splice(i,1)}if(sanitizeEnemyPositions(room))persist();let sec=sectorOf(room);room.envPhase+=dt; updateInteractables(room,dt);if(!data.run)return; if(!room.cleared&&!room.hazardDisabled&&room.kind!=='outpost'&&!isExit(r.current,r)&&r.current!==0&&(sec===1||sec===2)){room.hazardCooldown-=dt;if(r.environmentV2){if(room.hazardWarning>0){room.hazardWarning=Math.max(0,room.hazardWarning-dt);if(room.hazardWarning===0){room.hazardOn=true;room.hazardCooldown=1.1}}else if(room.hazardCooldown<=0){if(room.hazardOn){room.hazardOn=false;room.hazardCooldown=2.9;room.hazardX=pick(105,255)}else{room.hazardWarning=1.5;room.hazardCooldown=1.5}}}else if(room.hazardCooldown<=0){room.hazardOn=!room.hazardOn;room.hazardCooldown=room.hazardOn?1.15:2.9;if(!room.hazardOn)room.hazardX=sec===1?pick(105,255):pick(105,255)}if(room.hazardOn&&!(room._entryGrace>0)){let hit=sec===1?Math.abs(player.x-room.hazardX)<14&&player.y>50&&player.y<350:Math.hypot(player.x-room.hazardX,player.y-205)<42;if(hit){if(!room.hazardTick||room.hazardTick<=0){hurt(sec===1?11:15,'environnement');if(!data.run)return;room.hazardTick=.65}}}room.hazardTick=Math.max(0,(room.hazardTick||0)-dt)}player.inv=Math.max(0,player.inv-dt);player.fire=Math.max(0,player.fire-dt);player.dash=0;player.dashCooldown=Math.max(0,(player.dashCooldown||0)-dt);player.dashFlash=Math.max(0,(player.dashFlash||0)-dt);
 let vx=joy.x+(keyState.ArrowRight||keyState.d?1:0)-(keyState.ArrowLeft||keyState.a?1:0),vy=joy.y+(keyState.ArrowDown||keyState.s?1:0)-(keyState.ArrowUp||keyState.w?1:0),mag=Math.hypot(vx,vy);if(mag>1){vx/=mag;vy/=mag}player.dx=vx;player.dy=vy;if(mag>.15){player.facingX=vx;player.facingY=vy}advanceSolid(player,vx*150*(1+perkBonus('speed')+((r._emergencyUntil||0)>(r.elapsedSeconds||0)?[0,.20,.30,.40][perkCount('emergency')]:0)+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,vy*150*(1+perkBonus('speed')+((r._emergencyUntil||0)>(r.elapsedSeconds||0)?[0,.20,.30,.40][perkCount('emergency')]:0)+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,12,room);if(transition())return;
 updateIncident(room,dt);if(!data.run)return;
 if(room.activated&&isArena(r.current,r)&&room.enemies.length===0&&!room.cleared){room.arenaWave=(room.arenaWave||1)+1;if(room.arenaWave<=3){spawnReinforcement(room,room.arenaWave===2?7:4);if(room.arenaWave===3){const elite=enemiesFor(r.current).find(e=>e.type==='sentinel');const pos=spawnSafe(room,room.enemies,{x:180,y:105});if(elite&&pos)room.enemies.push({...elite,id:uid(),hp:Math.round(350*ashDifficultyFactor()),max:Math.round(350*ashDifficultyFactor()),...pos});}player.inv=Math.max(player.inv,.7);msg(`⚠ ARÈNE : vague ${room.arenaWave}/3 !`)}else{room.cleared=true;room.chest='closed';r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};const arenaReward=pick(150,250);r.earnedCredits+=arenaReward;r.economy.arena+=arenaReward;objective('arène');objective('arène-recherche-1');objective('arène-recherche-2');msg('🏆 VICTOIRE : coffre épique en cours d’ouverture !')}persist()}if(isBoss(r.current,r)&&room.spawned&&room.enemies.length===0&&!room.cleared){room.cleared=true;region().bossDefeated=true;data.unlockHelix=true;r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=450;r.economy.boss+=450;objective('boss-k17');objective('boss-recherche');msg('🏆 GARDIEN K-17 VAINCU ! HELIX DÉBLOQUÉ (future région).');persist()}if(!room.cleared&&room.spawned&&room.enemies.length===0&&!isArena(r.current,r)&&!isBoss(r.current,r)&&!incidentBlocksClear(room)){room.cleared=true;if(room.kind!=='start'&&room.kind!=='outpost'){r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=20;r.economy.room+=20;objective('combat-'+r.current)}msg('✓ Salle sécurisée : nouvelles portes ouvertes !');persist()}
