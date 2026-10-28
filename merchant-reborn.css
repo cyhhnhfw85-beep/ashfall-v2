@@ -50,3 +50,23 @@
 #refuge-page-merchant .mr-confirm{min-height:44px;padding:10px;}
 @media (max-width:360px){#refuge-page-merchant .mr-grid{gap:5px;}#refuge-page-merchant .mr-item{min-height:100px;}#refuge-page-merchant .mr-art{width:43px;height:43px;}}
 @media (prefers-reduced-motion:no-preference){#refuge-page-merchant .mr-detail{animation:mrCompactRise .15s ease-out;}@keyframes mrCompactRise{from{opacity:.5;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}
+
+/* ASHFALL V9.5.9 merchant art enlargement — Buy and Sell only.
+   Keep card dimensions, labels, prices, borders and grid unchanged. */
+#refuge-page-merchant .mr-grid .mr-item .mr-art{overflow:visible;position:relative;isolation:isolate;}
+#refuge-page-merchant .mr-grid .mr-item .mr-art img.ash952-gear-img,
+#refuge-page-merchant .mr-grid .mr-item .mr-art img.weapon-art-img{
+  display:block!important;width:100%!important;height:100%!important;
+  max-width:none!important;max-height:none!important;object-fit:contain!important;
+  transform:translateY(-9px) scale(1.56);transform-origin:center center;
+  pointer-events:none;
+}
+#refuge-page-merchant .mr-grid .mr-item .mr-art svg{
+  transform:translateY(-7px) scale(1.4);transform-origin:center center;
+}
+#refuge-page-merchant .mr-grid .mr-item .mr-name,
+#refuge-page-merchant .mr-grid .mr-item .mr-cost{position:relative;z-index:1;}
+@media(max-width:360px){
+ #refuge-page-merchant .mr-grid .mr-item .mr-art img.ash952-gear-img,
+ #refuge-page-merchant .mr-grid .mr-item .mr-art img.weapon-art-img{transform:translateY(-7px) scale(1.45);}
+}
