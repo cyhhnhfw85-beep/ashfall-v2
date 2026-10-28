@@ -486,7 +486,7 @@ function ashRenderSurvivorProgress(){
 function ashHomeUpdate(){
  const p=typeof data.playerPseudo==='string'?data.playerPseudo:'';
  const btn=$('ashHomePseudoButton');if(btn){btn.textContent=p||'CHOISIS TON PSEUDO';btn.disabled=!!p;btn.classList.toggle('is-locked',!!p)}
- const hint=$('ashHomePseudoHint');if(hint)hint.textContent=p?'IDENTITÉ VALIDÉE':'Appuie pour choisir ton identité';
+ const hint=$('ashHomePseudoHint');if(hint)hint.textContent=p?'':'Appuie pour choisir ton identité';
  const s=data.ashHomeStats||{};const n=k=>Math.max(0,Math.floor(Number(s[k])||0));
  if($('ashHomeBosses'))$('ashHomeBosses').textContent=n('bosses').toLocaleString('fr-FR');
  if($('ashHomeKills'))$('ashHomeKills').textContent=n('kills').toLocaleString('fr-FR');
