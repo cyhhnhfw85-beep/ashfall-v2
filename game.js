@@ -3036,72 +3036,55 @@ function ashLabRecon(run){
  return result;
 }
 function ashMapMarkup(run,mini=false){
- if(!run||!run.rooms||!run.rooms.some(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy)))return mini?'<span class="ash-map-unavailable">—</span>':'';
- const base=mini?46:50, sx=base,sy=base*1.06,subx=mini?40:45,suby=mini?42:47;
- const current=run.rooms[run.current],mapNodes=run.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));
- // 0.8.9.57: la mini-carte est un journal permanent, non une fenetre +/- 1 salle.
- // visited est conservé comme source de verité lors de la reprise d'anciennes sauvegardes.
+ const current=run.rooms[run.current];
+ if(!current)return '';
  const visited=new Set(run.visited||[]),intel=new Set([...(run.intelRooms||[]),...ashLabRecon(run)]);
  const known=z=>!!z.seen||visited.has(z.id)||intel.has(z.id)||z.id===run.current;
- const nodes=mapNodes.filter(z=>known(z)&&(!mini||(Math.abs(z.gx-current.gx)<=1.6&&Math.abs(z.gy-current.gy)<=1.6)));
- const bounds=mini?[{gx:current.gx-1.45,gy:current.gy-1.45},{gx:current.gx+1.45,gy:current.gy+1.45}]:(nodes.length?nodes:[current]);
- const minx=Math.min(...bounds.map(z=>z.gx));
- const miny=Math.min(...bounds.map(z=>z.gy));
- const maxx=Math.max(...bounds.map(z=>z.gx+(run.geometryVersion===25?roomGeom(z).w/CELL_W-1:0)));
- const maxy=Math.max(...bounds.map(z=>z.gy+(run.geometryVersion===25?roomGeom(z).h/CELL_H-1:0)));
- const pad=mini?7:22, annotationGutter=mini?0:142;
- const naturalW=(maxx-minx)*sx+2*pad+subx, naturalH=(maxy-miny)*sy+2*pad+suby;
- const W=mini?Math.max(156,naturalW):Math.max(340,naturalW+annotationGutter);
- const H=mini?Math.max(156,naturalH):Math.max(300,naturalH);
- const offsetX=mini?(W-naturalW)/2:Math.max(0,(W-annotationGutter-naturalW)/2);
- const offsetY=(H-naturalH)/2;
- const center=z=>({x:(z.gx-minx)*sx+pad+offsetX+subx/2,y:(z.gy-miny)*sy+pad+offsetY+suby/2});
- const visibleIds=new Set(nodes.map(z=>z.id));
- const links=(run.edges||[]).filter(e=>e.length>=2&&visibleIds.has(e[0])&&visibleIds.has(e[1])).map(e=>{
-  const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);
-  return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#648596" stroke-opacity=".7" stroke-width="${mini?2.8:4}" stroke-linecap="round"/>`;
+ const nodes=run.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy)&&known(z));
+ const display=mini?nodes.filter(z=>Math.abs(z.gx-current.gx)<=1.7&&Math.abs(z.gy-current.gy)<=1.7):nodes;
+ // A unit on the topology is one room-grid step; geometry V31 cells are thirds of that unit.
+ const step=mini?105:104,unit=step,cellScale=run.geometryVersion===31?1/3:1;
+ const extents=z=>{const cells=roomGeom(z).cells||[[0,0]];return {left:z.gx+Math.min(...cells.map(c=>c[0]))*cellScale,top:z.gy+Math.min(...cells.map(c=>c[1]))*cellScale,right:z.gx+(Math.max(...cells.map(c=>c[0]))+1)*cellScale,bottom:z.gy+(Math.max(...cells.map(c=>c[1]))+1)*cellScale};};
+ const all=display.length?display:[current],bounds=all.map(extents);
+ const minx=mini?current.gx-1.05:Math.min(...bounds.map(b=>b.left));
+ const miny=mini?current.gy-1.05:Math.min(...bounds.map(b=>b.top));
+ const maxx=mini?current.gx+2.05:Math.max(...bounds.map(b=>b.right));
+ const maxy=mini?current.gy+2.05:Math.max(...bounds.map(b=>b.bottom));
+ const pad=mini?5:26,gutter=mini?0:158;
+ const mapW=Math.max(mini?220:290,(maxx-minx)*unit+2*pad),mapH=Math.max(mini?220:290,(maxy-miny)*unit+2*pad);
+ const W=mapW+gutter,H=mapH;
+ const xy=(x,y)=>({x:(x-minx)*unit+pad,y:(y-miny)*unit+pad});
+ const center=z=>{const e=extents(z);return xy((e.left+e.right)/2,(e.top+e.bottom)/2);};
+ const ids=new Set(display.map(z=>z.id));
+ const links=(run.edges||[]).filter(e=>Array.isArray(e)&&ids.has(e[0])&&ids.has(e[1])).map(e=>{const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);return `<path d="M${a.x} ${a.y} L${b.x} ${b.y}" stroke="#668da1" stroke-width="${mini?5:7}" stroke-linecap="round" opacity=".9"/>`;}).join('');
+ const route=ashKnownExtractionRoute(run)||[],routeEdges=new Set(route.slice(1).map((id,i)=>[id,route[i]].sort((a,b)=>a-b).join(':')));
+ const routeLines=(run.edges||[]).filter(e=>Array.isArray(e)&&ids.has(e[0])&&ids.has(e[1])&&routeEdges.has([e[0],e[1]].sort((a,b)=>a-b).join(':'))).map(e=>{const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);return `<path d="M${a.x} ${a.y}L${b.x} ${b.y}" stroke="#76f2e4" stroke-width="${mini?3:5}" stroke-dasharray="7 5" fill="none"/>`;}).join('');
+ const markers=[];
+ const tiles=display.map(z=>{
+  const seen=!!z.seen||visited.has(z.id)||z.id===run.current,here=z.id===run.current;
+  const name=seen?(isExit(z.id,run)?'EXTRACTION':isArena(z.id,run)?'ARÈNE':isBoss(z.id,run)?'BOSS':z.kind==='outpost'?'BALISE':/med|heal|soin/i.test(String(z.kind||'')+' '+String(z.fieldRole||''))?'SOINS':null):null;
+  const color=name==='EXTRACTION'?'#62eced':name==='ARÈNE'?'#ffc075':name==='BOSS'?'#ff878f':name==='SOINS'?'#8de2ad':name==='BALISE'?'#b7a6ff':'#95b4c8';
+  const fill=!seen?'#1a2d3b':here?'#205c72':name?'#244858':'#284255';
+  const cells=roomGeom(z).cells||[[0,0]];
+  const paths=cells.map(([cx,cy])=>{const at=xy(z.gx+cx*cellScale,z.gy+cy*cellScale);const d=unit*cellScale;return `M${at.x} ${at.y}h${d}v${d}h${-d}z`;}).join(' ');
+  const c=center(z);if(name)markers.push({name,color,c});
+  const dir=Number.isFinite(run.player?.angle)?run.player.angle:Number.isFinite(run.player?.dir)?run.player.dir:0;
+  const playerMark=here?`<g transform="translate(${c.x} ${c.y}) rotate(${dir*180/Math.PI})"><circle r="${mini?15:17}" fill="#071d2b" stroke="#72eaf4" stroke-width="3"/><path d="M0 -11 L8 9 L0 5 L-8 9Z" fill="#ffffff"/></g>`:'';
+  const symbol=!here&&name?`<circle cx="${c.x}" cy="${c.y}" r="${mini?6:8}" fill="${color}" stroke="#091a26" stroke-width="2"/>`:'';
+  return `<g><path d="${paths}" fill="${fill}" fill-opacity="${seen?'.98':'.55'}" stroke="${here?'#a2f3ff':name?color:'#7c9bae'}" stroke-width="${here?3:1.8}" stroke-linejoin="round"/>${symbol}${playerMark}</g>`;
  }).join('');
- const extractionRoute=ashKnownExtractionRoute(run)||[];
- const routeEdges=new Set(extractionRoute.slice(1).map((id,i)=>[id,extractionRoute[i]].sort((a,b)=>a-b).join(':')));
- const routeLines=(run.edges||[]).filter(e=>Array.isArray(e)&&e.length>=2&&routeEdges.has([e[0],e[1]].sort((a,b)=>a-b).join(':'))&&visibleIds.has(e[0])&&visibleIds.has(e[1])).map(e=>{
-  const a=center(run.rooms[e[0]]),b=center(run.rooms[e[1]]);
-  return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#7cf4dc" stroke-width="${mini?3:5}" stroke-linecap="round" stroke-dasharray="${mini?'3 3':'5 4'}" opacity=".95"/>`;
- }).join('');
- const labRecon=ashLabRecon(run),reconLv=Math.max(0,Math.min(8,Number(run?.labLevels?.exp01)||0));
- const tiles=nodes.map(z=>{
-  const px=(z.gx-minx)*sx+pad+offsetX,py=(z.gy-miny)*sy+pad+offsetY;
-  const type=roomGeom(z).type, scanned=!z.seen&&!(run.visited||[]).includes(z.id)&&z.id!==run.current,here=z.id===run.current;
-  const sector=Number.isFinite(z.sector)?z.sector:Math.min(3,Math.floor(z.id/13));
-  const fill=scanned?'#253847':here?'#234e62':isExit(z.id,run)?'#0d6174':isArena(z.id,run)?'#80502c':isBoss(z.id,run)?'#79353e':z.kind==='outpost'?'#4b5279':ASH_MAP_COLORS[sector]||ASH_MAP_COLORS[0];
-  const shape=run.geometryVersion===31?roomGeom(z).cells.map(([xx,yy])=>`M${px+xx*subx/3} ${py+yy*suby/3}h${subx/3}v${suby/3}h${-subx/3}z`).join(' '):run.geometryVersion===25?roomGeom(z).cells.map(([xx,yy])=>`M${px+xx*subx} ${py+yy*suby}h${subx}v${suby}h${-subx}z`).join(' '):type==='wide'?`M${px} ${py}h${subx*2}v${suby}h${-subx*2}z`:
-   type==='tall'?`M${px} ${py}h${subx}v${suby*2}h${-subx}z`:
-   
-   `M${px} ${py}h${subx}v${suby}h${-subx}z`;
-  const reconScanned=!!run.fieldReconV2&&scanned&&(run.intelRooms||[]).includes(z.id);
-  const reconLabel=reconScanned?(isBoss(z.id,run)?'B':isArena(z.id,run)?'A':z.kind==='secret'?'S':z.kind==='guarded'?'C':z.kind==='outpost'?'P':''):null;
-  const label=here?'':scanned?(reconLabel||(labRecon.has(z.id)&&reconLv>=7&&isBoss(z.id,run)?'B':labRecon.has(z.id)&&reconLv>=4&&isArena(z.id,run)?'A':'')):isBoss(z.id,run)?'B':isArena(z.id,run)?'A':isExit(z.id,run)?'E':z.kind==='outpost'?'P':(!scanned&&ASH_DISCOVERY_ROLES.has(z.fieldRole)?(z.fieldEvent?.state==='used'?'d':'D'):'');
-  const cells=roomGeom(z).cells;
-  const cellScale=run.geometryVersion===31?1/3:1;
-  const cx=px+(Math.min(...cells.map(c=>c[0]))+Math.max(...cells.map(c=>c[0]))+1)*subx*cellScale/2;
-  const cy=py+(Math.min(...cells.map(c=>c[1]))+Math.max(...cells.map(c=>c[1]))+1)*suby*cellScale/2;
-  const knownExit=!scanned&&isExit(z.id,run);
-  const exitMarker=knownExit?`<circle cx="${cx}" cy="${cy}" r="${mini?8:10}" fill="none" stroke="#79f4dc" stroke-width="${mini?2:2.5}"/>`:'';
-  return `<g><path d="${shape}" fill="${fill}" fill-opacity="${scanned?.52:.96}" stroke="${here?'#ffffff':knownExit?'#72f5ec':!scanned&&isArena(z.id,run)?'#ffc174':!scanned&&isBoss(z.id,run)?'#ff9292':'#9eb8c7'}" stroke-width="${here?1.8:.9}" stroke-linejoin="round"/>${exitMarker}${here?`<circle cx="${cx}" cy="${cy}" r="${mini?8:9}" fill="#11202a"/><circle cx="${cx}" cy="${cy}" r="${mini?5:6}" fill="#fff0ca"/>`:label?`<text x="${cx}" y="${cy+3}" fill="#f8f6ee" font-size="${mini?15:17}" text-anchor="middle" font-weight="900">${label}</text>`:''}</g>`;
- }).join('');
- if(mini)return `<svg class="ash-map-mini-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" focusable="false"><rect width="${W}" height="${H}" rx="6" fill="#0b1b25"/>${links}${routeLines}${tiles}</svg>`;
- // Annotations anchored to known objectives only, placed in a separate right-hand rail.
- const points=nodes.filter(z=>z.seen||visited.has(z.id)||z.id===run.current).map(z=>{
-  const name=isExit(z.id,run)?'EXTRACTION':isArena(z.id,run)?'ARÈNE':isBoss(z.id,run)?'BOSS':z.kind==='outpost'?'BALISE':null;
-  if(!name)return null;
-  return {z,name,color:name==='EXTRACTION'?'#71f5e5':name==='ARÈNE'?'#ffc174':name==='BOSS'?'#ff9292':'#a6a3ff',at:center(z)};
- }).filter(Boolean).sort((a,b)=>a.at.y-b.at.y);
- const railX=W-annotationGutter+9, gap=27;
- const annotations=points.map((p,i)=>{
-  const y=Math.max(22,Math.min(H-16,22+i*gap));
-  return `<g class="ash-map-annotation"><path d="M${p.at.x} ${p.at.y} L${railX-12} ${y} L${railX} ${y}" fill="none" stroke="${p.color}" stroke-opacity=".7" stroke-width="1.6"/><circle cx="${railX+5}" cy="${y}" r="4.5" fill="${p.color}"/><text x="${railX+17}" y="${y+4}" fill="${p.color}" font-size="12" font-weight="800">${p.name}</text></g>`;
- }).join('');
- return `<svg class="ash-map-full-svg" xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(Math.max(340,W))}" height="${Math.ceil(H)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Carte des salles découvertes, avec leurs formes réelles">${links}${routeLines}${tiles}${annotations}</svg>`;
+ const annotations=mini?'':markers.sort((a,b)=>a.c.y-b.c.y).map((m,i)=>{const y=Math.min(H-22,Math.max(26,26+i*32)),x=mapW+8;return `<g class="ash-map-annotation"><path d="M${m.c.x} ${m.c.y} L${x-10} ${y} L${x+3} ${y}" fill="none" stroke="${m.color}" stroke-width="1.8" opacity=".8"/><circle cx="${x+8}" cy="${y}" r="5" fill="${m.color}"/><text x="${x+20}" y="${y+4}" fill="${m.color}" font-size="13" font-weight="800">${m.name}</text></g>`;}).join('');
+ const svg=`<svg class="${mini?'ash-map-mini-svg':'ash-map-full-svg'}" xmlns="http://www.w3.org/2000/svg" ${mini?'':`width="${Math.ceil(W)}" height="${Math.ceil(H)}"`} viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte tactique des salles connues"><defs><pattern id="ash-map-grid-${mini?'mini':'full'}" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" fill="none" stroke="#2a4556" stroke-width=".6" opacity=".5"/></pattern></defs><rect width="${W}" height="${H}" fill="#0b1e2c"/><rect width="${W}" height="${H}" fill="url(#ash-map-grid-${mini?'mini':'full'})"/>${links}${routeLines}${tiles}${annotations}</svg>`;
+ return svg;
 }
+function ashMapPoiJournal(run){
+ const visited=new Set(run.visited||[]);
+ const known=run.rooms.filter(z=>z.seen||visited.has(z.id)||z.id===run.current);
+ const items=known.map(z=>{const name=isExit(z.id,run)?'Extraction':isArena(z.id,run)?'Arène':isBoss(z.id,run)?'Boss':z.kind==='outpost'?'Balise':/med|heal|soin/i.test(String(z.kind||'')+' '+String(z.fieldRole||''))?'Soins':null;return name?{name,id:z.id}:null;}).filter(Boolean);
+ if(!items.length)return '<div class="ash-map-poi-empty">Aucun point d’intérêt identifié pour le moment.</div>';
+ return '<div class="ash-map-poi-list">'+items.map(p=>`<span class="ash-map-poi">${p.name} · salle ${p.id+1}</span>`).join('')+'</div>';
+}
+
 let ashLastMiniSignature='';
 function ashRenderMiniMap(run){
  const target=$('ashMiniMap');if(!target)return;
@@ -3131,7 +3114,7 @@ function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();if(!data.run
  const status=$('regionStatus');if(status)status.textContent='K-17 · secteurs '+(region().maxSector+1)+'/4 · avant-postes '+region().outposts.length+'/3 · Gardien '+(region().bossDefeated?'vaincu':'à découvrir')+' · Helix '+(data.unlockHelix?'débloquée (non jouable)':'verrouillée');if($('homeSectorCount'))$('homeSectorCount').textContent=(region().maxSector+1)+' / 4 secteurs';if($('homeSectorFill'))$('homeSectorFill').style.width=(25*(region().maxSector+1))+'%';if($('homeSectorProgress'))$('homeSectorProgress').setAttribute('aria-valuenow',String(region().maxSector+1));if($('statusChipSector'))$('statusChipSector').textContent='Secteurs '+(region().maxSector+1)+'/4';if($('statusChipOutpost'))$('statusChipOutpost').textContent='Avant-postes '+region().outposts.length+'/3';if($('statusChipBoss'))$('statusChipBoss').textContent='Gardien '+(region().bossDefeated?'vaincu':'à découvrir');renderRefugeCharacter();renderRefugeProgress();ashRenderSurvivorProgress();ashRenderContractSelection();ashRenderCareer();ashRenderLongProgress();ashRefreshContractHud(null);if(refugeActivePage==='merchant')merchantRender();if(refugeActivePage==='chests')ashChestRender();return}let room=r.rooms[r.current];if($('uiMission'))$('uiMission').textContent=uiMission().replace(/^[⚠⚡✦✓⚔📡◈]\s*/u,'');$('roomTitle').textContent=isBoss(r.current,r)?'BOSS K-17':isArena(r.current,r)?'ARÈNE':isExit(r.current,r)?'EXTRACTION':room.kind==='secret'?'SALLE SECRÈTE':room.kind==='outpost'?'BALISE':`K-17 · ${r.current+1}/${r.rooms.length}`;$('hpText').textContent=String(Math.ceil(player.hp));$('hpText').title=`${Math.ceil(player.hp)} / ${player.max} PV`;$('hpFill').style.height=`${clamp(player.hp/player.max*100,0,100)}%`;$('hpFill').setAttribute('y',String(100-clamp(player.hp/player.max*100,0,100)));$('hpFill').setAttribute('height',String(clamp(player.hp/player.max*100,0,100)));if($('hpFill'))$('hpFill').classList.toggle('ash-critical',player.hp/player.max<.28);runProgress();$('bagCount').textContent=r.eq2?`${r.eq2.loot.length}/${E2.capacity(r)}`:`${r.bag.length}/6`;ashRenderMiniMap(r);const xp=$('xpDisplay');if(xp){xp.title=`${Math.floor(r.xp)} / ${xpThreshold(r.runLevel)} XP`; xp.title=`${Math.floor(r.xp)} / ${xpThreshold(r.runLevel)} XP`; xp.textContent='XP';xp.setAttribute('aria-label',`Niveau ${r.runLevel}`);const afStatus=$('afHudBar')?.querySelector('.af-status');if(afStatus){const xpGoal=Math.max(1,xpThreshold(r.runLevel));afStatus.dataset.level=String(r.runLevel);afStatus.dataset.xp=`${Math.floor(r.xp)}/${xpGoal}`;afStatus.style.setProperty('--af-xp-progress',`${Math.round(100*clamp(r.xp/xpGoal,0,1))}%`);}xp.style.display='block';$('xpFill').style.height=(100*clamp(r.xp/xpThreshold(r.runLevel),0,1))+'%';$('xpFill').setAttribute('y',String(100-100*clamp(r.xp/xpThreshold(r.runLevel),0,1)));$('xpFill').setAttribute('height',String(100*clamp(r.xp/xpThreshold(r.runLevel),0,1)))}ashRefreshContractHud(r);const statusHint=hudStatus();$('hint').textContent=statusHint;$('hint').hidden=!statusHint}
 function closeOverlay(){if(overlay==='level'&&data.run?.pendingLevels>0)return;if(overlayReturn==='pause'&&data.run&&(overlay==='bag'||overlay==='map')){overlayReturn='';openOverlay('pause');return;}overlayReturn='';overlay='';$('overlay').hidden=true;$('overlay').innerHTML='';if(data.run?.pendingLevels>0&&ashSweepChoiceTimer===null)openLevelChoice()}
 function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2OpenBag();return;}overlay=mode;let r=data.run,html='<button class="close" data-op="close">'+afIcon('close')+' Fermer</button>';if(mode==='bag'){html+=`<h3>${afIcon("bag")} SAC D’EXPÉDITION <span class="ui-tag">${r.bag.length}/6 places</span></h3><p class="muted">Arme équipée et objets transportés. La rareté est indiquée par une couleur.</p><div class="ash-run-build"><b>CONFIGURATION</b> · ${ashGearById(r.loadout?.helmet)?.name||'Casque standard'} · ${ashGearById(r.loadout?.module)?.name||'Module vide'}</div><div class="ui-group-label">ARME ÉQUIPÉE</div>${uiWeaponCard(r.equipped,-1,'bag',true)}<div class="ui-group-label">OBJETS TRANSPORTÉS</div>${r.bag.length?r.bag.map((w,i)=>({w,i})).sort((a,b)=>(LOOT_RARITY_RANK[b.w.rar]||0)-(LOOT_RARITY_RANK[a.w.rar]||0)||lootPower(b.w)-lootPower(a.w)||a.i-b.i).map(({w,i})=>uiWeaponCard(w,i,'bag',false)).join(''):'<p class="ui-empty">Ton sac est vide. Ramasse les armes au sol pour les ajouter ici.</p>'}<p class="ui-help">${afIcon("info")} Équiper une autre arme replace l’ancienne dans le sac. L’assurance reste attachée à son objet d’origine.</p>`;
-}else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">Découvertes : '+ashDiscoveryStats(r).complete+'/'+ashDiscoveryStats(r).total+' explorées.</p><div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div><div class="ash-map-v2-legend"><span><i style="background:#71f5e5"></i>Extraction</span><span><i style="background:#ffc174"></i>Arène</span><span><i style="background:#ff9292"></i>Boss</span><span><i style="background:#fff"></i>Vous</span></div><p class="ash-map-v2-help">Les objectifs sont annotés après découverte. Fais glisser la carte pour explorer.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Sac d’extraction · '+r.eq2.loot.length+'/'+E2.capacity(r)+' objets non sécurisés':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/${r.rooms.length} SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/'+E2.capacity(r):r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button><button type="button" data-op="map">${afIcon("map")} CARTE</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
+}else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">'+(r.visited||[]).length+'/'+r.rooms.length+' salles visitées · '+r.rooms.filter(z=>z.seen).length+' découvertes</p><div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div><div class="ash-map-v2-legend"><span><i style="background:#71f5e5"></i>Extraction</span><span><i style="background:#ffc174"></i>Arène</span><span><i style="background:#ff9292"></i>Boss</span><span><i style="background:#8de2ad"></i>Soins</span><span><i style="background:#fff"></i>Vous</span></div><div class="ash-map-poi-title">POINTS D’INTÉRÊT CONNUS</div>'+ashMapPoiJournal(r)+'<p class="ash-map-v2-help">Glisse pour explorer · Les lieux inconnus restent masqués.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Sac d’extraction · '+r.eq2.loot.length+'/'+E2.capacity(r)+' objets non sécurisés':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/${r.rooms.length} SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/'+E2.capacity(r):r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button><button type="button" data-op="map">${afIcon("map")} CARTE</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
 function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}

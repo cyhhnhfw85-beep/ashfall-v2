@@ -1138,3 +1138,12 @@ body.ash-prep-open{overflow:hidden}#refuge-page-home .ash-sp-home{display:block;
 #afHudBar #ashMiniMap svg,.ash-map-mini-svg{display:block;width:100%!important;height:100%!important;max-width:none;filter:none!important}
 .ash-map-annotation text{paint-order:stroke;stroke:#071923;stroke-width:3px;stroke-linejoin:round}
 @media(max-width:440px){.ash-map-scroll{min-height:270px;max-height:55dvh;padding:8px!important}}
+
+/* ASHFALL Tactical Map V2.2 — readability and touch-first map */
+.ash-map-scroll{justify-content:flex-start!important;align-items:flex-start!important;min-height:300px!important;max-height:58dvh!important;overflow:auto!important;touch-action:pan-x pan-y;scrollbar-width:thin;}
+.ash-map-full-svg{min-width:0!important;width:auto!important;height:auto!important;max-width:none!important;flex-shrink:0!important;}
+.ash-map-mini-svg{width:100%!important;height:100%!important;object-fit:contain;}
+.ash-map-poi-title{margin:12px 0 6px;color:#d7e8f1;font-weight:800;font-size:12px;letter-spacing:.09em;}
+.ash-map-poi-list{display:flex;gap:7px;flex-wrap:wrap;}
+.ash-map-poi{border:1px solid #47758b;background:#153043;border-radius:8px;color:#d8ecf5;padding:6px 9px;font-size:12px;}
+.ash-map-poi-empty{font-size:12px;color:#90adbd;}
