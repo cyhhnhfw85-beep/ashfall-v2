@@ -71,6 +71,40 @@ function region(){if(!data.regions)data.regions={k17:{maxSector:0,bossDefeated:f
 const E2=window.AshEquipment2;
 let e2MigrationError=null;
 ashArsenalReset();
+// Migration V1 catalogue : suppression volontaire des ANCIENS équipements possédés.
+// Les armes V9.5.7, crédits, recherche, progression et statistiques sont conservés.
+function ashEquipmentCatalogMigration(){
+ if(data.equipmentCatalogV1Migrated===true)return true;
+ if(data.run)return false; // ne pas altérer une expédition en cours
+ try{
+  const snapshot=JSON.stringify(data),backupKey=KEY+'_pre_catalogue_v1';
+  if(!localStorage.getItem(backupKey)){
+   localStorage.setItem(backupKey,snapshot);
+   if(localStorage.getItem(backupKey)!==snapshot)throw Error('sauvegarde préalable impossible');
+  }
+  const previous=data;
+  const next=JSON.parse(snapshot);
+  const validModels=new Set(E2.CATALOG.map(m=>m.id));
+  if(next.eq2){
+   next.eq2.gear=(next.eq2.gear||[]).filter(w=>w?.slot==='weapon'||validModels.has(w?.model));
+   next.eq2.slots=next.eq2.slots||{};
+   for(const slot of ['armor','boots','module','bag','artifact']){
+    if(!next.eq2.gear.some(w=>w.id===next.eq2.slots[slot]&&w.slot===slot))next.eq2.slots[slot]=null;
+   }
+   next.eq2.slots.weapon=next.equipped?.id||null;
+  }
+  // Catalogue legacy, objets de démarrage et offres anciennes
+  if(next.loadout){delete next.loadout.owned;delete next.loadout.helmet;delete next.loadout.module;}
+  if(next.merchant){next.merchant.stock=[];next.merchant.rebornGearCycle=null;next.merchant.lastRefreshRun=-1;}
+  if(next.pendingDebrief?.lost)next.pendingDebrief.lost=next.pendingDebrief.lost.filter(w=>w?.slot==='weapon');
+  if(next.pendingDebrief?.acquired)next.pendingDebrief.acquired=next.pendingDebrief.acquired.filter(w=>w?.slot==='weapon');
+  next.equipmentCatalogV1Migrated=true;
+  if(next.eq2&&!E2.validate(next))throw Error('état équipements invalide après suppression');
+  data=next;
+  if(!persist()){data=previous;throw Error('échec de sauvegarde du nouveau catalogue');}
+  return true;
+ }catch(err){msg('⚠ Migration équipements non effectuée : '+String(err?.message||err));return false;}
+}
 function e2MigrateWhenSafe(){
  if(data.run||data.eq2)return !!data.eq2;
  if(!E2){e2MigrationError='Module Équipements 2.0 absent';return false;}
@@ -116,27 +150,24 @@ function e2GearGlyph(slot,modelId){
 // Equipment Pack V1.0: visual-only bridge. Legacy and existing model IDs remain unchanged.
 // The 18 image families do not change Equipment2's models, stats, drops or saved data.
 const ASH_EQUIPMENT_V1_IMAGES=Object.freeze({
- "armor-bastion": "BASTION-X",
- "armor-predator": "REACTOR",
- "armor-regenerator": "SENTINELLE",
- "boots-scout": "VELOCIS",
- "boots-spectre": "IMPULSION",
- "boots-anchor": "ANCRAGE",
- "module-tesla": "AMPLIFICATEUR",
- "module-aegis": "STABILISATEUR",
- "module-medic": "REGENERATEUR",
- "bag-prospector": "SCOUT",
- "bag-reclaimer": "RAVEN",
- "bag-securizer": "DASTION",
- "artifact-resonance": "OEIL_DU_VIDE",
- "artifact-vitality": "COEUR_DE_CENDRE",
- "artifact-frenzy": "NOYAU_INSTABLE",
- "helmet-scout": "VELOCIS",
- "helmet-guard": "BASTION-X",
- "helmet-vital": "FANTOME",
- "module-rate": "CADENCE",
- "module-power": "AMPLIFICATEUR",
- "module-xp": "FRAGMENT_ETHER"
+ 'armor-fantome': 'FANTOME',
+ 'armor-sentinelle': 'SENTINELLE',
+ 'armor-bastion-x': 'BASTION-X',
+ 'armor-reactor': 'REACTOR',
+ 'boots-velocis': 'VELOCIS',
+ 'boots-ancrage': 'ANCRAGE',
+ 'boots-impulsion': 'IMPULSION',
+ 'bag-scout': 'SCOUT',
+ 'bag-raven': 'RAVEN',
+ 'bag-dastion': 'DASTION',
+ 'module-cadence': 'CADENCE',
+ 'module-amplificateur': 'AMPLIFICATEUR',
+ 'module-stabilisateur': 'STABILISATEUR',
+ 'module-regenerateur': 'REGENERATEUR',
+ 'artifact-coeur-cendre': 'COEUR_DE_CENDRE',
+ 'artifact-oeil-vide': 'OEIL_DU_VIDE',
+ 'artifact-noyau-instable': 'NOYAU_INSTABLE',
+ 'artifact-fragment-ether': 'FRAGMENT_ETHER',
 });
 const ASH_EQUIPMENT_V1_RARITIES=Object.freeze({
  'Commun':'Commun','Inhabituel':'Inhabituel','Rare':'Rare',
@@ -1191,7 +1222,7 @@ function ashLootPickupToast(w){
  const host=$('ashLootToast');if(!host||!w)return;
  if(ashLootToastTimer!==null){clearTimeout(ashLootToastTimer);ashLootToastTimer=null;}
  host.style.setProperty('--item-rarity',tint(w));
- host.innerHTML=`<span class="ash-loot-toast-art">${weaponArt(w)}</span><span class="ash-loot-toast-info"><small>ARME RÉCUPÉRÉE</small><b>${uiSafe(w.name)}</b><span>${uiSafe(w.rar)} · ${lootDisplay(lootPower(w))} puissance</span></span>`;
+ host.innerHTML=`<span class="ash-loot-toast-art">${e2ItemArt(w)}</span><span class="ash-loot-toast-info"><small>${e2PickWeapon(w)?'ARME':'ÉQUIPEMENT'} RÉCUPÉRÉ${e2PickWeapon(w)?'E':''}</small><b>${uiSafe(w.name)}</b><span>${uiSafe(w.rar)} · ${e2PickWeapon(w)?lootDisplay(lootPower(w))+' puissance':e2SlotName(w.slot)+' · Nv '+(w.level||1)}</span></span>`;
  host.hidden=false;host.classList.remove('ash-loot-toast-pop');void host.offsetWidth;host.classList.add('ash-loot-toast-pop');
  ashLootToastTimer=setTimeout(()=>{host.hidden=true;host.classList.remove('ash-loot-toast-pop');ashLootToastTimer=null;},2700);
 }
@@ -2363,7 +2394,7 @@ function ashRenderMiniMap(run){
  }
  ashLastMiniSignature=signature;}
 }
-function render(){let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){if(!data.run&&data.eq2&&data.equipmentCatalogV1Migrated!==true)ashEquipmentCatalogMigration();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)requestAnimationFrame(ashFitPlayfield);$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';
  if($('dmgUpgradeFill'))$('dmgUpgradeFill').style.width=(data.dmgLv/8*100)+'%';
@@ -3756,5 +3787,5 @@ document.querySelectorAll('[data-refuge-tab]').forEach(b=>b.addEventListener('cl
 $('refuge-page-chests').addEventListener('click',e=>{const buy=e.target.closest('[data-chest-buy]');if(buy){ashChestPurchase(buy.dataset.chestBuy);return;}if(e.target.closest('#ashChestCollect'))ashChestCollect();});
 $('toolsClose').addEventListener('click',()=>{if(refugeActivePage==='merchant')refugeNavigate('home')});
 
-if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
+if(!data.equipped&&!data.run)data.equipped=starter();if(!data.run&&!data.eq2)e2MigrateWhenSafe();if(!data.run)ashEquipmentCatalogMigration();region();render();if(data.pendingDebrief)showRunDebrief();if(!data.run&&data.chestPending)refugeNavigate('chests');if(!data.run&&!data.pendingDebrief&&data.runs===0){try{if(!localStorage.getItem(TUTORIAL_KEY))tutorialShow(0)}catch(e){}}if(data.run?.pendingLevels>0)openLevelChoice();function frame(t){let dt=Math.min(.033,(t-last)/1000||.016);last=t;update(dt);if(data.run)draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 })();

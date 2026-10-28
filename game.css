@@ -1000,3 +1000,5 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 .ash933-loot-bag .ash927-inventory-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
 .ash933-bag-empty{min-height:56px;border:1px dashed #466275;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#527081;background:#101c28}
 .ash933-loot-bag .ash927-compare{text-align:center}
+/* Catalogue V1 : véritables illustrations d'objets au bilan de mission. */
+.ash-end-item-art .ash952-gear-img{display:block;width:56px;height:56px;max-width:100%;max-height:100%;object-fit:contain}

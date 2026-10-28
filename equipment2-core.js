@@ -8,31 +8,27 @@
  function capacity(run){const s=run?.eq2;if(!s)return 8;if(!s.capacityLocked)return 8; if(Number.isSafeInteger(s.capacity))return s.capacity;const bag=(s.startingOwned||[]).find(w=>w.slot==='bag'&&w.id===s.startingSlots?.bag);return bag?(BAG_CAPACITY[bag.rar]||6):4;}
 
  const CATALOG=[
-  {id:'armor-bastion',slot:'armor',name:'Bastion',effect:'resist',base:.055,desc:'Réduit les dégâts subis'},
-  {id:'armor-predator',slot:'armor',name:'Prédateur',effect:'killDamage',base:.055,desc:'Dégâts accrus après élimination'},
-  {id:'armor-regenerator',slot:'armor',name:'Régénérateur',effect:'regen',base:.28,desc:'Régénération hors pression'},
-  {id:'boots-scout',slot:'boots',name:'Éclaireur',effect:'speed',base:.055,desc:'Accélère les déplacements'},
-  {id:'boots-spectre',slot:'boots',name:'Spectre',effect:'killSpeed',base:.10,desc:'Accélération après élimination'},
-  {id:'boots-anchor',slot:'boots',name:'Ancrage',effect:'resist',base:.025,desc:'Stabilité : réduit légèrement les dégâts subis'},
-  {id:'module-tesla',slot:'module',name:'Tesla',effect:'tesla',base:8,desc:'Impulsion électrique automatique'},
-  {id:'module-aegis',slot:'module',name:'Égide',effect:'shield',base:10,desc:'Bouclier périodique automatique'},
-  {id:'module-medic',slot:'module',name:'Médic',effect:'medic',base:8,desc:'Soin conditionnel automatique'},
-  {id:'bag-prospector',slot:'bag',name:'Prospecteur',effect:'credits',base:.02,desc:'Petit bonus de crédits extraits'},
-  {id:'bag-reclaimer',slot:'bag',name:'Récupérateur',effect:'components',base:1,desc:'Composant bonus à l’extraction longue'},
-  {id:'bag-securizer',slot:'bag',name:'Sécurisateur',effect:'secure',base:0,desc:'Capacité de transport : le butin doit être extrait'},
-  {id:'artifact-resonance',slot:'artifact',name:'Résonance',effect:'resonance',base:.13,desc:'Renforce les impulsions électriques'},
-  {id:'artifact-vitality',slot:'artifact',name:'Vitalité',effect:'healing',base:.10,desc:'Amplifie les soins'},
-  {id:'artifact-frenzy',slot:'artifact',name:'Frénésie',effect:'frenzy',base:.045,desc:'Renforce les enchaînements offensifs'}
+  {id:'armor-fantome',slot:'armor',name:'Fantôme',effect:'resist',base:0.045,desc:'Réduit les dégâts subis'},
+  {id:'armor-sentinelle',slot:'armor',name:'Sentinelle',effect:'regen',base:0.28,desc:'Régénération hors pression'},
+  {id:'armor-bastion-x',slot:'armor',name:'Bastion-X',effect:'resist',base:0.065,desc:'Protection renforcée'},
+  {id:'armor-reactor',slot:'armor',name:'Réactor',effect:'killDamage',base:0.055,desc:'Dégâts accrus après élimination'},
+  {id:'boots-velocis',slot:'boots',name:'Vélocis',effect:'speed',base:0.055,desc:'Accélère les déplacements'},
+  {id:'boots-ancrage',slot:'boots',name:'Ancrage',effect:'resist',base:0.025,desc:'Stabilité défensive'},
+  {id:'boots-impulsion',slot:'boots',name:'Impulsion',effect:'killSpeed',base:0.1,desc:'Accélération après élimination'},
+  {id:'bag-scout',slot:'bag',name:'Scout',effect:'credits',base:0.02,desc:'Bonus de crédits extraits'},
+  {id:'bag-raven',slot:'bag',name:'Raven',effect:'components',base:1,desc:'Composant bonus à l’extraction longue'},
+  {id:'bag-dastion',slot:'bag',name:'Dastion',effect:'secure',base:0,desc:'Sac tactique à grande capacité'},
+  {id:'module-cadence',slot:'module',name:'Cadence',effect:'rate',base:0.08,desc:'Cadence de tir améliorée'},
+  {id:'module-amplificateur',slot:'module',name:'Amplificateur',effect:'tesla',base:8,desc:'Impulsion électrique automatique'},
+  {id:'module-stabilisateur',slot:'module',name:'Stabilisateur',effect:'shield',base:10,desc:'Bouclier périodique automatique'},
+  {id:'module-regenerateur',slot:'module',name:'Régénérateur',effect:'medic',base:8,desc:'Soin conditionnel automatique'},
+  {id:'artifact-coeur-cendre',slot:'artifact',name:'Cœur de cendre',effect:'healing',base:0.1,desc:'Amplifie les soins'},
+  {id:'artifact-oeil-vide',slot:'artifact',name:'Œil du vide',effect:'resonance',base:0.13,desc:'Renforce les impulsions électriques'},
+  {id:'artifact-noyau-instable',slot:'artifact',name:'Noyau instable',effect:'frenzy',base:0.045,desc:'Renforce les enchaînements offensifs'},
+  {id:'artifact-fragment-ether',slot:'artifact',name:'Fragment d’éther',effect:'xp',base:0.12,desc:'Expérience gagnée améliorée'},
  ];
- const LEGACY=[
-  {id:'helmet-scout',slot:'boots',name:'Éclaireur héritage',effect:'speed',base:.06},
-  {id:'helmet-guard',slot:'armor',name:'Bastion héritage',effect:'resist',base:.10},
-  {id:'helmet-vital',slot:'armor',name:'Endurance héritage',effect:'maxHp',base:20},
-  {id:'module-rate',slot:'module',name:'Stabilisateur de tir',effect:'rate',base:.08},
-  {id:'module-power',slot:'module',name:'Amplificateur balistique',effect:'damage',base:.06},
-  {id:'module-xp',slot:'module',name:'Analyseur tactique',effect:'xp',base:.12}
- ];
- const CATALOG_ALL=[...CATALOG,...LEGACY];
+ const LEGACY=[]; // Les anciennes familles ne sont plus disponibles.
+ const CATALOG_ALL=CATALOG;
  const RANK={Commun:0,Inhabituel:1,Rare:2,'Épique':3,'Légendaire':4,Mythique:5};
  const SAFE_ID=s=>String(s||'').replace(/[^a-zA-Z0-9-_]/g,'').slice(0,120);
  const copy=x=>JSON.parse(JSON.stringify(x));
@@ -76,8 +72,8 @@
   if(!SLOTS.includes(slot))throw Error('unknown equipment slot');
   if(slot==='weapon')throw Error('weapons generated by legacy weapon engine');
   const list=CATALOG.filter(m=>m.slot===slot);const m=list[Math.floor(rng()*list.length)];
-  const roll=rng();let rar=roll<.075?'Épique':roll<.32?'Rare':'Commun';
-  if(slot==='artifact')rar=roll<.07?'Légendaire':roll<.4?'Épique':'Rare';
+  const roll=rng();let rar=roll<.006?'Mythique':roll<.026?'Légendaire':roll<.105?'Épique':roll<.32?'Rare':roll<.51?'Inhabituel':'Commun';
+  if(slot==='artifact')rar=roll<.012?'Mythique':roll<.065?'Légendaire':roll<.24?'Épique':roll<.55?'Rare':roll<.8?'Inhabituel':'Commun';
   const level=clamp(Math.floor(sector)+1,1,4);
   const statVariance=Math.round((rng()-.5)*12);
   return {id:ids(),slot,model:m.id,name:m.name,rar,level,upgrade:0,optimized:null,investedComponents:0,origin:'expedition',quality:clamp(100+statVariance,94,106),stats:{efficiency:clamp(100+statVariance,94,106),resilience:clamp(2+level+Math.floor(rng()*4),2,10),agility:clamp(1+Math.floor(rng()*4),1,5)}};
@@ -130,8 +126,8 @@
   const activeWeapon=owned(out).find(w=>w.id===desired.weapon)||out.equipped;
   if(activeWeapon&&out.equipped?.id!==activeWeapon.id){out.stash=out.stash.filter(w=>w.id!==activeWeapon.id);if(out.equipped)out.stash.push(out.equipped);out.equipped=activeWeapon;}
   curr.slots=desired;
-  const prospector=active(run,'bag')?.model==='bag-prospector'&&won;
-  const gatherer=active(run,'bag')?.model==='bag-reclaimer'&&won;
+  const prospector=active(run,'bag')?.model==='bag-scout'&&won;
+  const gatherer=active(run,'bag')?.model==='bag-raven'&&won;
   const creditsBonus=prospector?Math.min(80,Math.floor((run.earnedCredits||0)*.02)):0;
   const compsBonus=gatherer&&new Set(run.visited||[]).size>=15?1:0;
   curr.components+=compsBonus;
