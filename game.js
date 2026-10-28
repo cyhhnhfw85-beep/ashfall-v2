@@ -1302,7 +1302,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,incidentFullV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,rewardsV1:true,rewardsSeed:Math.floor(Math.random()*2147483647),incidentFullV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1646,16 +1646,16 @@ function prepareRoomInteractables(room){
  if(room.kind!=='standard'||(room.id*11+room.sector*7)%10>=7)return;
  const geom=roomGeom(room),n=geom.cells.length>1&&room.id%3===0?2:1;
  for(let i=0;i<n;i++){
-  const cell=geom.cells[(room.id*5+i*3)%geom.cells.length];
+  const cell=geom.cells[(room.id*5+i*3+(run.rewardsV1?Math.floor(envV4Hash(run.rewardsSeed||1,room.id,i)*geom.cells.length):0))%geom.cells.length];
   const kind=(room.sector===1||room.sector===3)?'capacitor':'barrel';
   let chosen=null;
   for(let k=0;k<34;k++){
-   const x=cell[0]*CELL_W+65+((room.id*59+i*113+k*83)%228);
-   const y=cell[1]*CELL_H+70+((room.id*43+i*89+k*71)%245);
+   const x=cell[0]*CELL_W+65+((room.id*59+i*113+k*83+(run.rewardsV1?(run.rewardsSeed%223):0))%228);
+   const y=cell[1]*CELL_H+70+((room.id*43+i*89+k*71+(run.rewardsV1?(run.rewardsSeed%241):0))%245);
    const radius=17;
    const collides=roomWalls(room).some(rect=>rectTouches(x,y,radius+6,rect))||roomObstacles(room).some(rect=>rectTouches(x,y,radius+8,rect));
    const nearDoor=doors(room.id).some(d=>{let p=roomDoor(room,d);return Math.hypot(x-p.x,y-p.y)<(run.environmentV2?135:105)});
-   const reserved=Math.hypot(x-180,y-110)<90||Math.hypot(x-180,y-195)<65;
+   const cp=ashRewardChestPoint(room);const reserved=Math.hypot(x-cp.x,y-cp.y)<95||Math.hypot(x-180,y-195)<65;
    const crowded=room.interactables.some(o=>Math.hypot(x-o.x,y-o.y)<125);
    if(!collides&&!nearDoor&&!reserved&&!crowded){chosen={x,y};break}
   }
@@ -1840,7 +1840,7 @@ function prepareRoomFieldEvent(room){
  const reach=secure?ashFieldReachable(room):null;
  const safe=p=>{
   if(collidesSolid(p.x,p.y,secure?22:16,room))return false;
-  if(Math.hypot(p.x-180,p.y-110)<82||Math.hypot(p.x-180,p.y-195)<65)return false;
+  const cp=ashRewardChestPoint(room);if(Math.hypot(p.x-cp.x,p.y-cp.y)<95||Math.hypot(p.x-180,p.y-195)<65)return false;
   if(doors(room.id).some(d=>{const door=roomDoor(room,d);return Math.hypot(p.x-door.x,p.y-door.y)<(secure?135:95)}))return false;
   if((room.interactables||[]).some(o=>o.state!=='spent'&&Math.hypot(p.x-o.x,p.y-o.y)<58))return false;
   return !secure||ashFieldAccessible(reach,p);
@@ -2406,7 +2406,27 @@ function canPassDoor(to){
  return !!(room.cleared||r.visited.includes(to)||r.rooms[to].seen);
 }
 
-function interaction(){let r=data.run;if(!r)return null;let room=r.rooms[r.current];if(room.chest==='closed'&&Math.hypot(player.x-180,player.y-110)<62)return'chest';if(isExit(r.current,r)&&!r.exitStarted&&Math.hypot(player.x-180,player.y-195)<66)return'exit';if(room.kind==='outpost'&&Math.hypot(player.x-180,player.y-195)<72)return'outpost';return null}
+// Exploration & Rewards V1 — positions sauvegardees, sans changement des anciennes expeditions.
+function ashRewardChestPoint(room){
+ const run=data.run;
+ if(!run?.rewardsV1||!['standard','secret'].includes(room.kind))return {x:180,y:110};
+ if(room.chestPoint&&Number.isFinite(room.chestPoint.x)&&Number.isFinite(room.chestPoint.y))return room.chestPoint;
+ const geom=roomGeom(room),cells=geom.cells,seed=(run.rewardsSeed||1)>>>0;
+ const options=[];
+ for(const [gx,gy] of cells)for(let y=92;y<=CELL_H-82;y+=38)for(let x=80;x<=CELL_W-76;x+=38){
+  const p={x:gx*CELL_W+x,y:gy*CELL_H+y};
+  if(Math.hypot(p.x-180,p.y-310)<105||Math.hypot(p.x-180,p.y-195)<90)continue;
+  if(roomWalls(room).some(w=>rectTouches(p.x,p.y,42,w))||roomObstacles(room).some(w=>rectTouches(p.x,p.y,47,w)))continue;
+  if(doors(room.id).some(d=>{const a=roomDoor(room,d);return Math.hypot(p.x-a.x,p.y-a.y)<115}))continue;
+  if((room.interactables||[]).some(o=>Math.hypot(p.x-o.x,p.y-o.y)<95))continue;
+  if(room.fieldEvent?.state==='ready'&&Math.hypot(p.x-room.fieldEvent.x,p.y-room.fieldEvent.y)<95)continue;
+  options.push(p);
+ }
+ // Keep a valid old location if the room has no safe candidate.
+ const idx=options.length?Math.floor(envV4Hash(seed,room.id,719)*options.length):0;
+ return room.chestPoint=options[idx]||{x:180,y:110};
+}
+function interaction(){let r=data.run;if(!r)return null;let room=r.rooms[r.current];if(room.chest==='closed'&&Math.hypot(player.x-ashRewardChestPoint(room).x,player.y-ashRewardChestPoint(room).y)<78)return'chest';if(isExit(r.current,r)&&!r.exitStarted&&Math.hypot(player.x-180,player.y-195)<66)return'exit';if(room.kind==='outpost'&&Math.hypot(player.x-180,player.y-195)<72)return'outpost';return null}
 
 // Snapshot minimal et factuel, conservé jusqu'a fermeture explicite du bilan.
 function formatRunDuration(seconds){if(!Number.isFinite(seconds))return '—';const v=Math.max(0,Math.floor(seconds));return `${Math.floor(v/60)} min ${String(v%60).padStart(2,'0')} s`;}
@@ -4213,10 +4233,10 @@ function ashEnvV32Fx(room,sec){
  if(room.chestFx>0){
   const t=1-Math.min(1,room.chestFx/1.15),fade=1-t;
   cx.strokeStyle='rgba(122,229,215,'+(fade*.58)+')';cx.lineWidth=2;
-  cx.beginPath();cx.arc(180,110,26+t*24,0,Math.PI*2);cx.stroke();
+  const cp=ashRewardChestPoint(room);cx.beginPath();cx.arc(cp.x,cp.y,26+t*24,0,Math.PI*2);cx.stroke();
   for(let i=0;i<5;i++){
    const a=i*2.4,dist=10+t*28;
-   cx.fillStyle='rgba(189,250,231,'+fade+')';cx.fillRect(180+Math.cos(a)*dist-2,110+Math.sin(a)*dist-2,4,4);
+   cx.fillStyle='rgba(189,250,231,'+fade+')';cx.fillRect(cp.x+Math.cos(a)*dist-2,cp.y+Math.sin(a)*dist-2,4,4);
   }
  }
  if(!room.cleared&&!room.hazardDisabled&&(sec===1||sec===2)){
@@ -4279,12 +4299,14 @@ function drawRefinedChest(room,r){
  const opened=room.chest==='opened',epic=isArena(r.current,r),guarded=isGuarded(r.current,r)&&room.enemies.length>0;
  const fx=Math.max(0,Math.min(1,(room.chestFx||0)/1.15)),time=performance.now()/1000;
  const accent=epic?'#bc8af0':guarded?'#ff8866':'#7bddd5';
- cx.save();cx.translate(180,110);
+ const cp=ashRewardChestPoint(room);
+ cx.save();cx.translate(cp.x,cp.y);
  // V2.4: draw one chest only. The legacy Canvas crate must not sit under the PNG.
- if(ashEnvV3Paint('chest',opened?'used':'ready',0,0,60)){
-  if(fx>0){cx.globalAlpha=fx*.75;cx.strokeStyle=accent;cx.lineWidth=2.5;cx.beginPath();cx.arc(0,1,30+(1-fx)*16,0,Math.PI*2);cx.stroke();cx.globalAlpha=1;}
-  cx.restore();return;
- }
+ // V1: draw a larger, mechanically readable crate rather than the tiny env-v3 icon.
+ // The established vector crate below is used for all chest states.
+ cx.scale(1.34,1.34);
+ const pulse=.5+.5*Math.sin(time*3.2);
+ if(!opened){cx.fillStyle=accent;cx.globalAlpha=.07+.12*pulse;cx.beginPath();cx.ellipse(0,8,40+3*pulse,30+3*pulse,0,0,Math.PI*2);cx.fill();cx.globalAlpha=1;}
  // Legacy fallback only when the asset is not yet loaded.
  // Industrial extraction crate: solid perspective, mechanical hinges and lid.
  cx.fillStyle='rgba(0,6,11,.54)';cx.beginPath();cx.ellipse(2,26,37,11,0,0,Math.PI*2);cx.fill();
@@ -4326,6 +4348,15 @@ function drawRefinedChest(room,r){
   cx.fillStyle='#647b84';cx.beginPath();cx.moveTo(-20,-15);cx.lineTo(19,-15);cx.lineTo(22,-11);cx.lineTo(-22,-11);cx.closePath();cx.fill();
   cx.fillStyle=accent;cx.fillRect(-9,-12,18,2);
   cx.fillStyle='#0d2029';cx.fillRect(-4,-17,8,6);
+ }
+ // Animated locking rails and light-strip: visible at iPhone scale.
+ if(!opened){
+  cx.fillStyle=accent;cx.globalAlpha=.45+.45*pulse;
+  cx.fillRect(-23,10,4,7);cx.fillRect(18,10,4,7);
+  cx.fillRect(-14,-14,28,2);cx.globalAlpha=1;
+ }else if(fx>0){
+  cx.save();cx.globalAlpha=Math.min(.8,fx*.8);cx.shadowColor=accent;cx.shadowBlur=17;
+  cx.fillStyle=accent;cx.fillRect(-17,-7,34,12);cx.restore();
  }
  if(guarded&&!opened){cx.strokeStyle='#e78367';cx.lineWidth=2;cx.strokeRect(-28,-5,56,32);}
  if(fx>0){
@@ -4697,7 +4728,7 @@ if(room.chest==='closed'&&!room.chestRewardGranted&&room.cleared&&room.enemies.l
  room.chest='opened';room.chestRewardGranted=true;room.chestFx=1.15;
  const g=makeWeapon(freeChestWeaponLevel(r,room));
  g._ashFromChest=true; // Rarity is rolled centrally, never forced to Epic/Rare.
- lootSpawn(room,'weapon',180,118,g);lootSpawn(room,'credits',177,122,null,pick(12,24));
+ const cp=ashRewardChestPoint(room);lootSpawn(room,'weapon',cp.x,cp.y+9,g);lootSpawn(room,'credits',cp.x-4,cp.y+15,null,pick(12,24));
  ground(room)[ground(room).length-1].source='chest';msg('✨ Coffre ouvert automatiquement · '+g.name+' !');persist();
 }
 room.chestFx=Math.max(0,(room.chestFx||0)-dt);
