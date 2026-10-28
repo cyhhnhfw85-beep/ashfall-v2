@@ -1275,7 +1275,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -1801,13 +1801,39 @@ function triggerFieldEvent(room){
  }else if(ev.kind==='medic'&&player.hp>=player.max-1)return false;
  ev.state='used';ev.hold=0;
  if(ev.kind==='cache'){
-  // Nouvelle economie 0.8.9.55 : bonus legerement revalorise dans les secteurs difficiles.
-  // L'ancien montant reste applicable aux expeditions sauvegardees avant cette version.
-  const credits=data.run.interactiveV54?(30+room.sector*6+((room.id*7)%17)):(18+((room.id*7)%15));
-  const r=data.run;r.earnedCredits+=credits;
-  r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
-  r.economy.discovery=(r.economy.discovery||0)+credits;
-  msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
+  const r=data.run;
+  if(r.fieldLootV2){
+   const roll=Math.random();
+   if(roll<.50){
+    const credits=30+room.sector*6+((room.id*7)%17);
+    r.earnedCredits+=credits;
+    r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
+    r.economy.discovery=(r.economy.discovery||0)+credits;
+    msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
+   }else if(roll<.85){
+    const item=r.eq2&&E2?.rollDrop?.(sectorOf(room),Math.random,'chest',r.difficulty||1);
+    if(item){
+     item._eq2Dropped=true; // Éviter un second tirage lors du placement au sol.
+     lootSpawn(room,'weapon',ev.x,ev.y,item);
+     msg('✦ CACHE DÉCOUVERTE : équipement trouvé au sol.');
+    }else{
+     const credits=30+room.sector*6+((room.id*7)%17);
+     r.earnedCredits+=credits;
+     r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
+     r.economy.discovery=(r.economy.discovery||0)+credits;
+     msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits (butin de secours).');
+    }
+   }else{
+    const heal=Math.min(12,Math.max(0,player.max-player.hp));player.hp+=heal;
+    msg('✦ CACHE DÉCOUVERTE : ressources de survie'+(heal?' · +'+Math.ceil(heal)+' PV':' (PV déjà au maximum)')+'.');
+   }
+  }else{
+   const credits=r.interactiveV54?(30+room.sector*6+((room.id*7)%17)):(18+((room.id*7)%15));
+   r.earnedCredits+=credits;
+   r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
+   r.economy.discovery=(r.economy.discovery||0)+credits;
+   msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
+  }
  }else if(ev.kind==='scanner'){
   const count=revealFieldIntel(room);
   msg(count?'◈ SCAN TERMINÉ : '+count+' salles inconnues signalées sur la carte.':'◈ SCAN TERMINÉ : aucun nouveau signal accessible.');
@@ -1844,7 +1870,15 @@ function triggerFieldEvent(room){
   run.economy.discovery=(run.economy.discovery||0)+credits;
   collectXp(3,true);
   const heal=Math.min(healTarget,player.max-player.hp);player.hp+=heal;
-  msg('DÉPÔT'+variantLabel+' EXPLOITÉ : +'+credits+' crédits, +3 XP'+(heal?' et +'+Math.ceil(heal)+' PV':'')+'.');
+  let equipmentFound=false;
+  if(run.fieldLootV2){
+   const chance=ev.variant==='preserved'?.40:ev.variant==='damaged'?.15:.25;
+   if(Math.random()<chance){
+    const item=run.eq2&&E2?.rollDrop?.(sectorOf(room),Math.random,'chest',run.difficulty||1);
+    if(item){item._eq2Dropped=true;lootSpawn(room,'weapon',ev.x,ev.y,item);equipmentFound=true;}
+   }
+  }
+  msg('DÉPÔT'+variantLabel+' EXPLOITÉ : +'+credits+' crédits, +3 XP'+(heal?' et +'+Math.ceil(heal)+' PV':'')+(equipmentFound?' · équipement au sol':'')+'.');
  }else if(ev.kind==='distress'){
   // La salle est déjà sécurisée : un signal trompeur attire des renforts.
   // Deux ennemis sont créés avant persistance; aucune prime à l'activation.
