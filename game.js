@@ -414,13 +414,8 @@ function ashSurvivorAward(summary){
  const gainedLevels=[];
  while(p.level<ASH_SURVIVOR_MAX_LEVEL&&p.xp>=ashSurvivorThreshold(p.level)){
   p.xp-=ashSurvivorThreshold(p.level);p.level++;gainedLevels.push(p.level);
-  if(!p.claimedRewards.includes(p.level)){
-   p.claimedRewards.push(p.level);
-   const credits=p.level%5===0?250*p.level:50*p.level;
-   data.credits+=credits;
-   if(data.eq2&&Number.isFinite(data.eq2.components))data.eq2.components+=p.level%5===0?5:1;
-   if(ASH_SURVIVOR_MILESTONES[p.level])p.chestVouchers.push({level:p.level,tier:ASH_SURVIVOR_MILESTONES[p.level]});
-  }
+  // Récompenses désormais réclamées manuellement dans Coffres > Récompenses.
+
  }
  if(p.level===ASH_SURVIVOR_MAX_LEVEL)p.xp=0;
  summary.survivorLevel=p.level;summary.survivorLevelsGained=gainedLevels;
@@ -436,12 +431,57 @@ function ashSurvivorClaimChest(){
  if(!persist()){data=JSON.parse(before);msg('Récompense non enregistrée, réessaie.');return;}
  render();refugeNavigate('chests');ashChestRender();
 }
+// Catalogue complet : une récompense pour chacun des 50 niveaux.
+const ASH_LEVEL_SPECIAL={1:'common',5:'rare',10:'epic',15:'epic',20:'epic',25:'epic',30:'epic',35:'epic',40:'epic',45:'epic',50:'epic'};
+function ashLevelReward(n){
+ const tier=ASH_LEVEL_SPECIAL[n];
+ if(tier)return {type:'chest',tier,amount:0,title:'COFFRE '+({common:'COMMUN',rare:'RARE',epic:'ÉPIQUE'}[tier]),detail:n===50?'Palier de prestige · Niveau 50':'Palier de progression'};
+ if(n%2===0)return {type:'credits',amount:Math.round((100+40*n)/10)*10,title:(100+40*n).toLocaleString('fr-FR')+' CRÉDITS',detail:'Réserve du refuge'};
+ const amount=2+Math.floor(n/4);return {type:'components',amount,title:amount+' COMPOSANTS',detail:'Améliorations et atelier'};
+}
+function ashClaimLevelReward(n){
+ if(data.run||data.pendingDebrief||data.chestPending)return;
+ const p=ashSurvivorProgress();n=Math.floor(Number(n));
+ if(!Number.isInteger(n)||n<1||n>p.level||n>50||p.claimedRewards.includes(n))return;
+ const reward=ashLevelReward(n),before=JSON.stringify(data);
+ if(reward.type==='credits')data.credits+=reward.amount;
+ else if(reward.type==='components'){
+  if(!data.eq2||!Number.isFinite(data.eq2.components)){msg('Atelier indisponible : récompense conservée.');return;}
+  data.eq2.components+=reward.amount;
+ }else{
+  const tier=ASH_CHEST_TIERS.find(t=>t.id===reward.tier);if(!tier)return;
+  const item=ashChestWeapon(ashChestRoll(tier),0,tier.id);
+  data.stash.push(item);
+  data.chestPending={tier:tier.id,tierName:tier.name,startedAt:Date.now(),item:{...item}};
+ }
+ p.claimedRewards.push(n);
+ if(!persist()){data=JSON.parse(before);msg('Sauvegarde impossible : récompense non récupérée.');return;}
+ render();ashChestRender();
+}
+let ashChestActiveTab='coffres';
+function ashChestSwitchTab(tab){ashChestActiveTab=tab==='recompenses'?'recompenses':'coffres';ashChestRender();}
+function ashRenderLevelRewards(){
+ const p=ashSurvivorProgress(),host=$('ashLevelRewardList');if(!host)return;
+ const ready=Array.from({length:p.level},(_,i)=>i+1).filter(n=>!p.claimedRewards.includes(n));
+ const count=$('ashLevelRewardCount');if(count)count.textContent=ready.length?ready.length+' À RÉCUPÉRER':'NIVEAU '+p.level+' / 50';
+ const legacy=p.chestVouchers.length?`<div class="ash-lr-legacy"><span>${p.chestVouchers.length} coffre(s) acquis avant la mise à jour</span><button type="button" data-lr-legacy>RÉCUPÉRER</button></div>`:'';
+ const levels=Array.from({length:50},(_,i)=>i+1).sort((a,b)=>{
+  const rank=n=>p.claimedRewards.includes(n)?2:n<=p.level?0:1;
+  return rank(a)-rank(b)||a-b;
+ });
+ host.innerHTML=legacy+levels.map(n=>{
+  const r=ashLevelReward(n),claimed=p.claimedRewards.includes(n),locked=n>p.level;
+  const state=claimed?'claimed':locked?'locked':'ready';
+  const icon=r.type==='chest'?'◇':r.type==='credits'?'⬡':'✦';
+  return `<article class="ash-lr-item ${state}"><span class="ash-lr-num">${String(n).padStart(2,'0')}</span><div class="ash-lr-info"><small>NIVEAU ${n}</small><strong>${icon} ${r.title}</strong><span>${r.detail}</span></div>${claimed?'<span class="ash-lr-state">OBTENU ✓</span>':locked?'<span class="ash-lr-state">VERROUILLÉ</span>':`<button type="button" data-lr-claim="${n}">RÉCUPÉRER</button>`}</article>`;
+ }).join('');
+}
 function ashRenderSurvivorProgress(){
  const root=$('ashSurvivorProgress');if(!root)return;
  const p=ashSurvivorProgress(),needed=ashSurvivorThreshold(p.level),max=p.level>=50;
  const percent=max?100:Math.min(100,100*p.xp/needed);
- root.innerHTML=`<div class="ash-sp-head"><strong>SURVIVANT · NIVEAU ${p.level} / 50</strong><span>${max?'NIVEAU MAX':p.xp.toLocaleString('fr-FR')+' / '+needed.toLocaleString('fr-FR')+' XP'}</span></div><div class="ash-sp-track"><div style="width:${percent}%"></div></div>${p.chestVouchers.length?`<button type="button" id="ashSurvivorClaim">RÉCUPÉRER UN COFFRE DE NIVEAU (${p.chestVouchers.length})</button>`:''}`;
- root.querySelector('#ashSurvivorClaim')?.addEventListener('click',ashSurvivorClaimChest);
+ root.innerHTML=`<div class="ash-sp-head"><strong>SURVIVANT · NIVEAU ${p.level} / 50</strong><span>${max?'NIVEAU MAX':p.xp.toLocaleString('fr-FR')+' / '+needed.toLocaleString('fr-FR')+' XP'}</span></div><div class="ash-sp-track"><div style="width:${percent}%"></div></div>`;
+
 }
 function ashRegisterCareer(summary){
  // Seulement les expéditions achevées à partir de cette version.
@@ -2023,6 +2063,11 @@ function ashChestAnimateProgress(){
 function ashChestClearReveal(){ashChestStopTimer();const root=$('ashChestReveal');if(root){root.hidden=true;root.innerHTML='';}}
 function ashChestRender(){
  const host=$('ashChestOffers');if(!host)return;
+ const rewards=ashChestActiveTab==='recompenses'&&!data.chestPending;
+ const offersPanel=$('ashChestOffers'),rewardPanel=$('ashLevelRewards'),conditions=document.querySelector('.ash-chest-conditions');
+ if(offersPanel)offersPanel.hidden=rewards;if(rewardPanel)rewardPanel.hidden=!rewards;if(conditions)conditions.hidden=rewards;
+ document.querySelectorAll('[data-chest-subtab]').forEach(b=>{b.classList.toggle('active',b.dataset.chestSubtab===(rewards?'recompenses':'coffres'));b.setAttribute('aria-selected',String(b.classList.contains('active')));});
+ if(rewards)ashRenderLevelRewards();
  const bal=$('ashChestCredits');if(bal)bal.textContent=data.credits;
  host.innerHTML=ASH_CHEST_TIERS.map(t=>`<article class="ash-chest-offer ash-chest-${t.id}" style="--chest-accent:${t.accent}">
  <div class="ash-chest-illustration">${ashChestIcon(t)}</div><div class="ash-chest-info"><h3>COFFRE ${t.name}</h3><div class="ash-chest-price">${t.price} CRÉDITS</div></div>
@@ -4426,7 +4471,7 @@ function refugeNavigate(tab){
  $('home').scrollIntoView({block:'start',behavior:'instant'});
 }
 document.querySelectorAll('[data-refuge-tab]').forEach(b=>b.addEventListener('click',()=>refugeNavigate(b.dataset.refugeTab)));
-$('refuge-page-chests').addEventListener('click',e=>{const buy=e.target.closest('[data-chest-buy]');if(buy){ashChestPurchase(buy.dataset.chestBuy);return;}if(e.target.closest('#ashChestCollect'))ashChestCollect();});
+$('refuge-page-chests').addEventListener('click',e=>{const sub=e.target.closest('[data-chest-subtab]');if(sub){ashChestSwitchTab(sub.dataset.chestSubtab);return;}const claim=e.target.closest('[data-lr-claim]');if(claim){ashClaimLevelReward(claim.dataset.lrClaim);return;}if(e.target.closest('[data-lr-legacy]')){ashSurvivorClaimChest();return;}const buy=e.target.closest('[data-chest-buy]');if(buy){ashChestPurchase(buy.dataset.chestBuy);return;}if(e.target.closest('#ashChestCollect'))ashChestCollect();});
 $('toolsClose').addEventListener('click',()=>{if(refugeActivePage==='merchant')refugeNavigate('home')});
 
 if(!data.run)labMigrate();
