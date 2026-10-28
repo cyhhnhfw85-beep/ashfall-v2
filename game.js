@@ -4016,6 +4016,95 @@ function drawCachedSurface(room,sec,theme){
   paintStaticSurface(room,sec,theme);
  }
 }
+
+// ENV V3.2 — effects-only layer. Transient view state is never persisted.
+const ashEnvV32Seen=new WeakMap();
+function ashEnvV32Fx(room,sec){
+ if(!room)return;
+ const now=performance.now()/1000;
+ const quality=(typeof document!=='undefined'&&document.hidden)?0:1;
+ if(!quality)return;
+ cx.save();
+ // Small, bounded deterministic effects: no allocation of particle objects per frame.
+ for(const obj of room.interactables||[]){
+  if(obj.state!=='primed'&&!(obj.fx>0))continue;
+  const electric=obj.kind==='capacitor',x=obj.x,y=obj.y;
+  const radius=electric?83:78;
+  if(obj.state==='primed'){
+   const pulse=.35+.25*(1+Math.sin(now*13));
+   cx.strokeStyle=electric?'rgba(108,233,248,'+pulse+')':'rgba(255,171,92,'+pulse+')';
+   cx.lineWidth=2;cx.beginPath();cx.arc(x,y,24+Math.sin(now*11)*3,0,Math.PI*2);cx.stroke();
+   if(electric){
+    cx.strokeStyle='rgba(164,247,255,.8)';cx.lineWidth=1.7;
+    for(let i=0;i<3;i++){
+     const a=i*2.094+now*2,rr=17+(i%2)*4;
+     cx.beginPath();cx.moveTo(x+Math.cos(a)*10,y+Math.sin(a)*10);
+     cx.lineTo(x+Math.cos(a+.22)*rr,y+Math.sin(a+.22)*rr);
+     cx.lineTo(x+Math.cos(a+.4)*(rr+8),y+Math.sin(a+.4)*(rr+8));cx.stroke();
+    }
+   }
+  }
+  if(obj.fx>0){
+   const t=1-Math.min(1,obj.fx/.48),fade=1-t;
+   cx.strokeStyle=electric?'rgba(122,236,255,'+(fade*.7)+')':'rgba(255,178,102,'+(fade*.7)+')';
+   cx.lineWidth=2+3*fade;
+   cx.beginPath();cx.arc(x,y,Math.max(2,radius*t),0,Math.PI*2);cx.stroke();
+   for(let i=0;i<8;i++){
+    const a=i*Math.PI/4+(electric?.15:0),rr=12+t*(electric?55:47);
+    cx.fillStyle=electric?'rgba(156,244,255,'+fade+')':'rgba(255,201,128,'+fade+')';
+    cx.fillRect(x+Math.cos(a)*rr-2,y+Math.sin(a)*rr-2,4,4);
+   }
+  }
+ }
+ const ev=room.fieldEvent;
+ if(ev&&ev.state!=='unavailable'){
+  const old=ashEnvV32Seen.get(ev);
+  if(!old||old.state!==ev.state)ashEnvV32Seen.set(ev,{state:ev.state,at:now,was:old?.state||null});
+  const observed=ashEnvV32Seen.get(ev),elapsed=now-observed.at;
+  if(ev.state==='ready'&&(ev.kind==='scanner'||ev.kind==='relay'||ev.kind==='medic')){
+   const color=ev.kind==='medic'?'rgba(112,241,169,.55)':'rgba(100,218,240,.52)';
+   cx.strokeStyle=color;cx.lineWidth=1.5;cx.beginPath();
+   cx.arc(ev.x,ev.y,24+2*Math.sin(now*2.8),-Math.PI*.7,Math.PI*.25);cx.stroke();
+  }
+  if(ev.state==='used'&&observed.was&&elapsed<.85){
+   const fade=1-elapsed/.85,healing=ev.kind==='medic';
+   cx.strokeStyle=healing?'rgba(120,255,166,'+fade+')':'rgba(104,228,246,'+fade+')';
+   cx.lineWidth=2.5*fade+1;cx.beginPath();cx.arc(ev.x,ev.y,22+elapsed*28,0,Math.PI*2);cx.stroke();
+   for(let i=0;i<6;i++){
+    const a=i*Math.PI/3,dist=12+elapsed*24;
+    cx.fillStyle=healing?'rgba(155,255,188,'+fade+')':'rgba(170,240,255,'+fade+')';
+    cx.fillRect(ev.x+Math.cos(a)*dist-2,ev.y+Math.sin(a)*dist-2,4,4);
+   }
+  }
+ }
+ if(room.chestFx>0){
+  const t=1-Math.min(1,room.chestFx/1.15),fade=1-t;
+  cx.strokeStyle='rgba(122,229,215,'+(fade*.58)+')';cx.lineWidth=2;
+  cx.beginPath();cx.arc(180,110,26+t*24,0,Math.PI*2);cx.stroke();
+  for(let i=0;i<5;i++){
+   const a=i*2.4,dist=10+t*28;
+   cx.fillStyle='rgba(189,250,231,'+fade+')';cx.fillRect(180+Math.cos(a)*dist-2,110+Math.sin(a)*dist-2,4,4);
+  }
+ }
+ if(!room.cleared&&!room.hazardDisabled&&(sec===1||sec===2)){
+  const x=room.hazardX||(sec===1?180:240),warning=room.hazardWarning>0;
+  if(warning||room.hazardOn){
+   const alpha=warning?.38+.18*Math.sin(now*13):.48;
+   cx.strokeStyle=sec===1?'rgba(255,211,119,'+alpha+')':'rgba(255,157,101,'+alpha+')';
+   cx.lineWidth=2;
+   if(sec===1){
+    for(const yy of [55,345]){cx.beginPath();cx.arc(x,yy,8+Math.sin(now*8)*2,0,Math.PI*2);cx.stroke();}
+   }else{
+    for(let i=0;i<5;i++){
+     const a=i*Math.PI*2/5+now*.6,rr=23+Math.sin(now*4+i)*5;
+     cx.beginPath();cx.arc(x+Math.cos(a)*rr,205+Math.sin(a)*rr,2.5,0,Math.PI*2);cx.stroke();
+    }
+   }
+  }
+ }
+ cx.restore();
+}
+
 function drawDynamicHazard(room,sec){
  if(room.cleared||room.hazardDisabled)return;
  cx.save();
@@ -4365,7 +4454,7 @@ if(room.enemies.length){
  const tactical=tacticalObjectToTarget(room,visible);
  if(tactical){cx.save();cx.strokeStyle='#f8d68b';cx.lineWidth=2;cx.setLineDash([4,3]);cx.beginPath();cx.arc(tactical.x,tactical.y,25,0,Math.PI*2);cx.stroke();cx.setLineDash([]);cx.fillStyle='#ffe8b3';cx.font='bold 9px sans-serif';cx.textAlign='center';/* La cible tactique est identifiée par un anneau doré en pointillés. */cx.restore()}
 }
-drawFieldEvent(room);drawRefinedChest(room,r);if(room.kind==='outpost')drawRefinedOutpost(room);if(isExit(r.current,r))drawExtractionGround(r,room)
+drawFieldEvent(room);drawRefinedChest(room,r);if(room.kind==='outpost')drawRefinedOutpost(room);if(isExit(r.current,r))drawExtractionGround(r,room);ashEnvV32Fx(room,sec)
 lootDraw(room);ashSweepFxDraw();ashDrawEnemyTelegraphs(room);for(let e of room.enemies){const guardian=ashGuardianInRoom(e,room);/* Extraction V2.1 safety: legacy enemies rendered unconditionally until the 3D renderer is validated on iPhone. */
    /* V3.1: show the 3D model alone when drawing succeeds.
      Fall back to the known-good 2D sprite on a missing renderer or exception. */
