@@ -1,0 +1,10 @@
+/* ASHFALL 0.9.7.1 — Detail du butin en expedition : image contenue, aucun chevauchement. */
+.ash933-loot-bag .ash927-compare {display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:9px!important;min-width:0!important;overflow:hidden!important;text-align:center!important;}
+.ash933-loot-bag .ash927-compare .ash927-compare-heading {flex:0 0 auto!important;margin:0!important;min-width:0!important;}
+.ash933-loot-bag .ash927-compare .ash927-compare-picture {display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;box-sizing:border-box!important;flex:0 0 112px!important;width:100%!important;height:112px!important;min-height:112px!important;max-height:112px!important;overflow:hidden!important;isolation:isolate!important;}
+.ash933-loot-bag .ash927-compare .ash927-compare-picture img,
+.ash933-loot-bag .ash927-compare .ash927-compare-picture img.ash952-gear-img,
+.ash933-loot-bag .ash927-compare .ash927-compare-picture .weapon-art,
+.ash933-loot-bag .ash927-compare .ash927-compare-picture .weapon-art-img {display:block!important;position:static!important;flex:0 1 auto!important;box-sizing:border-box!important;width:auto!important;height:auto!important;max-width:min(100%,240px)!important;max-height:106px!important;min-width:0!important;min-height:0!important;object-fit:contain!important;object-position:center!important;transform:none!important;margin:auto!important;}
+.ash933-loot-bag .ash927-compare > p {position:relative!important;z-index:1!important;flex:0 0 auto!important;margin:0!important;overflow-wrap:anywhere!important;line-height:1.5!important;}
+.ash933-loot-bag .ash927-compare > button {align-self:center!important;flex:0 0 auto!important;margin-top:4px!important;}
