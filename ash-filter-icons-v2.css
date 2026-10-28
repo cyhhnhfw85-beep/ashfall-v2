@@ -7,3 +7,7 @@
 #ash-v21-workshop-panel .ash-ws-icon-filters .ash-filter-icon span,.mr-categories .ash-filter-icon span,.sv-bar .ash-filter-row .ash-filter-icon span{display:block!important;font-size:inherit!important;line-height:1!important;}
 .sv-bar{flex-wrap:wrap!important}.sv-bar .ash-filter-row{width:100%!important;}
 @media(max-width:390px){#ash-v21-workshop-panel .ash-ws-icon-filters .ash-filter-icon,.mr-categories .ash-filter-icon,.sv-bar .ash-filter-row .ash-filter-icon{flex-basis:32px!important;width:32px!important;min-width:32px!important;height:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important;}}
+
+/* ASHFALL unified line icons */
+.ash-filter-icon svg{display:block;width:19px;height:19px;flex:none;stroke:currentColor}
+.ash-filter-icon span{display:flex!important;align-items:center;justify-content:center}

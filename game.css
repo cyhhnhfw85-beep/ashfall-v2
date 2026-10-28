@@ -1071,3 +1071,7 @@ body.ashfall-expedition.ash25-fullscreen #stage #joystickZone{opacity:.77;}
 .ash-ws-opt-v2 .ash-ws-opt-confirm{width:100%;min-height:48px}
 .ash-ws-opt-compare .ash-ws-loss{color:#f2b1a8}
 .ash-ws-opt-compare .ash-ws-loss em{font-style:normal}
+
+/* Compact optimization selectors — all equipment categories */
+.ash-ws-opt-v2 .ash-ws-opt-choices{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.ash-ws-opt-v2 .ash-ws-opt-choices button{box-sizing:border-box;flex:0 1 auto!important;min-width:94px!important;min-height:36px!important;height:36px!important;padding:6px 13px!important;border-radius:8px!important;font-size:12px!important;line-height:1.15!important}
