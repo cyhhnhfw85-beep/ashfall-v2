@@ -1,0 +1,6 @@
+ASHFALL V1.4 - PATCH LEGER
+
+Ce patch contient uniquement les fichiers modifies par rapport a ashfall-v2.zip.
+Dans le depot GitHub, remplacer les fichiers correspondants en respectant les chemins.
+Ne pas effacer les autres fichiers du jeu.
+Les changements ne sont pas encore valides sur iPhone.
