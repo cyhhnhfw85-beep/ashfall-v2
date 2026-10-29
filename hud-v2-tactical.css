@@ -57,3 +57,208 @@ body.ashfall-expedition #stage #joyKnob{
  box-shadow:0 3px 12px #0008,inset 0 2px 7px #ffffff30!important;
 }
 @media(max-width:365px){body.ashfall-expedition #game #afHudBar{grid-template-columns:minmax(86px,1.1fr) minmax(38px,.55fr) minmax(90px,1.55fr) minmax(56px,.8fr)!important;padding-left:4px!important;padding-right:4px!important}}
+
+/* HUD VNext phase 03 — health/XP presentation only; retain engine IDs, map, contracts and touch controls. */
+body.ashfall-expedition #game #afHudBar .af-status{
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;
+  justify-content:center!important;gap:3px!important;min-width:0!important;
+  padding:5px 5px 23px!important;box-sizing:border-box!important;
+  border:1px solid #235c6b;border-radius:9px;
+  background:linear-gradient(160deg,#0d2939dd,#081824e8);
+}
+body.ashfall-expedition #game #afHudBar .af-heart{
+  display:flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:flex-start!important;gap:3px!important;
+  width:100%!important;height:38px!important;min-width:0!important;
+  padding:0 0 14px!important;position:relative!important;box-sizing:border-box!important;
+  background:none!important;box-shadow:none!important;border:0!important;
+}
+body.ashfall-expedition #game #afHudBar .af-heart svg{
+  display:block!important;width:20px!important;height:20px!important;flex:none!important;
+}
+body.ashfall-expedition #game #afHudBar #hpText{
+  display:block!important;position:static!important;transform:none!important;
+  font-size:clamp(15px,3.6vw,21px)!important;white-space:nowrap!important;
+  color:#f7e8e9!important;font-weight:850!important;line-height:1!important;
+  text-shadow:0 1px 2px #000!important;
+}
+body.ashfall-expedition #game #afHudBar .af-heart:after{
+  content:'';position:absolute;left:2px;right:2px;bottom:0;height:11px;
+  border-radius:4px;background:linear-gradient(90deg,#f15b73 var(--af-hp-progress,100%),#49303e var(--af-hp-progress,100%));
+  box-shadow:0 0 0 1px #723545;
+}
+body.ashfall-expedition #game #afHudBar .af-hp-critical .af-heart:after{
+  box-shadow:0 0 0 1px #fb5065,0 0 7px #f0465c99;
+}
+body.ashfall-expedition #game #afHudBar .af-xp{
+  display:none!important; /* legacy SVG XP remains present and updated; numeric level/progress shown by .af-status */
+}
+body.ashfall-expedition #game #afHudBar .af-status:after{
+  bottom:11px!important;left:7px!important;right:5px!important;
+  font-size:clamp(8px,2vw,10px)!important;letter-spacing:0!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status:before{
+  bottom:5px!important;left:7px!important;right:7px!important;
+}
+@media (prefers-reduced-motion:reduce){
+  body.ashfall-expedition #game #afHudBar .af-heart:after{transition:none!important;animation:none!important}
+}
+
+/* HUD VNext phase 04 — three functional zones + secondary contracts row.
+   CSS-only: preserve current DOM IDs, HUD update functions, map rendering and joystick. */
+body.ashfall-expedition #game #afHudBar{
+  --af-hud-h:calc(env(safe-area-inset-top) + 119px);
+  height:var(--af-hud-h)!important;
+  grid-template-columns:minmax(0,1.30fr) minmax(0,1.18fr) minmax(55px,.60fr)!important;
+  grid-template-rows:minmax(0,1fr) 23px!important;
+  column-gap:clamp(4px,1vw,8px)!important;
+  row-gap:3px!important;
+  align-items:center!important;
+  padding:calc(env(safe-area-inset-top) + 3px) 7px 5px!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status{
+  grid-column:1!important;grid-row:1!important;
+  width:100%!important;max-width:100%!important;
+}
+body.ashfall-expedition #game #afHudBar #mapBtn{
+  grid-column:2!important;grid-row:1!important;
+  height:clamp(70px,8.4dvh,80px)!important;
+  align-self:center!important;
+}
+body.ashfall-expedition #game #afHudBar .af-hud-actions{
+  grid-column:3!important;grid-row:1!important;
+  width:100%!important;align-self:center!important;
+}
+body.ashfall-expedition #game #afHudBar #ashContractHud{
+  grid-column:1/-1!important;grid-row:2!important;
+  display:flex!important;flex-direction:row!important;
+  justify-content:center!important;align-items:center!important;
+  gap:clamp(7px,3.2vw,21px)!important;
+  height:23px!important;width:100%!important;
+  max-height:23px!important;overflow:hidden!important;
+  pointer-events:none!important;
+}
+body.ashfall-expedition #game #afHudBar #ashContractHud[hidden]{display:none!important;}
+body.ashfall-expedition #game #afHudBar #ashContractHud .af-contract-item{
+  flex:0 1 auto!important;min-width:0!important;height:22px!important;
+  justify-content:center!important;
+}
+body.ashfall-expedition #game #afHudBar #ashContractHud .af-contract-numbers{
+  font-size:clamp(10px,2.6vw,12px)!important;
+}
+@media(max-width:365px){
+  body.ashfall-expedition #game #afHudBar{
+    grid-template-columns:minmax(0,1.25fr) minmax(0,1.10fr) minmax(53px,.62fr)!important;
+    column-gap:3px!important;padding-left:4px!important;padding-right:4px!important;
+  }
+  body.ashfall-expedition #game #afHudBar #ashContractHud{gap:6px!important;}
+}
+
+/* HUD VNext Phase 05 — notification visible sous le bandeau, sans capter les gestes. */
+#ashLootToast.ash-hud-feedback-compact{width:max-content;max-width:calc(100vw - 30px);min-width:155px;padding:9px 14px;gap:10px;pointer-events:none}
+#ashLootToast .ash-hud-feedback-icon{font-size:25px;line-height:1;color:var(--item-rarity,#55cbed);flex:0 0 28px;text-align:center}
+#ashLootToast.ash-hud-feedback-compact .ash-loot-toast-info{min-width:0}
+#ashLootToast.ash-hud-feedback-compact .ash-loot-toast-info b{white-space:nowrap;font-size:15px}
+@media(prefers-reduced-motion:reduce){#ashLootToast.ash-loot-toast-pop{animation:none!important;transition:none!important}}
+
+/* HUD VNext phase 06 — événements visuels du bloc Santé/XP ; aucun nouveau contrôle. */
+body.ashfall-expedition #game #afHudBar .af-status.af-feedback-damage .af-heart{
+ animation:afHudHitFlash .33s ease-out 1!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status.af-feedback-heal .af-heart{
+ animation:afHudHealFlash .44s ease-out 1!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status.af-feedback-level{
+ animation:afHudLevelFlash .8s ease-out 1!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status.af-feedback-xp:before{
+ animation:afHudXpGlow .46s ease-out 1!important;
+}
+@keyframes afHudHitFlash{0%{filter:brightness(1)}30%{filter:brightness(1.65) drop-shadow(0 0 5px #f55c77)}100%{filter:brightness(1)}}
+@keyframes afHudHealFlash{0%{filter:brightness(1)}40%{filter:brightness(1.3) drop-shadow(0 0 4px #71dca3)}100%{filter:brightness(1)}}
+@keyframes afHudLevelFlash{0%{filter:brightness(1)}35%{filter:brightness(1.35) drop-shadow(0 0 5px #5eeafa)}100%{filter:brightness(1)}}
+@keyframes afHudXpGlow{0%{filter:brightness(1)}45%{filter:brightness(1.8)}100%{filter:brightness(1)}}
+@media (prefers-reduced-motion:reduce){
+ body.ashfall-expedition #game #afHudBar .af-status.af-feedback-damage .af-heart,
+ body.ashfall-expedition #game #afHudBar .af-status.af-feedback-heal .af-heart,
+ body.ashfall-expedition #game #afHudBar .af-status.af-feedback-level,
+ body.ashfall-expedition #game #afHudBar .af-status.af-feedback-xp:before{animation:none!important}
+}
+
+/* HUD VNext phase 07 — OUTER MAP PLACEMENT ONLY.
+   The minimap SVG, viewBox, contents, zoom, marker and V32 rendering are frozen.
+   This affects only the map button as a CSS grid item; no internal #ashMiniMap styling. */
+body.ashfall-expedition #game #afHudBar #mapBtn{
+  grid-column:2!important;
+  grid-row:1!important;
+  justify-self:center!important;
+  align-self:center!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+
+/* HUD VNext Phase 08 — visual-only joystick finish.
+   Do not alter geometry, touch-action, positioning, opacity or pointer handling. */
+body.ashfall-expedition #stage #joyBase{
+  background:radial-gradient(circle at 48% 43%,rgba(34,90,107,.29) 0%,rgba(9,35,50,.43) 64%,rgba(7,23,36,.52) 100%)!important;
+  border:1px solid rgba(94,197,216,.55)!important;
+  box-shadow:inset 0 0 0 2px rgba(28,112,137,.17),inset 0 0 19px rgba(3,15,25,.4),0 0 0 6px rgba(37,147,174,.045)!important;
+}
+body.ashfall-expedition #stage #joyKnob{
+  background:radial-gradient(circle at 36% 29%,#7899a8 0%,#31596d 59%,#173649 100%)!important;
+  border:1.5px solid rgba(129,222,237,.88)!important;
+  box-shadow:inset 0 2px 5px rgba(230,255,255,.15),0 3px 11px rgba(0,8,17,.55)!important;
+}
+@media (prefers-contrast:more){
+  body.ashfall-expedition #stage #joyBase{border-color:#8de5f5!important}
+  body.ashfall-expedition #stage #joyKnob{border-color:#fff!important}
+}
+
+/* HUD VNext phase 11: explicit containment of enlarged HP and stacked XP. */
+body.ashfall-expedition #game #afHudBar .af-status{
+  overflow:hidden!important;
+}
+body.ashfall-expedition #game #afHudBar .af-heart{
+  flex:0 0 38px!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status:after{
+  bottom:11px!important;
+  line-height:1.1!important;
+}
+body.ashfall-expedition #game #afHudBar .af-status:before{
+  bottom:5px!important;
+}
+
+
+/* HUD VNext Phase 12 — equal outer heights; mini-map internals untouched.
+   The reference is the combined bag + gap + pause stack. */
+body.ashfall-expedition #game #afHudBar{
+  --af-vnext-panel-height:86px;
+}
+body.ashfall-expedition #game #afHudBar .af-status,
+body.ashfall-expedition #game #afHudBar #mapBtn,
+body.ashfall-expedition #game #afHudBar .af-hud-actions{
+  height:var(--af-vnext-panel-height)!important;
+  min-height:0!important;
+  max-height:var(--af-vnext-panel-height)!important;
+  box-sizing:border-box!important;
+  align-self:center!important;
+}
+body.ashfall-expedition #game #afHudBar .af-hud-actions{
+  justify-content:space-between!important;
+  gap:5px!important;
+}
+body.ashfall-expedition #game #afHudBar #bagBtn{
+  height:50px!important;
+}
+body.ashfall-expedition #game #afHudBar #pauseBtn{
+  height:31px!important;
+}
+/* Only the outer playfield viewport changes: reserve a narrow safety strip
+   under the HUD so the upper room wall is less likely to be clipped.
+   No minimap, room geometry, joystick or camera code is changed. */
+body.ashfall-expedition.ash25-fullscreen #stage #canvas{
+  top:calc(var(--ash25-play-top,100px) + 10px)!important;
+  height:calc(100% - var(--ash25-play-top,100px) - 10px)!important;
+}
