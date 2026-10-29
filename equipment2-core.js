@@ -94,14 +94,21 @@
   if(!validate(out))throw Error('post migration integrity check failed');
   return out;
  }
- // Loot expedition V1: difficulty I is introductory; upper rarities remain reserved for future tiers.
- const EXPEDITION_ODDS=Object.freeze({enemy:[68,25,6.5,.5],chest:[50,34,14,2],arena:[35,40,22,3]});
+ // Difficulty loot table V2.9: six rarities, normalized per 100 draws.
+ const EXPEDITION_RARITIES=['Commun','Inhabituel','Rare','Épique','Légendaire','Mythique'];
+ const EXPEDITION_ODDS=Object.freeze([
+  [60,28,10,1.8,.18,.02],
+  [42,33,18,6,.9,.1],
+  [25,30,27,15,2.7,.3],
+  [12,20,35,25,7,1],
+  [5,10,30,35,16,4]
+ ]);
  function rollExpeditionRarity(source='enemy',difficulty=1,rng=Math.random){
-  // Difficulties II-V are not playable yet: never pre-award their prestigious loot.
-  const weights=EXPEDITION_ODDS[source]||EXPEDITION_ODDS.enemy;
-  const roll=rng()*100;let sum=0;
-  for(let i=0;i<weights.length;i++){sum+=weights[i];if(roll<sum)return ['Commun','Inhabituel','Rare','Épique'][i];}
-  return 'Commun';
+  const tier=clamp(Math.floor(Number(difficulty)||1),1,5);
+  const weights=EXPEDITION_ODDS[tier-1];
+  const roll=Math.min(99.999999999,Math.max(0,Number(rng())||0)*100);let sum=0;
+  for(let i=0;i<weights.length;i++){sum+=weights[i];if(roll<sum)return EXPEDITION_RARITIES[i];}
+  return EXPEDITION_RARITIES[5];
  }
  function generate(slot,sector=0,rng=Math.random,source='enemy',difficulty=1){
   if(!SLOTS.includes(slot))throw Error('unknown equipment slot');

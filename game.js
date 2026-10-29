@@ -2416,15 +2416,42 @@ function ashOpenPrep(){
  $('ashPrepCancel')?.focus();
 }
 function ashClosePrep(){const modal=$('ashPrepOverlay');if(modal)modal.hidden=true;document.body.classList.remove('ash-prep-open');}
-function ashOpenDifficulty(){const el=$('ashDifficultyOverlay');if(!el)return;el.hidden=false;document.body.classList.add('ash-prep-open');$('ashDifficultyLaunch')?.focus();}
+// ASHFALL V2.9 — permanent-level difficulty unlocks and centralized encounter scaling.
+const ASH_DIFFICULTIES=Object.freeze([
+ {name:'RECRUE',level:1,hp:1,damage:1,count:1,hazard:1},
+ {name:'SURVIVANT',level:5,hp:1.5,damage:1.3,count:1.35,hazard:1.8},
+ {name:'VÉTÉRAN',level:10,hp:2.25,damage:1.75,count:1.8,hazard:3},
+ {name:'ÉLITE',level:20,hp:3.5,damage:2.4,count:2.5,hazard:4.5},
+ {name:'CAUCHEMAR',level:30,hp:5,damage:3.25,count:3.5,hazard:7}
+]);
+let ashSelectedDifficulty=1;
+function ashDifficultyConfig(){return ASH_DIFFICULTIES[clamp(Math.floor(Number(data.run?.difficulty)||1),1,5)-1];}
+function ashDifficultyFactor(){return ashDifficultyConfig().hp;}
+function ashDifficultyCount(n){return Math.max(1,Math.round(n*ashDifficultyConfig().count));}
+function ashDifficultyHazard(){return ashDifficultyConfig().hazard;}
+function ashOpenDifficulty(){
+ const el=$('ashDifficultyOverlay');if(!el)return;
+ const level=ashSurvivorProgress().level;
+ if(ASH_DIFFICULTIES[ashSelectedDifficulty-1].level>level)ashSelectedDifficulty=1;
+ const list=el.querySelector('.ash-difficulty-options');
+ if(list){list.innerHTML='';ASH_DIFFICULTIES.forEach((cfg,i)=>{
+  const n=i+1,locked=level<cfg.level,btn=document.createElement('button');
+  btn.type='button';btn.className='ash-difficulty-option'+(locked?' locked':'')+(ashSelectedDifficulty===n?' selected':'');
+  btn.disabled=locked;btn.setAttribute('aria-pressed',String(ashSelectedDifficulty===n));
+  const roman=document.createElement('span');roman.className='ash-difficulty-roman';roman.textContent=['I','II','III','IV','V'][i];
+  const content=document.createElement('div'),title=document.createElement('strong'),desc=document.createElement('small');
+  title.textContent=cfg.name;desc.textContent=locked?'Niveau '+cfg.level+' requis':`PV ×${cfg.hp} · Dégâts ×${cfg.damage} · Ennemis ×${cfg.count} · Dangers ×${cfg.hazard}`;
+  content.append(title,desc);const mark=document.createElement('span');mark.className='ash-difficulty-check';mark.textContent=locked?'🔒':ashSelectedDifficulty===n?'✓':'';
+  btn.append(roman,content,mark);btn.addEventListener('click',()=>{ashSelectedDifficulty=n;ashOpenDifficulty();});list.append(btn);
+ });}
+ el.hidden=false;document.body.classList.add('ash-prep-open');$('ashDifficultyLaunch')?.focus();
+}
 function ashCloseDifficulty(){const el=$('ashDifficultyOverlay');if(el)el.hidden=true;document.body.classList.remove('ash-prep-open');}
-function ashDifficultyFactor(){return data.run?.difficulty===1 ? 0.5 : 1;}
-function ashDifficultyCount(n){return ashDifficultyFactor()===.5?Math.max(1,Math.ceil(n*.5)):n;}
 function start(){if(data.pendingDebrief){showRunDebrief();return}if(data.run){setPlayer();runProgress();if(data.run.pendingLevels>0)openLevelChoice();render();return}
  // Toute nouvelle expédition commence à l'entrée : aucun départ par checkpoint.
  if(!data.eq2&&!e2MigrateWhenSafe()){msg('Migration nécessaire avant de démarrer une nouvelle expédition : '+e2MigrationError);return;}
  if(data.eq2&&!E2.validate(data)){msg('Sauvegarde Équipements 2.0 incohérente : départ bloqué pour préserver les données.');return;}
- data.run=createRun();data.run.difficulty=1;data.run.labLevels={...(data.labK17?.levels||{})};if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
+ data.run=createRun();data.run.difficulty=ASH_DIFFICULTIES[ashSelectedDifficulty-1].level<=ashSurvivorProgress().level?ashSelectedDifficulty:1;data.run.labLevels={...(data.labK17?.levels||{})};if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
  // Cartographie 0.9.8.2 : reconnaissance dynamique, calculee depuis la salle courante; aucune salle artificiellement revelee au depart.
  data.equipped=null;data.insured=null;setPlayer();
  enter(0,null);msg('Expédition lancée. Explore et trouve une extraction.');}
@@ -4715,7 +4742,7 @@ const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(
   cx.fillStyle='#1c2938';cx.fillRect(-7,3,6,18);cx.fillRect(2,3,6,18);cx.restore();
  }
  }combatFxPaintWorld();cx.restore();if(isBoss(r.current,r))ashDrawBossHud(room);combatFxPaintHurt();}
-function hurt(amount,cause='combat'){if(!player||!data.run||player.inv>0)return;if(data.run.eq2){const f=data.run.eq2.fx;if(E2.profile(data.run).shield>0&&f.shieldReady){f.shieldReady=false;f.shieldCooldown=32;player.inv=.35;msg('Égide : impact absorbé.');return;}}window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'damage',x:player.x,y:player.y}}));combatFxDamagePlayer();if(perkCount('dodge')&&Math.random()<[0,.05,.08,.11][perkCount('dodge')]){player.inv=.35;msg('Esquive !');return}const low=player.hp/player.max<.3;const mitigation=1-[0,.06,.10,.14][perkCount('armor')];const last=low?1-[0,.20,.30,.40][perkCount('laststand')]:1;player.hp-=Math.max(1,Math.round(amount*ashDifficultyFactor()*(1-ashRunGear().resist)*mitigation*last));if(perkCount('emergency'))data.run._emergencyUntil=(data.run.elapsedSeconds||0)+2;player.inv=.65;if(player.hp<=0)finish(false,cause)}
+function hurt(amount,cause='combat'){if(!player||!data.run||player.inv>0)return;if(data.run.eq2){const f=data.run.eq2.fx;if(E2.profile(data.run).shield>0&&f.shieldReady){f.shieldReady=false;f.shieldCooldown=32;player.inv=.35;msg('Égide : impact absorbé.');return;}}window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'damage',x:player.x,y:player.y}}));combatFxDamagePlayer();if(perkCount('dodge')&&Math.random()<[0,.05,.08,.11][perkCount('dodge')]){player.inv=.35;msg('Esquive !');return}const low=player.hp/player.max<.3;const mitigation=1-[0,.06,.10,.14][perkCount('armor')];const last=low?1-[0,.20,.30,.40][perkCount('laststand')]:1;player.hp-=Math.max(1,Math.round(amount*ashDifficultyConfig().damage*(1-ashRunGear().resist)*mitigation*last));if(perkCount('emergency'))data.run._emergencyUntil=(data.run.elapsedSeconds||0)+2;player.inv=.65;if(player.hp<=0)finish(false,cause)}
 function transition(){
  if(locked())return false;
  const r=data.run,id=r.current,room=r.rooms[id];
@@ -4727,7 +4754,7 @@ function transition(){
  return false;
 }
 function objective(name){let r=data.run;if(!r.objectives.includes(name))r.objectives.push(name)}
-function update(dt){if(!data.run||overlay)return;enforceArena();let r=data.run,room=r.rooms[r.current];if(r.eq2)e2Tick(dt,room);combatFxStep(dt,room);ashSweepFxStep(dt);if(Number.isFinite(r.elapsedSeconds))r.elapsedSeconds+=dt;environment(room);room._entryGrace=Math.max(0,(room._entryGrace||0)-dt);if(room.cleared){room.hazardOn=false;if(r.environmentV2)room.hazardWarning=0;for(let i=bullets.length-1;i>=0;i--)if(bullets[i].enemy)bullets.splice(i,1)}if(sanitizeEnemyPositions(room))persist();let sec=sectorOf(room);room.envPhase+=dt; updateInteractables(room,dt);if(!data.run)return; if(!room.cleared&&!room.hazardDisabled&&room.kind!=='outpost'&&!isExit(r.current,r)&&r.current!==0&&(sec===1||sec===2)){room.hazardCooldown-=dt;if(r.environmentV2){if(room.hazardWarning>0){room.hazardWarning=Math.max(0,room.hazardWarning-dt);if(room.hazardWarning===0){room.hazardOn=true;room.hazardCooldown=1.1}}else if(room.hazardCooldown<=0){if(room.hazardOn){room.hazardOn=false;room.hazardCooldown=2.9;room.hazardX=pick(105,255)}else{room.hazardWarning=1.5;room.hazardCooldown=1.5}}}else if(room.hazardCooldown<=0){room.hazardOn=!room.hazardOn;room.hazardCooldown=room.hazardOn?1.15:2.9;if(!room.hazardOn)room.hazardX=sec===1?pick(105,255):pick(105,255)}if(room.hazardOn&&!(room._entryGrace>0)){let hit=sec===1?Math.abs(player.x-room.hazardX)<14&&player.y>50&&player.y<350:Math.hypot(player.x-room.hazardX,player.y-205)<42;if(hit){if(!room.hazardTick||room.hazardTick<=0){hurt(sec===1?11:15,'environnement');if(!data.run)return;room.hazardTick=.65}}}room.hazardTick=Math.max(0,(room.hazardTick||0)-dt)}player.inv=Math.max(0,player.inv-dt);player.fire=Math.max(0,player.fire-dt);player.dash=0;player.dashCooldown=Math.max(0,(player.dashCooldown||0)-dt);player.dashFlash=Math.max(0,(player.dashFlash||0)-dt);
+function update(dt){if(!data.run||overlay)return;enforceArena();let r=data.run,room=r.rooms[r.current];if(r.eq2)e2Tick(dt,room);combatFxStep(dt,room);ashSweepFxStep(dt);if(Number.isFinite(r.elapsedSeconds))r.elapsedSeconds+=dt;environment(room);room._entryGrace=Math.max(0,(room._entryGrace||0)-dt);if(room.cleared){room.hazardOn=false;if(r.environmentV2)room.hazardWarning=0;for(let i=bullets.length-1;i>=0;i--)if(bullets[i].enemy)bullets.splice(i,1)}if(sanitizeEnemyPositions(room))persist();let sec=sectorOf(room);room.envPhase+=dt; updateInteractables(room,dt);if(!data.run)return; if(!room.cleared&&!room.hazardDisabled&&room.kind!=='outpost'&&!isExit(r.current,r)&&r.current!==0&&(sec===1||sec===2)){room.hazardCooldown-=dt;if(r.environmentV2){if(room.hazardWarning>0){room.hazardWarning=Math.max(0,room.hazardWarning-dt);if(room.hazardWarning===0){room.hazardOn=true;room.hazardCooldown=1.1}}else if(room.hazardCooldown<=0){if(room.hazardOn){room.hazardOn=false;room.hazardCooldown=2.9/ashDifficultyHazard();room.hazardX=pick(105,255)}else{room.hazardWarning=1.5;room.hazardCooldown=1.5}}}else if(room.hazardCooldown<=0){room.hazardOn=!room.hazardOn;room.hazardCooldown=room.hazardOn?1.15:2.9;if(!room.hazardOn)room.hazardX=sec===1?pick(105,255):pick(105,255)}if(room.hazardOn&&!(room._entryGrace>0)){let hit=sec===1?Math.abs(player.x-room.hazardX)<14&&player.y>50&&player.y<350:Math.hypot(player.x-room.hazardX,player.y-205)<42;if(hit){if(!room.hazardTick||room.hazardTick<=0){hurt(sec===1?11:15,'environnement');if(!data.run)return;room.hazardTick=.65}}}room.hazardTick=Math.max(0,(room.hazardTick||0)-dt)}player.inv=Math.max(0,player.inv-dt);player.fire=Math.max(0,player.fire-dt);player.dash=0;player.dashCooldown=Math.max(0,(player.dashCooldown||0)-dt);player.dashFlash=Math.max(0,(player.dashFlash||0)-dt);
 let vx=joy.x+(keyState.ArrowRight||keyState.d?1:0)-(keyState.ArrowLeft||keyState.a?1:0),vy=joy.y+(keyState.ArrowDown||keyState.s?1:0)-(keyState.ArrowUp||keyState.w?1:0),mag=Math.hypot(vx,vy);if(mag>1){vx/=mag;vy/=mag}player.dx=vx;player.dy=vy;if(mag>.15){player.facingX=vx;player.facingY=vy}advanceSolid(player,vx*150*(1+perkBonus('speed')+((r._emergencyUntil||0)>(r.elapsedSeconds||0)?[0,.20,.30,.40][perkCount('emergency')]:0)+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,vy*150*(1+perkBonus('speed')+((r._emergencyUntil||0)>(r.elapsedSeconds||0)?[0,.20,.30,.40][perkCount('emergency')]:0)+labLevel('mob01')*.015+ashRunGear().speed+(r.eq2&&r.eq2.fx.killWindow>0?ashRunGear().killSpeed:0))*dt,12,room);if(transition())return;
 updateIncident(room,dt);if(!data.run)return;
 if(room.activated&&isArena(r.current,r)&&room.enemies.length===0&&!room.cleared){room.arenaWave=(room.arenaWave||1)+1;if(room.arenaWave<=3){spawnReinforcement(room,room.arenaWave===2?7:4);if(room.arenaWave===3){const elite=enemiesFor(r.current).find(e=>e.type==='sentinel');const pos=spawnSafe(room,room.enemies,{x:180,y:105});if(elite&&pos)room.enemies.push({...elite,id:uid(),hp:Math.round(350*ashDifficultyFactor()),max:Math.round(350*ashDifficultyFactor()),...pos});}player.inv=Math.max(player.inv,.7);msg(`⚠ ARÈNE : vague ${room.arenaWave}/3 !`)}else{room.cleared=true;room.chest='closed';r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};const arenaReward=pick(150,250);r.earnedCredits+=arenaReward;r.economy.arena+=arenaReward;objective('arène');objective('arène-recherche-1');objective('arène-recherche-2');msg('🏆 VICTOIRE : coffre épique en cours d’ouverture !')}persist()}if(isBoss(r.current,r)&&room.spawned&&room.enemies.length===0&&!room.cleared){room.cleared=true;region().bossDefeated=true;data.unlockHelix=true;r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=450;r.economy.boss+=450;objective('boss-k17');objective('boss-recherche');msg('🏆 GARDIEN K-17 VAINCU ! HELIX DÉBLOQUÉ (future région).');persist()}if(!room.cleared&&room.spawned&&room.enemies.length===0&&!isArena(r.current,r)&&!isBoss(r.current,r)&&!incidentBlocksClear(room)){room.cleared=true;if(room.kind!=='start'&&room.kind!=='outpost'){r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};r.earnedCredits+=20;r.economy.room+=20;objective('combat-'+r.current)}msg('✓ Salle sécurisée : nouvelles portes ouvertes !');persist()}

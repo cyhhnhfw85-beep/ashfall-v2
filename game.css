@@ -1163,3 +1163,8 @@ body.ash-prep-open{overflow:hidden}#refuge-page-home .ash-sp-home{display:block;
 .ash-inventory-swipe-nav button{flex:0 0 38px;min-height:38px;border:1px solid #4c829a;border-radius:9px;background:#183449;color:#a9f4ff;font-size:25px;line-height:1;cursor:pointer}
 .ash-inventory-swipe-nav span{flex:1;min-width:0}
 #inventorySelection,.mr-detail,.ash927-compare{touch-action:pan-y}
+
+/* V2.9 difficulty picker — actionable buttons, accessible focus */
+button.ash-difficulty-option{width:100%;font:inherit;text-align:left;cursor:pointer}
+button.ash-difficulty-option:disabled{cursor:not-allowed}
+button.ash-difficulty-option:focus-visible{outline:2px solid #e9c18a;outline-offset:2px}
