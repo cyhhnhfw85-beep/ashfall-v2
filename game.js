@@ -3289,6 +3289,64 @@ function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
 function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Équipements disparus après une mise à jour ?</p><button id="recoverCatalogGear" type="button">Récupérer les anciens équipements</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('recoverCatalogGear').onclick=()=>{ashRecoverCatalogEquipment();};$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;const safetyKey=KEY+'_before_import_'+Date.now();const safetyValue=JSON.stringify(data);writeVerifiedBackup(safetyKey,safetyValue);data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
+// Réparation opt-in et conservatrice des identifiants Équipements 2.0.
+// Aucune écriture tant qu'une copie intégrale et vérifiée n'a pas été créée.
+function ashRepairEq2Duplicates(){
+ const diag=$('ashLaunchDiagnostic');
+ const say=t=>{if(diag)diag.textContent+='\n\n'+t;};
+ if(data.run||data.pendingDebrief){say('RÉPARATION REFUSÉE : expédition ou bilan en cours.');return;}
+ if(!data.eq2||data.eq2.schema!==2||!Array.isArray(data.eq2.gear)||!Array.isArray(data.stash)||!data.eq2.slots){say('RÉPARATION REFUSÉE : structure non conforme.');return;}
+ const before=JSON.stringify(data),candidate=JSON.parse(before);
+ const entries=[];
+ if(candidate.equipped)entries.push({item:candidate.equipped,source:'arme équipée'});
+ candidate.stash.forEach((item,i)=>{if(item)entries.push({item,source:'réserve '+(i+1)});});
+ candidate.eq2.gear.forEach((item,i)=>{if(item)entries.push({item,source:'équipement '+(i+1)});});
+ const byId=new Map();
+ for(const entry of entries){const id=entry.item.id;if(typeof id!=='string'||!id){say('RÉPARATION REFUSÉE : identifiant manquant.');return;}if(!byId.has(id))byId.set(id,[]);byId.get(id).push(entry);}
+ const groups=[...byId.entries()].filter(([,list])=>list.length>1);
+ if(!groups.length){say('Aucun identifiant dupliqué à corriger.');return;}
+ const referenced=new Set(Object.values(candidate.eq2.slots).filter(Boolean));
+ // If two items of the same slot share a referenced ID, it is impossible to
+ // infer the player's intended selection: never guess or silently unequip.
+ for(const [id,list] of groups){
+  if(!referenced.has(id))continue;
+  const slots=Object.entries(candidate.eq2.slots).filter(([,v])=>v===id).map(([k])=>k);
+  for(const slot of slots){
+   const matches=list.filter(({item})=>(item.slot||'weapon')===slot);
+   if(matches.length!==1){say('RÉPARATION SUSPENDUE : référence équipée ambiguë ('+slot+'). Aucune donnée modifiée.');return;}
+  }
+ }
+ const occupied=new Set(byId.keys());let changed=0;
+ for(const [id,list] of groups){
+  const slot=Object.entries(candidate.eq2.slots).find(([,v])=>v===id)?.[0];
+  const keep=slot?list.find(x=>(x.item.slot||'weapon')===slot):list[0];
+  for(const entry of list){if(entry===keep)continue;
+   let newId;do{newId='e2-repair-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,14);}while(occupied.has(newId));
+   occupied.add(newId);entry.item.id=newId;changed++;
+  }
+ }
+ if(!E2.validate(candidate)||!valid(candidate)){say('RÉPARATION SUSPENDUE : validation complète impossible. Aucune donnée modifiée.');return;}
+ if(!confirm('ASHFALL — Réparation sécurisée\n\n'+changed+' identifiant(s) à rendre uniques, sans supprimer d’objet.\n\nUne copie intégrale de secours sera créée et vérifiée AVANT toute modification. Continuer ?'))return;
+ const backupKey=KEY+'_before_eq2_id_repair_'+Date.now();
+ try{
+  writeVerifiedBackup(backupKey,before,true);
+  if(localStorage.getItem(backupKey)!==before)throw Error('copie de secours non vérifiée');
+  // Do not overwrite a valid recovery copy until the new primary is verified.
+  const newState=JSON.stringify(candidate);
+  localStorage.setItem(KEY,newState);
+  if(localStorage.getItem(KEY)!==newState||!valid(JSON.parse(localStorage.getItem(KEY)))||!E2.validate(JSON.parse(localStorage.getItem(KEY))))throw Error('écriture non vérifiée');
+  data=candidate;
+  try{localStorage.setItem(RECOVERY_KEY,newState);}catch(_){}
+  try{localStorage.setItem(SAVE_STATUS_KEY,String(Date.now()));}catch(_){}
+  say('RÉPARATION VALIDÉE : '+changed+' identifiant(s) corrigé(s). Copie de secours : '+backupKey+'. Tu peux relancer une expédition.');
+  render();
+ }catch(err){
+  // Preserve pre-repair state; restore primary only if the verified backup exists.
+  data=JSON.parse(before);
+  if(localStorage.getItem(backupKey)===before){try{localStorage.setItem(KEY,before);}catch(_) {}}
+  say('RÉPARATION ANNULÉE : '+String(err?.message||err)+'. Aucune réparation confirmée.');
+ }
+}
 $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{
  const launch=$('ashDifficultyLaunch');
  if(launch.disabled)return;
@@ -3329,6 +3387,10 @@ $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').ad
    }
    if(!Number.isSafeInteger(s.components)||s.components<0)issues.push('Composants invalides');
    diag.textContent+='\n\nAUDIT ÉQUIPEMENTS 2.0 (lecture seule)\n'+(issues.length?issues.join('\n'):'Aucune anomalie structurelle simple détectée : vérifier le modèle des équipements.')+'\nObjets examinés : '+items.length+' · Composants : '+String(s.components);
+   if(issues.some(x=>x.startsWith('Identifiant dupliqué'))){
+    let repair=$('ashEq2RepairButton');
+    if(!repair){repair=document.createElement('button');repair.id='ashEq2RepairButton';repair.type='button';repair.textContent='RÉPARER LES IDENTIFIANTS (SAUVEGARDE DE SECOURS)';repair.style.cssText='display:block;width:100%;margin:12px 0;padding:12px;background:#e7bb79;color:#17222c;border-radius:8px;font-weight:bold;white-space:normal';diag.parentNode.insertBefore(repair,diag.nextSibling);repair.addEventListener('click',ashRepairEq2Duplicates);}
+   }
   }
 
   msg('⚠ Départ non effectué. '+(reason||'Vérifie les équipements et la sauvegarde avant de réessayer.'));
