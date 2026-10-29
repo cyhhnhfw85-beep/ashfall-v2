@@ -3373,6 +3373,29 @@ function ashEq2SnapshotAudit(){
  lines.push('Aucune donnée enregistrée ou modifiée par cet audit.');
  return lines.join('\n');
 }
+// EQ2: restore a verified persisted state into RAM only, with explicit consent.
+// Never overwrite the primary/recovery snapshots or auto-repair item identifiers.
+function ashSyncEq2FromVerifiedSave(){
+ const diag=$('ashLaunchDiagnostic');
+ const say=t=>{if(diag)diag.textContent='SYNCHRONISATION ÉQUIPEMENTS 2.0\n'+t;};
+ if(data.run||data.pendingDebrief){say('Refus : expédition ou bilan en cours.');return;}
+ const stored=readSnapshot(KEY);
+ if(!stored||!stored.eq2||!E2.validate(stored)||stored.run||stored.pendingDebrief){say('Refus : sauvegarde principale absente, invalide ou en expédition.');return;}
+ if(E2.validate(data)){say('Mémoire déjà valide : synchronisation inutile.');return;}
+ // A full reload avoids mixing object references between the old and new inventories.
+ // Show a clear warning: any unsaved RAM-only changes are discarded.
+ if(!confirm('ASHFALL — Synchroniser la mémoire\n\nLa sauvegarde principale vérifiée (43 objets lors du dernier audit) remplacera uniquement l’état en mémoire. Les changements non sauvegardés depuis la dernière sauvegarde seront perdus. Aucune sauvegarde ne sera écrasée. Continuer ?'))return;
+ const previous=data;
+ try{
+  const restored=JSON.parse(JSON.stringify(stored));
+  if(!valid(restored)||!E2.validate(restored))throw Error('snapshot non valide');
+  data=restored;
+  if(!E2.validate(data))throw Error('mémoire toujours invalide');
+  setPlayer();
+  say('MÉMOIRE SYNCHRONISÉE — validation OK. La sauvegarde principale et la récupération sont intactes. Appuie sur LANCER L’EXPÉDITION.');
+  const btn=$('ashEq2SyncButton');if(btn)btn.hidden=true;
+ }catch(e){data=previous;say('SYNCHRONISATION REFUSÉE : '+String(e?.message||e)+'. Aucun enregistrement effectué.');}
+}
 $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{
  const launch=$('ashDifficultyLaunch');
  if(launch.disabled)return;
@@ -3414,7 +3437,15 @@ $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').ad
    if(!Number.isSafeInteger(s.components)||s.components<0)issues.push('Composants invalides');
    diag.textContent+='\n\nAUDIT ÉQUIPEMENTS 2.0 (lecture seule)\n'+(issues.length?issues.join('\n'):'Aucune anomalie structurelle simple détectée : vérifier le modèle des équipements.')+'\nObjets examinés : '+items.length+' · Composants : '+String(s.components);
    try{diag.textContent+='\n\n'+ashEq2SnapshotAudit();}catch(auditError){diag.textContent+='\nAUDIT PERSISTANCE indisponible : '+String(auditError?.message||auditError);}
-   if(issues.some(x=>x.startsWith('Identifiant dupliqué'))){
+   // Offer RAM-only recovery only when the primary snapshot is independently valid.
+   const verifiedPrimary=readSnapshot(KEY);
+   if(verifiedPrimary?.eq2 && !verifiedPrimary.run && !verifiedPrimary.pendingDebrief && E2.validate(verifiedPrimary)){
+    let sync=$('ashEq2SyncButton');
+    if(!sync){sync=document.createElement('button');sync.id='ashEq2SyncButton';sync.type='button';sync.textContent='SYNCHRONISER LA MÉMOIRE DEPUIS LA SAUVEGARDE VÉRIFIÉE';sync.style.cssText='display:block;width:100%;margin:12px 0;padding:12px;background:#79d6ca;color:#10232b;border-radius:8px;font-weight:bold;white-space:normal';diag.parentNode.insertBefore(sync,diag.nextSibling);sync.addEventListener('click',ashSyncEq2FromVerifiedSave);}
+    sync.hidden=false;
+   }
+
+   if(issues.some(x=>x.startsWith('Identifiant dupliqué')) && !(verifiedPrimary?.eq2 && E2.validate(verifiedPrimary))){
     let repair=$('ashEq2RepairButton');
     if(!repair){repair=document.createElement('button');repair.id='ashEq2RepairButton';repair.type='button';repair.textContent='RÉPARER LES IDENTIFIANTS (SAUVEGARDE DE SECOURS)';repair.style.cssText='display:block;width:100%;margin:12px 0;padding:12px;background:#e7bb79;color:#17222c;border-radius:8px;font-weight:bold;white-space:normal';diag.parentNode.insertBefore(repair,diag.nextSibling);repair.addEventListener('click',ashRepairEq2Duplicates);}
    }
