@@ -2490,10 +2490,33 @@ function ashOpenDifficulty(){
  el.hidden=false;document.body.classList.add('ash-prep-open');$('ashDifficultyLaunch')?.focus();
 }
 function ashCloseDifficulty(){const el=$('ashDifficultyOverlay');if(el)el.hidden=true;document.body.classList.remove('ash-prep-open');}
+// V4 — lecture seule : explique les refus de validation sans toucher aux objets ni aux sauvegardes.
+function ashDiagnoseEquipmentV4(d){
+ const issues=[];const s=d?.eq2;
+ if(!s||s.schema!==2){issues.push('Schéma Équipements 2.0 absent ou incorrect');return issues;}
+ if(!Array.isArray(s.gear))issues.push('eq2.gear : liste absente');
+ if(!s.slots||typeof s.slots!=='object')issues.push('eq2.slots : emplacements absents');
+ const slots=['weapon','armor','boots','module','bag','artifact'];
+ const items=[d.equipped,...(Array.isArray(d.stash)?d.stash:[]),...(Array.isArray(s.gear)?s.gear:[])].filter(Boolean).map(w=>(!w.slot||w.slot==='weapon')?E2.normalizeWeapon(w):w);
+ const ids=new Map();
+ for(const w of items){
+  const id=String(w?.id||'');ids.set(id,(ids.get(id)||0)+1);
+  if(!w||typeof w.id!=='string'||!slots.includes(w.slot))issues.push('Objet avec ID ou catégorie invalide : '+String(w?.name||'sans nom'));
+  if(w?.slot!=='weapon'&&(!E2.model(w)||E2.model(w).slot!==w.slot))issues.push('Modèle inconnu ou catégorie incohérente : '+String(w?.name||w?.model||'sans nom'));
+ }
+ for(const [id,count] of ids)if(count>1)issues.push('Identifiant dupliqué ('+count+' objets) : '+id.slice(-12));
+ for(const [slot,id] of Object.entries(s.slots||{})){
+  if(!slots.includes(slot)){issues.push('Emplacement inconnu : '+slot);continue;}
+  if(id&&!items.some(w=>w.id===id&&w.slot===slot))issues.push('Emplacement '+slot+' : objet référencé introuvable ou mauvaise catégorie ('+String(id).slice(-12)+')');
+ }
+ if(!Number.isSafeInteger(s.components)||s.components<0)issues.push('Compteur de composants invalide : '+String(s.components));
+ if(!issues.length)issues.push('Aucune anomalie détectée par le diagnostic miroir ; divergence avec la validation officielle.');
+ return issues;
+}
 function start(){if(data.pendingDebrief){showRunDebrief();return}if(data.run){setPlayer();runProgress();if(data.run.pendingLevels>0)openLevelChoice();render();return}
  // Toute nouvelle expédition commence à l'entrée : aucun départ par checkpoint.
  if(!data.eq2&&!e2MigrateWhenSafe()){const reason='Migration Équipements 2.0 : '+e2MigrationError;msg(reason);alert('ASHFALL DIAGNOSTIC — '+reason);return;}
- if(data.eq2&&!E2.validate(data)){const reason='Validation Équipements 2.0 refusée (inventaire/identifiants/emplacements). Aucune donnée modifiée.';msg(reason);alert('ASHFALL DIAGNOSTIC — '+reason);return;}
+ if(data.eq2&&!E2.validate(data)){const reason='Validation Équipements 2.0 refusée.\n\n'+ashDiagnoseEquipmentV4(data).slice(0,12).map((x,i)=>(i+1)+'. '+x).join('\n')+'\n\nDiagnostic en lecture seule : aucune donnée modifiée.';msg('Validation Équipements 2.0 refusée.');alert('ASHFALL DIAGNOSTIC V4 — '+reason);return;}
  data.run=createRun();data.run.difficulty=ASH_DIFFICULTIES[ashSelectedDifficulty-1].level<=ashSurvivorProgress().level?ashSelectedDifficulty:1;data.run.labLevels={...(data.labK17?.levels||{})};if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
  // Cartographie 0.9.8.2 : reconnaissance dynamique, calculee depuis la salle courante; aucune salle artificiellement revelee au depart.
  // Conserver l’arme équipée dans la sauvegarde du refuge pendant l’expédition.
