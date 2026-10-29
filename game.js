@@ -2125,7 +2125,7 @@ function ashI4Result(ev,text){
  msg(text);
 }
 function ashI4Panel(ev,room,distance,accent){
- if(!player||!room.cleared||distance>104||ev.state!=='ready')return;
+ if(!player||distance>104||ev.state!=='ready')return;
  const lines=ashI4Brief[ev.kind];if(!lines)return;
  const blocked=!!(room.enemies&&room.enemies.length);
  const missing=player.max-player.hp;
@@ -2133,8 +2133,9 @@ function ashI4Panel(ev,room,distance,accent){
  const shieldBlocked=ev.kind==='stabilizer'&&(data.run?.hazardShields||0)>=3;
  const depotVariant=ev.kind==='salvage'?ashI4CSalvageVariant(room):null;
  const depotDescription=depotVariant?'Dépôt '+ashI4CSalvageLabel(depotVariant).toLowerCase()+' · crédits, XP, butin':lines[1];
- const description=blocked?'Élimine les ennemis':medicBlocked?'PV suffisants · non disponible':shieldBlocked?'Protection maximale (3/3)':depotDescription;
- const label=(medicBlocked||shieldBlocked)?'INDISPONIBLE':distance<37?ev.kind==='distress'?'Maintiens 2 s · recule pour annuler':'Reste à proximité pour activer':'Approche-toi pour activer';
+ const locked=!room.cleared||blocked;
+ const description=locked?'Zone à sécuriser avant utilisation':medicBlocked?'PV suffisants · non disponible':shieldBlocked?'Protection maximale (3/3)':depotDescription;
+ const label=locked?'VERROUILLÉ · termine le combat':(medicBlocked||shieldBlocked)?'INDISPONIBLE':distance<37?ev.kind==='distress'?'Maintiens 2 s · recule pour annuler':'Reste à proximité pour activer':'Approche-toi pour activer';
  const width=212,height=48;
  // World-space contextual card; no modal, no joystick or HUD interception.
  let y=-88;if(ev.y<100)y=47;
@@ -2143,7 +2144,7 @@ function ashI4Panel(ev,room,distance,accent){
  cx.strokeStyle=accent;cx.lineWidth=1.2;cx.strokeRect(-width/2,y,width,height);
  cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle=accent;cx.font='bold 10px sans-serif';cx.fillText(FIELD_NAMES[ev.kind]||lines[0],0,y+10,204);
  cx.fillStyle='#e7f0f2';cx.font='10px sans-serif';cx.fillText(description,0,y+25,204);
- cx.fillStyle=(medicBlocked||shieldBlocked)?'#a2a9af':'#a9dbdc';cx.font='9px sans-serif';cx.fillText(label,0,y+39,204);
+ cx.fillStyle=(locked||medicBlocked||shieldBlocked)?'#a2a9af':'#a9dbdc';cx.font='9px sans-serif';cx.fillText(label,0,y+39,204);
  cx.restore();
 }
 function ashI4DrawResult(ev){
@@ -2151,11 +2152,14 @@ function ashI4DrawResult(ev){
  const remaining=Math.max(0,(ashI4Ui.until-performance.now())/2600);
  cx.save();cx.globalAlpha=Math.min(1,remaining*3);
  const y=ev.y<100?48:-67;
- cx.fillStyle='#08232a';cx.fillRect(-106,y,212,29);
- cx.strokeStyle='#6ee2d5';cx.lineWidth=1.3;cx.strokeRect(-106,y,212,29);
- cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#ecffff';cx.font='bold 10px sans-serif';
+ cx.fillStyle='#08232a';cx.fillRect(-106,y,212,35);
+ cx.strokeStyle='#6ee2d5';cx.lineWidth=1.3;cx.strokeRect(-106,y,212,35);
+ cx.fillStyle='#6ee2d5';cx.fillRect(-106,y,3,35);
+ cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#70e3d5';cx.font='bold 8px sans-serif';
+ cx.fillText('RÉSULTAT DE L’INTERACTION',0,y+9,200);
+ cx.fillStyle='#ecffff';cx.font='bold 10px sans-serif';
  const val=ashI4Ui.text.replace(/^.*? : /,'').replace(/^.*? :/,'');
- cx.fillText(val,0,y+15,203);cx.restore();
+ cx.fillText(val,0,y+24,198);cx.restore();
 }
 function drawFieldEvent(room){
  const ev=room.fieldEvent;
@@ -2210,6 +2214,11 @@ function drawFieldEvent(room){
  }
  ashEnvV3Paint(spriteKind,spriteState,0,0,46);
  ashI4Panel(ev,room,distanceToPlayer,accent);
+ if(ashI4Ui.event===ev&&performance.now()<ashI4Ui.until){
+  const progress=1-(ashI4Ui.until-performance.now())/2600;
+  cx.save();cx.globalAlpha=Math.max(0,(1-progress)*.42);cx.strokeStyle='#7debd8';cx.lineWidth=2;
+  cx.beginPath();cx.arc(0,0,28+progress*18,0,Math.PI*2);cx.stroke();cx.restore();
+ }
  ashI4DrawResult(ev);
  cx.restore();
 }
