@@ -500,6 +500,18 @@ function ashClaimLevelReward(n){
  if(!persist()){data=JSON.parse(before);msg('Sauvegarde impossible : récompense non récupérée.');return;}
  render();ashChestRender();
 }
+// Indicateur de récompenses en attente : calculé depuis la progression sauvegardée.
+function ashUpdateRewardIndicators(){
+ const p=ashSurvivorProgress();
+ const claimed=new Set(p.claimedRewards);
+ const pending=Array.from({length:p.level},(_,i)=>i+1).filter(n=>!claimed.has(n)).length+p.chestVouchers.length;
+ for(const selector of ['[data-refuge-tab="chests"]','[data-chest-subtab="recompenses"]']){
+  const button=document.querySelector(selector);if(!button)continue;
+  button.classList.toggle('ash-reward-pending',pending>0);
+  const label=selector.includes('refuge')?'Coffres':'Récompenses';
+  button.setAttribute('aria-label',pending>0?`${label} — ${pending} récompense${pending>1?'s':''} à récupérer`:label);
+ }
+}
 let ashChestActiveTab='coffres';
 function ashChestSwitchTab(tab){ashChestActiveTab=tab==='recompenses'?'recompenses':'coffres';ashChestRender();}
 function ashRenderLevelRewards(){
@@ -2344,6 +2356,7 @@ function ashChestAnimateProgress(){
 }
 function ashChestClearReveal(){ashChestStopTimer();const root=$('ashChestReveal');if(root){root.hidden=true;root.innerHTML='';}}
 function ashChestRender(){
+ ashUpdateRewardIndicators();
  const host=$('ashChestOffers');if(!host)return;
  const rewards=ashChestActiveTab==='recompenses'&&!data.chestPending;
  const offersPanel=$('ashChestOffers'),rewardPanel=$('ashLevelRewards'),conditions=document.querySelector('.ash-chest-conditions');
@@ -3258,7 +3271,7 @@ function ashRenderMiniMap(run){
  // Do not zoom twice: that clipped large rooms and disconnected the position marker.
  ashLastMiniSignature=signature;}
 }
-function render(){if(!data.run&&!data.labK17?.migrated)labMigrate();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)ashSchedulePlayfield();$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
+function render(){ashUpdateRewardIndicators();if(!data.run&&!data.labK17?.migrated)labMigrate();let r=data.run;if(!r&&$('ashLootToast'))$('ashLootToast').hidden=true;document.body.classList.toggle('ashfall-expedition',!!r);$('home').hidden=!!r;$('game').hidden=!r;if(r)ashSchedulePlayfield();$('phase').textContent=r?'EXPÉDITION':'REFUGE';$('credits').textContent=data.credits;$('research').textContent=data.research;$('runs').textContent=data.runs;if(!r){if($('xpDisplay'))$('xpDisplay').style.display='none';$('hpLevel').textContent='Nv. '+data.hpLv+' / 8';$('dmgLevel').textContent='Nv. '+data.dmgLv+' / 8';
  if(!data.run&&data.labK17?.migrated)labRender();
  if($('workshopResearchMirror'))$('workshopResearchMirror').textContent=data.research;
  if($('hpUpgradeFill'))$('hpUpgradeFill').style.width=(data.hpLv/8*100)+'%';

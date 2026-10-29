@@ -1168,3 +1168,12 @@ body.ash-prep-open{overflow:hidden}#refuge-page-home .ash-sp-home{display:block;
 button.ash-difficulty-option{width:100%;font:inherit;text-align:left;cursor:pointer}
 button.ash-difficulty-option:disabled{cursor:not-allowed}
 button.ash-difficulty-option:focus-visible{outline:2px solid #e9c18a;outline-offset:2px}
+
+/* V2.9.1 — Point doré : récompense de niveau ou ancien bon non réclamé. */
+.refuge-tab.ash-reward-pending,.ash-chest-subtabs button.ash-reward-pending{position:relative}
+.refuge-tab.ash-reward-pending::after,.ash-chest-subtabs button.ash-reward-pending::after{
+ content:"";position:absolute;top:5px;right:6px;width:8px;height:8px;
+ border-radius:50%;background:#edc28b;border:1px solid #fff0cb;
+ box-shadow:0 0 0 2px #142b38,0 0 8px rgba(237,194,139,.75);
+ pointer-events:none;z-index:2;
+}
