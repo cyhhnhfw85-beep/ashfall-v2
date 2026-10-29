@@ -1952,6 +1952,7 @@ function triggerFieldEvent(room){
  const ev=room.fieldEvent;if(!ev||ev.state!=='ready')return false;
  if(ASH_DISCOVERY_ROLES.has(ev.kind)&&!data.run?.interactiveV72)return false;
  // La station de soins reste disponible tant que le Nomade n'est pas blesse.
+ if(ev.kind==='stabilizer'&&(data.run?.hazardShields||0)>=3)return false;
  if(ev.kind==='medic'&&data.run?.fieldSupportV2){
   const threshold=Math.min(15,Math.round(player.max*.10));
   if(player.max-player.hp<threshold)return false;
@@ -2052,6 +2053,8 @@ function triggerFieldEvent(room){
  window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:ev.x,y:ev.y}}));
  persist();render();if(data.run?.pendingLevels>0&&!overlay)openLevelChoice();return true;
 }
+// Interactions 4.0 B — le signal hostile demande un maintien volontaire plus long.
+function ashI4BHoldDuration(ev){return ev?.kind==='distress'?2:.9;}
 function updateFieldEvent(room,dt){
  const ev=room.fieldEvent;
  if(!data.run?.interactiveV51||!ev||!player)return;
@@ -2059,12 +2062,14 @@ function updateFieldEvent(room,dt){
  if(ev.state!=='ready')return;
  const nearby=Math.hypot(player.x-ev.x,player.y-ev.y)<37;
  const unlocked=room.cleared&&(!room.enemies||room.enemies.length===0);
+ const shieldReady=ev.kind!=='stabilizer'||(data.run?.hazardShields||0)<3;
  const healReady=ev.kind!=='medic'||(data.run?.fieldSupportV2
   ? player.max-player.hp>=Math.min(15,Math.round(player.max*.10))
   : player.hp<player.max-1);
- if(nearby&&unlocked&&healReady){
-  ev.hold=Math.min(1,ev.hold+dt);
-  if(ev.hold>=.9)triggerFieldEvent(room);
+ if(nearby&&unlocked&&healReady&&shieldReady){
+  const duration=ashI4BHoldDuration(ev);
+  ev.hold=Math.min(duration,Math.max(0,ev.hold||0)+dt);
+  if(ev.hold>=duration)triggerFieldEvent(room);
  }else ev.hold=0;
 }
 
@@ -2108,8 +2113,9 @@ function ashI4Panel(ev,room,distance,accent){
  const blocked=!!(room.enemies&&room.enemies.length);
  const missing=player.max-player.hp;
  const medicBlocked=ev.kind==='medic'&&(data.run?.fieldSupportV2?missing<Math.min(15,Math.round(player.max*.10)):missing<1);
- const description=blocked?'Élimine les ennemis':medicBlocked?'PV suffisants · non disponible':lines[1];
- const label=medicBlocked?'INDISPONIBLE':distance<37?'Reste à proximité pour activer':'Approche-toi pour activer';
+ const shieldBlocked=ev.kind==='stabilizer'&&(data.run?.hazardShields||0)>=3;
+ const description=blocked?'Élimine les ennemis':medicBlocked?'PV suffisants · non disponible':shieldBlocked?'Protection maximale (3/3)':lines[1];
+ const label=(medicBlocked||shieldBlocked)?'INDISPONIBLE':distance<37?ev.kind==='distress'?'Maintiens 2 s · recule pour annuler':'Reste à proximité pour activer':'Approche-toi pour activer';
  const width=212,height=48;
  // World-space contextual card; no modal, no joystick or HUD interception.
  let y=-88;if(ev.y<100)y=47;
@@ -2118,7 +2124,7 @@ function ashI4Panel(ev,room,distance,accent){
  cx.strokeStyle=accent;cx.lineWidth=1.2;cx.strokeRect(-width/2,y,width,height);
  cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle=accent;cx.font='bold 10px sans-serif';cx.fillText(FIELD_NAMES[ev.kind]||lines[0],0,y+10,204);
  cx.fillStyle='#e7f0f2';cx.font='10px sans-serif';cx.fillText(description,0,y+25,204);
- cx.fillStyle=medicBlocked?'#a2a9af':'#a9dbdc';cx.font='9px sans-serif';cx.fillText(label,0,y+39,204);
+ cx.fillStyle=(medicBlocked||shieldBlocked)?'#a2a9af':'#a9dbdc';cx.font='9px sans-serif';cx.fillText(label,0,y+39,204);
  cx.restore();
 }
 function ashI4DrawResult(ev){
@@ -2180,7 +2186,7 @@ function drawFieldEvent(room){
   cx.fillStyle='#e4f4f5';cx.font='bold 10px sans-serif';cx.textAlign='center';
   /* Le pictogramme et l'anneau de proximité suffisent. */
   if(distanceToPlayer<43){
-   cx.strokeStyle=accent;cx.lineWidth=4;cx.beginPath();cx.arc(0,0,25,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,ev.hold/.9));cx.stroke();
+   cx.strokeStyle=accent;cx.lineWidth=4;cx.beginPath();cx.arc(0,0,25,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,(ev.hold||0)/ashI4BHoldDuration(ev)));cx.stroke();
   }
  }
  ashEnvV3Paint(spriteKind,spriteState,0,0,46);
@@ -2326,12 +2332,16 @@ function enter(id,from){let r=data.run,room=r?.rooms?.[id];
  r.current=id;room.seen=true;if(!r.visited.includes(id))r.visited.push(id);
 if(isLarge(r)){let reg=region();reg.maxSector=Math.max(reg.maxSector,room.sector);}
 environment(room);
-// Charge de securite du regulateur : desactive UN futur laser/event thermique, une fois.
-if(r.interactiveV51&&(r.hazardShields||0)>0&&(sectorOf(room)===1||sectorOf(room)===2)&&room.kind!=='exit'&&room.kind!=='outpost'&&room.kind!=='start'&&!room.cleared&&!room.hazardDisabled){
+prepareRoomInteractables(room);prepareRoomFieldEvent(room);initializeIncident(room);if(!room.spawned){room.spawned=true;room.enemies=enemiesFor(id);}
+// Interactions 4.0 B — conserver la charge si aucun danger environnemental
+// ne peut fonctionner dans cette salle. Le simulateur n'active ces dangers
+// qu'en secteur laser/thermique, hors départ/sortie/avant-poste et salle sécurisée.
+if(r.interactiveV51&&(r.hazardShields||0)>0&&(sectorOf(room)===1||sectorOf(room)===2)
+ &&id!==0&&!isExit(id,r)&&room.kind!=='outpost'&&!room.cleared&&!room.hazardDisabled
+ &&Array.isArray(room.enemies)&&room.enemies.length>0){
  room.hazardDisabled=true;room.hazardOn=false;if(r.environmentV2)room.hazardWarning=0;r.hazardShields--;
  room.hazardNeutralizedByTerminal=true;
 }
-prepareRoomInteractables(room);prepareRoomFieldEvent(room);initializeIncident(room);if(!room.spawned){room.spawned=true;room.enemies=enemiesFor(id);}
 if(from!==null){
   if(r.geometryVersion===25||r.geometryVersion===31){
    const incoming=doors(id).find(d=>d.to===from);
