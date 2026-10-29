@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const $=id=>document.getElementById(id), cv=$('canvas'), KEY='ashfall_pwa_v1';
+const $=id=>document.getElementById(id), cv=$('canvas'), KEY='ashfall_v32_lab_only_v1';
 const afIcon=name=>window.afIcon?window.afIcon(name):'';
 let cx=cv.getContext('2d'); // V44: le contexte est temporairement redirige pendant le pre-rendu des decors fixes.
 
@@ -906,6 +906,7 @@ function rectTouches(x,y,r,[rx,ry,w,h]){
 // Only real graph doors receive a gap; unconnected edges remain solid.
 const wallCache=new WeakMap();
 function roomWalls(room){
+ if(data.run?.geometryVersion===32){const m=ashV32MapForRun(data.run);if(m)return window.V32.adapter.walls(m,room.id)}
  if(wallCache.has(room))return wallCache.get(room);
  const geom=roomGeom(room),set=new Set(geom.cells.map(c=>c.join(','))),doorsHere=data.run?doors(room.id):[];
  const walls=[];const thick=20;
@@ -934,7 +935,7 @@ function roomWalls(room){
 // Classic overhead camera. Experimental 2.5D foreshortening removed.
 let roomCamera={x:0,y:0,zoom:1,id:-1};
 function cameraFor(room){
- const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
+ const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31||data.run?.geometryVersion===32;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*1);
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
@@ -1000,6 +1001,7 @@ function adjacent(i){let [x,y]=pos(i),r=data.run;if(isLarge(r))return r.rooms.fi
 
 function doors(i){
  const r=data.run;
+ if(r?.geometryVersion===32){const map=ashV32MapForRun(r);return map?map.doorsByRoom[i].map(d=>({to:d.to,side:d.side,x:d.x,y:d.y,portalId:d.portalId})):[]} 
  if(r?.geometryVersion===25){
   const room=r.rooms[i];
   return r.edges.filter(e=>e[0]===i||e[1]===i).map(e=>{
@@ -1033,6 +1035,30 @@ function makeMap25(){
  const edges=m.edges.map(e=>[e.from,e.to,e.door]);
  return {rooms,edges,arenaIds,exitIds,bossId:m.bossId,outpostIds,geometryVersion:25};
 }
+
+// GEOMETRY V32 LAB ONLY: generated physical rooms, no change to stable V31 behavior.
+const ashV32RuntimeCache=new WeakMap();
+function ashV32MapForRun(run){
+ if(!run||run.geometryVersion!==32||!run.v32World||!window.V32)return null;
+ if(!ashV32RuntimeCache.has(run))ashV32RuntimeCache.set(run,window.V32.adapter.compile(run.v32World));
+ return ashV32RuntimeCache.get(run);
+}
+function makeMapV32Experimental(){
+ if(!window.V32)throw Error('V32 browser bundle missing');
+ const seed=(Date.now()^Math.floor(Math.random()*0x7fffffff))>>>0;
+ const world=window.V32.geometry.build(seed);
+ const bad=window.V32.geometry.validate(world);
+ if(bad.length)throw Error('V32 invalid: '+bad.slice(0,3).join(', '));
+ const adj=Array.from({length:world.rooms.length},()=>[]);
+ for(const p of world.portals){adj[p.a].push(p.b);adj[p.b].push(p.a)}
+ const depths=Array(50).fill(Infinity);depths[0]=0;const queue=[0];
+ for(let i=0;i<queue.length;i++){const id=queue[i];for(const next of adj[id])if(depths[next]===Infinity){depths[next]=depths[id]+1;queue.push(next)}}
+ const maxDepth=Math.max(...depths);
+ const rooms=world.rooms.map((v)=>({id:v.id,gx:v.x,gy:v.y,shape:v.shape,depth:depths[v.id],sector:Math.min(3,Math.floor(depths[v.id]/(maxDepth+1)*4)),kind:v.kind,seen:v.id===0,spawned:false,enemies:[],chest:(['start','exit','boss','arena'].includes(v.kind)?'none':Math.random()<.63?'closed':'none'),activated:false,cleared:false,arenaWave:0,arenaReward:false,solidDecorV42:true,envArchitectureV4:true}));
+ const ids=kind=>rooms.filter(r=>r.kind===kind).map(r=>r.id);
+ return {rooms,edges:world.portals.map(p=>[p.a,p.b]),arenaIds:ids('arena'),exitIds:ids('exit'),bossId:ids('boss')[0],outpostIds:ids('outpost'),geometryVersion:32,v32World:world};
+}
+
 function makeLargeMap(){
  let nodes=[{id:0,gx:0,gy:0}],occupied=new Set(['0,0']),edges=[];
  // Randomized growing tree with branching, nonrectangular footprint.
@@ -1246,7 +1272,7 @@ function spawnReinforcement(room,count){count=ashDifficultyCount(count);for(let 
 
 function createRun(){
  const newLoadout=ashGearSnapshot(),initialHp=maxHp()+ashGearProfile(newLoadout).maxHp;
- let m=makeLargeMap();region().expeditions++;
+ let m=makeMapV32Experimental();region().expeditions++;
  // Phase 3B/3C - equilibrage 0.8.9.55 : uniquement pour les nouvelles expeditions.
  // Les terminaux sont places en fonction de leur utilite : cartographie tot,
  // regulateurs pres des dangers, soins plutot dans les secteurs difficiles.
@@ -1335,7 +1361,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,rewardsV1:true,rewardsSeed:Math.floor(Math.random()*2147483647),incidentFullV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:m.geometryVersion,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,rewardsV1:true,rewardsSeed:Math.floor(Math.random()*2147483647),incidentFullV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -2371,7 +2397,7 @@ if(r.interactiveV51&&(r.hazardShields||0)>0&&(sectorOf(room)===1||sectorOf(room)
  room.hazardNeutralizedByTerminal=true;
 }
 if(from!==null){
-  if(r.geometryVersion===25||r.geometryVersion===31){
+  if(r.geometryVersion===25||r.geometryVersion===31||r.geometryVersion===32){
    const incoming=doors(id).find(d=>d.to===from);
    if(incoming){const a=roomDoor(room,incoming);player.x=a.x+(a.side==='left'?47:a.side==='right'?-47:0);
     player.y=a.y+(a.side==='top'?47:a.side==='bottom'?-47:0);}
@@ -2591,6 +2617,32 @@ function canPassDoor(to){
 function ashRewardChestPoint(room){
  const run=data.run;
  if(!run?.rewardsV1||!['standard','secret'].includes(room.kind))return {x:180,y:110};
+ // V32 only: never trust a cached chest coordinate or an unvalidated fallback.
+ // Keep the V31 behavior byte-for-byte below this branch for old expeditions.
+ if(run.geometryVersion===32){
+  const unavailable={x:-1000000,y:-1000000};
+  if(room.chest!=='closed')return unavailable;
+  const geom=roomGeom(room),seed=(run.rewardsSeed||1)>>>0;
+  const valid=p=>{
+   if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))return false;
+   if(!geom.cells.some(([gx,gy])=>p.x>=gx*CELL_W+52&&p.x<=(gx+1)*CELL_W-52&&p.y>=gy*CELL_H+52&&p.y<=(gy+1)*CELL_H-52))return false;
+   if(Math.hypot(p.x-180,p.y-310)<105||Math.hypot(p.x-180,p.y-195)<90)return false;
+   if(roomWalls(room).some(w=>rectTouches(p.x,p.y,42,w))||roomObstacles(room).some(w=>rectTouches(p.x,p.y,47,w)))return false;
+   if(doors(room.id).some(d=>{const a=roomDoor(room,d);return Math.hypot(p.x-a.x,p.y-a.y)<135}))return false;
+   if((room.interactables||[]).some(o=>Math.hypot(p.x-o.x,p.y-o.y)<95))return false;
+   if(room.fieldEvent?.state==='ready'&&Math.hypot(p.x-room.fieldEvent.x,p.y-room.fieldEvent.y)<95)return false;
+   return true;
+  };
+  if(valid(room.chestPoint))return room.chestPoint;
+  const options=[];
+  for(const [gx,gy] of geom.cells)for(let y=92;y<=CELL_H-82;y+=38)for(let x=80;x<=CELL_W-76;x+=38){
+   const p={x:gx*CELL_W+x,y:gy*CELL_H+y};
+   if(valid(p))options.push(p);
+  }
+  // If the room genuinely has no valid spot, omit its chest; never block an exit.
+  if(!options.length){room.chest='none';delete room.chestPoint;return unavailable;}
+  return room.chestPoint=options[Math.floor(envV4Hash(seed,room.id,719)*options.length)];
+ }
  if(room.chestPoint&&Number.isFinite(room.chestPoint.x)&&Number.isFinite(room.chestPoint.y))return room.chestPoint;
  const geom=roomGeom(room),cells=geom.cells,seed=(run.rewardsSeed||1)>>>0;
  const options=[];
@@ -5033,6 +5085,8 @@ const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(
  }
  }combatFxPaintWorld();cx.restore();if(isBoss(r.current,r))ashDrawBossHud(room);combatFxPaintHurt();}
 function hurt(amount,cause='combat'){if(!player||!data.run||player.inv>0)return;if(data.run.eq2){const f=data.run.eq2.fx;if(E2.profile(data.run).shield>0&&f.shieldReady){f.shieldReady=false;f.shieldCooldown=32;player.inv=.35;msg('Égide : impact absorbé.');return;}}window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'damage',x:player.x,y:player.y}}));combatFxDamagePlayer();if(perkCount('dodge')&&Math.random()<[0,.05,.08,.11][perkCount('dodge')]){player.inv=.35;msg('Esquive !');return}const low=player.hp/player.max<.3;const mitigation=1-[0,.06,.10,.14][perkCount('armor')];const last=low?1-[0,.20,.30,.40][perkCount('laststand')]:1;player.hp-=Math.max(1,Math.round(amount*ashDifficultyConfig().damage*(1-ashRunGear().resist)*mitigation*last));if(perkCount('emergency'))data.run._emergencyUntil=(data.run.elapsedSeconds||0)+2;player.inv=.65;if(player.hp<=0)finish(false,cause)}
+function ashV32WorldMarker(){const r=data.run;if(r?.geometryVersion!==32)return null;const room=r.rooms[r.current];return {x:room.gx*CELL_W+player.x,y:room.gy*CELL_H+player.y,roomId:room.id};}
+window.ashV32LabRead=()=>{if(data.run?.geometryVersion!==32||!player)return null;const r=data.run,m=ashV32MapForRun(r);return {rooms:m?.rooms||[],doors:m?.portals||[],visited:r.visited||[],current:r.current,player:ashV32WorldMarker(),quotas:r.v32World?.quotas};};
 function transition(){
  if(locked())return false;
  const r=data.run,id=r.current,room=r.rooms[id];
@@ -5117,7 +5171,7 @@ function joystickPaint(){const dx=joy.cx-joystickZone.clientWidth/2,dy=joy.cy-jo
 function ashFitPlayfield(){
   if(!document.body.classList.contains('ashfall-expedition'))return;
   const stage=$('stage'),hud=document.querySelector('#game .gamebar');
-  if(data.run?.geometryVersion===25||data.run?.geometryVersion===31){
+  if(data.run?.geometryVersion===25||data.run?.geometryVersion===31||data.run?.geometryVersion===32){
     document.body.classList.add('ash25-fullscreen');
     if(!stage||!hud)return;
     // Le HUD est réservé au-dessus du terrain, sans masquer l'espace bas du joystick.
@@ -5186,7 +5240,7 @@ window.addEventListener('keydown',e=>{if(e.target.tagName==='TEXTAREA')return;ke
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(data.run&&!overlay)openOverlay('pause');persist(false)}});
 window.addEventListener('pagehide',()=>persist());
 window.addEventListener('freeze',()=>persist());
-if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js?v=hud938fix2',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});
+/* V32 LAB: SW registration deliberately disabled */
 if(data.run){runProgress();data.run.exitWave=data.run.exitWave||(data.run.exitStarted?1:0);if(data.run.exitStarted&&!Number.isInteger(data.run.exitRoom))data.run.exitRoom=data.run.current;setPlayer();if(data.run.exitStarted&&(!isExit(data.run.current,data.run)||data.run.exitRoom!==data.run.current))cancelExtraction(data.run,'tu as quitté la salle');sanitizeEnemyPositions(data.run.rooms[data.run.current]);if(isArena(data.run.current,data.run))enforceArena();else{let cr=data.run.rooms[data.run.current];if(cr&&cr.spawned&&!isBoss(data.run.current,data.run))autoSecure(cr)}if(!player||!data.run.rooms[data.run.current]){data.run=null;data.equipped=data.equipped||starter();msg('Ancienne expédition incompatible : refuge récupéré.')}else{openOverlay('pause');msg('Expédition retrouvée : appuie sur Reprendre.')}}
 
 // Initial training: self-contained guide. The flag is intentionally separate from ashfall_pwa_v1.
