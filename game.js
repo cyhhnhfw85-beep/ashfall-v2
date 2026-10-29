@@ -3304,6 +3304,33 @@ $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').ad
   // A safety guard may have declined launch. Keep the dialog and display a useful explanation.
   const reason=String($('log')?.textContent||'').trim();
   diag.textContent='DÉPART REFUSÉ — '+(reason||'Aucun motif visible. Vérifier les contrôles de sauvegarde.');
+  if(data.eq2 && !E2.validate(data)){
+   // Read-only mirror of Equipment 2.0 validation; never alter the save.
+   const issues=[];const s=data.eq2;
+   const slots=['weapon','armor','boots','module','bag','artifact'];
+   if(s.schema!==2)issues.push('Schéma Équipements 2.0 incorrect');
+   if(!Array.isArray(s.gear))issues.push('Inventaire des équipements absent ou invalide');
+   if(!s.slots||typeof s.slots!=='object')issues.push('Emplacements équipés absents ou invalides');
+   const gear=Array.isArray(s.gear)?s.gear:[];
+   const items=[data.equipped,...(Array.isArray(data.stash)?data.stash:[]),...gear].filter(Boolean).map(x=>(!x.slot||x.slot==='weapon')?{...x,slot:'weapon'}:x);
+   const ids=new Set();
+   for(const [i,x] of items.entries()){
+    if(typeof x.id!=='string'||!slots.includes(x.slot))issues.push('Objet '+(i+1)+' : identifiant ou emplacement invalide');
+    if(ids.has(x.id))issues.push('Identifiant dupliqué : objet '+(i+1));
+    ids.add(x.id);
+    if(x.slot!=='weapon' && !E2.catalog?.some(m=>m.id===x.model&&m.slot===x.slot)){
+     // Model check is verified below against the available public catalog, if exposed.
+     if(Array.isArray(E2.catalog))issues.push('Objet '+(i+1)+' : modèle inconnu ou emplacement incompatible');
+    }
+   }
+   if(s.slots&&typeof s.slots==='object')for(const [slot,id] of Object.entries(s.slots)){
+    if(!slots.includes(slot))issues.push('Emplacement non reconnu : '+slot);
+    else if(id&&!items.some(x=>x.id===id&&x.slot===slot))issues.push('Référence orpheline : '+slot);
+   }
+   if(!Number.isSafeInteger(s.components)||s.components<0)issues.push('Composants invalides');
+   diag.textContent+='\n\nAUDIT ÉQUIPEMENTS 2.0 (lecture seule)\n'+(issues.length?issues.join('\n'):'Aucune anomalie structurelle simple détectée : vérifier le modèle des équipements.')+'\nObjets examinés : '+items.length+' · Composants : '+String(s.components);
+  }
+
   msg('⚠ Départ non effectué. '+(reason||'Vérifie les équipements et la sauvegarde avant de réessayer.'));
  }catch(err){
   console.error('[ASHFALL] launch failed',err);
