@@ -1944,7 +1944,7 @@ function ashResolveDistress(room){
  run.economy.discovery=(run.economy.discovery||0)+credits;
  collectXp(7,true);
  persist();
- msg('SIGNAL SÉCURISÉ : +'+credits+' crédits et +7 XP à extraire.');
+ ashI4Result(ev,'SIGNAL SÉCURISÉ : +'+credits+' crédits et +7 XP à extraire.');
  if(run.pendingLevels>0&&!overlay)openLevelChoice();
  return true;
 }
@@ -1966,47 +1966,47 @@ function triggerFieldEvent(room){
     r.earnedCredits+=credits;
     r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
     r.economy.discovery=(r.economy.discovery||0)+credits;
-    msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
+    ashI4Result(ev,'✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
    }else if(roll<.85){
     const item=r.eq2&&E2?.rollDrop?.(sectorOf(room),Math.random,'chest',r.difficulty||1);
     if(item){
      item._eq2Dropped=true; // Éviter un second tirage lors du placement au sol.
      lootSpawn(room,'weapon',ev.x,ev.y,item);
-     msg('✦ CACHE DÉCOUVERTE : équipement trouvé au sol.');
+     ashI4Result(ev,'✦ CACHE DÉCOUVERTE : équipement trouvé au sol.');
     }else{
      const credits=30+room.sector*6+((room.id*7)%17);
      r.earnedCredits+=credits;
      r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
      r.economy.discovery=(r.economy.discovery||0)+credits;
-     msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits (butin de secours).');
+     ashI4Result(ev,'✦ CACHE DÉCOUVERTE : +'+credits+' crédits (butin de secours).');
     }
    }else{
     const heal=Math.min(12,Math.max(0,player.max-player.hp));player.hp+=heal;
-    msg('✦ CACHE DÉCOUVERTE : ressources de survie'+(heal?' · +'+Math.ceil(heal)+' PV':' (PV déjà au maximum)')+'.');
+    ashI4Result(ev,'✦ CACHE DÉCOUVERTE : ressources de survie'+(heal?' · +'+Math.ceil(heal)+' PV':' (PV déjà au maximum)')+'.');
    }
   }else{
    const credits=r.interactiveV54?(30+room.sector*6+((room.id*7)%17)):(18+((room.id*7)%15));
    r.earnedCredits+=credits;
    r.economy??={enemy:0,chest:0,room:0,arena:0,boss:0};
    r.economy.discovery=(r.economy.discovery||0)+credits;
-   msg('✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
+   ashI4Result(ev,'✦ CACHE DÉCOUVERTE : +'+credits+' crédits dans le butin (à extraire).');
   }
  }else if(ev.kind==='scanner'){
   const reconV2=!!data.run?.fieldReconV2;
   const count=revealFieldIntel(room,reconV2?4:3,reconV2);
   if(reconV2)collectXp(5,true);
-  msg('◈ RECONNAISSANCE : '+count+' salle'+(count>1?'s':'')+' signalée'+(count>1?'s':'')+' sur la carte'+(reconV2?' · +5 XP':'')+'.');
+  ashI4Result(ev,'◈ RECONNAISSANCE : '+count+' salle'+(count>1?'s':'')+' signalée'+(count>1?'s':'')+' sur la carte'+(reconV2?' · +5 XP':'')+'.');
  }else if(ev.kind==='medic'){
   const target=data.run?.fieldSupportV2?Math.round(Math.min(45,Math.max(25,player.max*.20))):22;
   const heal=Math.min(target,player.max-player.hp);player.hp+=heal;
-  msg('✚ STATION MÉDICALE : +'+Math.ceil(heal)+' PV.');
+  ashI4Result(ev,'✚ STATION MÉDICALE : +'+Math.ceil(heal)+' PV.');
  }else if(ev.kind==='stabilizer'){
   const r=data.run;r.hazardShields=Math.min(3,(r.hazardShields||0)+1);
-  msg('⚡ RÉGULATEUR : le prochain danger laser ou thermique sera neutralisé.');
+  ashI4Result(ev,'⚡ RÉGULATEUR : le prochain danger laser ou thermique sera neutralisé.');
  }else if(ev.kind==='relay'){
   const count=revealFieldIntel(room,4);
   collectXp(5,true);
-  msg('RELAIS D’ÉCHO : '+count+' salle'+(count>1?'s':'')+' repérée'+(count>1?'s':'')+' · +5 XP.');
+  ashI4Result(ev,'RELAIS D’ÉCHO : '+count+' salle'+(count>1?'s':'')+' repérée'+(count>1?'s':'')+' · +5 XP.');
  }else if(ev.kind==='salvage'){
   const run=data.run;
   // Lot 1A : variantes deterministes, memorisees dans l'evenement pour les rechargements.
@@ -2037,7 +2037,7 @@ function triggerFieldEvent(room){
     if(item){item._eq2Dropped=true;lootSpawn(room,'weapon',ev.x,ev.y,item);equipmentFound=true;}
    }
   }
-  msg('DÉPÔT'+variantLabel+' EXPLOITÉ : +'+credits+' crédits, +3 XP'+(heal?' et +'+Math.ceil(heal)+' PV':'')+(equipmentFound?' · équipement au sol':'')+'.');
+  ashI4Result(ev,'DÉPÔT'+variantLabel+' EXPLOITÉ : +'+credits+' crédits, +3 XP'+(heal?' et +'+Math.ceil(heal)+' PV':'')+(equipmentFound?' · équipement au sol':'')+'.');
  }else if(ev.kind==='distress'){
   // La salle est déjà sécurisée : un signal trompeur attire des renforts.
   // Deux ennemis sont créés avant persistance; aucune prime à l'activation.
@@ -2046,7 +2046,7 @@ function triggerFieldEvent(room){
   if(room.enemies.length===before){ev.state='ready';ev.hold=0;msg('SIGNAL : zone momentanément inaccessible.');persist();return false}
   ev.state='active';
   player.inv=Math.max(player.inv,.55);
-  msg('SIGNAL DE DÉTRESSE : renforts hostiles ! Termine le combat pour obtenir la prime.');
+  ashI4Result(ev,'SIGNAL DE DÉTRESSE : renforts hostiles ! Termine le combat pour obtenir la prime.');
  }
 
  window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'impact',x:ev.x,y:ev.y}}));
@@ -2086,6 +2086,52 @@ function ashEnvV3Paint(kind,state,x,y,size=52){
  cx.drawImage(im,x-size/2,y-size/2,size,size);return true;
 }
 
+// Interactions 4.0 A — presentation only. All temporary information stays outside saves.
+const ashI4Ui={event:null,until:0,text:''};
+const ashI4Brief={
+ cache:['FOUILLE','Crédits, équipement ou soins possibles'],
+ scanner:['RECONNAISSANCE','Révèle des salles · XP possible'],
+ medic:['SOINS','Restaure les points de vie manquants'],
+ stabilizer:['PROTECTION','Ajoute une charge contre les dangers'],
+ relay:['SIGNAL','Repère des salles inconnues · +5 XP'],
+ salvage:['RÉCUPÉRATION','Crédits, XP et butin possibles'],
+ distress:['DANGER','Renforts hostiles · prime après combat']
+};
+function ashI4Result(ev,text){
+ // Result text is the ACTUAL existing game message, never a predicted roll.
+ ashI4Ui.event=ev;ashI4Ui.text=String(text);ashI4Ui.until=performance.now()+2600;
+ msg(text);
+}
+function ashI4Panel(ev,room,distance,accent){
+ if(!player||!room.cleared||distance>104||ev.state!=='ready')return;
+ const lines=ashI4Brief[ev.kind];if(!lines)return;
+ const blocked=!!(room.enemies&&room.enemies.length);
+ const missing=player.max-player.hp;
+ const medicBlocked=ev.kind==='medic'&&(data.run?.fieldSupportV2?missing<Math.min(15,Math.round(player.max*.10)):missing<1);
+ const description=blocked?'Élimine les ennemis':medicBlocked?'PV suffisants · non disponible':lines[1];
+ const label=medicBlocked?'INDISPONIBLE':distance<37?'Reste à proximité pour activer':'Approche-toi pour activer';
+ const width=212,height=48;
+ // World-space contextual card; no modal, no joystick or HUD interception.
+ let y=-88;if(ev.y<100)y=47;
+ cx.save();cx.globalAlpha=.94;
+ cx.fillStyle='#081923';cx.fillRect(-width/2,y,width,height);
+ cx.strokeStyle=accent;cx.lineWidth=1.2;cx.strokeRect(-width/2,y,width,height);
+ cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle=accent;cx.font='bold 10px sans-serif';cx.fillText(FIELD_NAMES[ev.kind]||lines[0],0,y+10,204);
+ cx.fillStyle='#e7f0f2';cx.font='10px sans-serif';cx.fillText(description,0,y+25,204);
+ cx.fillStyle=medicBlocked?'#a2a9af':'#a9dbdc';cx.font='9px sans-serif';cx.fillText(label,0,y+39,204);
+ cx.restore();
+}
+function ashI4DrawResult(ev){
+ if(ashI4Ui.event!==ev||performance.now()>ashI4Ui.until)return;
+ const remaining=Math.max(0,(ashI4Ui.until-performance.now())/2600);
+ cx.save();cx.globalAlpha=Math.min(1,remaining*3);
+ const y=ev.y<100?48:-67;
+ cx.fillStyle='#08232a';cx.fillRect(-106,y,212,29);
+ cx.strokeStyle='#6ee2d5';cx.lineWidth=1.3;cx.strokeRect(-106,y,212,29);
+ cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#ecffff';cx.font='bold 10px sans-serif';
+ const val=ashI4Ui.text.replace(/^.*? : /,'').replace(/^.*? :/,'');
+ cx.fillText(val,0,y+15,203);cx.restore();
+}
 function drawFieldEvent(room){
  const ev=room.fieldEvent;
  if(!ev||ev.state==='unavailable')return;
@@ -2098,6 +2144,11 @@ function drawFieldEvent(room){
  cx.fillStyle='#03141b66';cx.beginPath();cx.ellipse(0,15,28,10,0,0,7);cx.fill();
  const spriteState=used?'used':ev.state==='active'?'active':'ready';
  const spriteKind=ashEnvV31States[ev.kind]?ev.kind:'scanner';
+ // Subtle outline to identify interactive structures from a distance.
+ if(ev.state==='ready'&&distanceToPlayer<245){
+  cx.save();cx.globalAlpha=.40+.14*Math.sin(performance.now()/470);
+  cx.strokeStyle=accent;cx.lineWidth=1.5;cx.beginPath();cx.arc(0,0,31,0,Math.PI*2);cx.stroke();cx.restore();
+ }
  if(!ashEnvV3Ready(spriteKind,spriteState)){
  cx.fillStyle=used?'#283842':'#142f3d';cx.fillRect(-19,-19,38,38);
  cx.strokeStyle=used?'#536470':accent;cx.lineWidth=2;cx.strokeRect(-19,-19,38,38);
@@ -2133,6 +2184,8 @@ function drawFieldEvent(room){
   }
  }
  ashEnvV3Paint(spriteKind,spriteState,0,0,46);
+ ashI4Panel(ev,room,distanceToPlayer,accent);
+ ashI4DrawResult(ev);
  cx.restore();
 }
 function igniteInteractable(room,obj){
