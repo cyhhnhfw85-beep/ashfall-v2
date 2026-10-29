@@ -2496,7 +2496,8 @@ function start(){if(data.pendingDebrief){showRunDebrief();return}if(data.run){se
  if(data.eq2&&!E2.validate(data)){msg('Sauvegarde Équipements 2.0 incohérente : départ bloqué pour préserver les données.');return;}
  data.run=createRun();data.run.difficulty=ASH_DIFFICULTIES[ashSelectedDifficulty-1].level<=ashSurvivorProgress().level?ashSelectedDifficulty:1;data.run.labLevels={...(data.labK17?.levels||{})};if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
  // Cartographie 0.9.8.2 : reconnaissance dynamique, calculee depuis la salle courante; aucune salle artificiellement revelee au depart.
- data.equipped=null;data.insured=null;setPlayer();
+ // Conserver l’arme équipée dans la sauvegarde du refuge pendant l’expédition.
+ data.insured=null;setPlayer();
  enter(0,null);msg('Expédition lancée. Explore et trouve une extraction.');}
 function activateOutpost(){let r=data.run,room=r.rooms[r.current];if(room.kind!=='outpost'||Math.hypot(player.x-180,player.y-195)>=72)return false;
  const reg=region();if(!reg.outposts.includes(room.sector)){reg.outposts.push(room.sector);reg.outposts.sort((a,b)=>a-b);msg('📡 BALISE DU SECTEUR '+(room.sector+1)+' ACTIVÉE !')}else msg('Balise déjà activée.');
