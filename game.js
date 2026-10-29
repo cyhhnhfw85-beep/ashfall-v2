@@ -2513,10 +2513,46 @@ function ashDiagnoseEquipmentV4(d){
  if(!issues.length)issues.push('Aucune anomalie détectée par le diagnostic miroir ; divergence avec la validation officielle.');
  return issues;
 }
+// V5 — réparation transactionnelle sur confirmation explicite, avec sauvegarde vérifiée.
+function ashRepairDuplicateEquipmentV5(){
+ if(data.run||!data.eq2||!E2)return false;
+ const original=JSON.stringify(data), clone=JSON.parse(original);
+ const pools=[{items:[clone.equipped].filter(Boolean),kind:'equipped'}, {items:clone.stash,kind:'stash'}, {items:clone.eq2.gear,kind:'gear'}];
+ const entries=pools.flatMap(p=>p.items.map(item=>({item,kind:p.kind})));
+ const counts=new Map();for(const e of entries)counts.set(e.item.id,(counts.get(e.item.id)||0)+1);
+ const duplicates=[...counts].filter(([id,n])=>n>1);
+ if(!duplicates.length){alert('V5 : aucun identifiant dupliqué détecté. Aucune modification.');return false;}
+ const count=duplicates.reduce((n,[id,c])=>n+c,0);
+ if(!confirm('ASHFALL V5 — '+count+' objets concernés par des identifiants dupliqués.\n\nCréer une sauvegarde vérifiée puis corriger uniquement les identifiants ? Aucun objet ne sera supprimé.'))return false;
+ const beforeIds=new Set(entries.map(e=>e.item.id));const used=new Set();
+ const newId=()=>{let id;do{id='af-repair-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,13);}while(used.has(id)||beforeIds.has(id));return id;};
+ // Préserver l'arme active et, pour chaque autre emplacement, l'objet porté en priorité.
+ const priority=e=>e.kind==='equipped'?0:(clone.eq2.slots?.[e.item.slot]===e.item.id?1:2);
+ const ordered=[...entries].sort((a,b)=>priority(a)-priority(b));
+ const oldSlots={...clone.eq2.slots};const chosen=new Map();let changed=0;
+ for(const e of ordered){
+  const item=e.item,old=item.id;
+  if(used.has(old)){item.id=newId();changed++;}
+  used.add(item.id);
+  if(oldSlots[item.slot]===old&&!chosen.has(item.slot))chosen.set(item.slot,item.id);
+ }
+ for(const [slot,id] of chosen)clone.eq2.slots[slot]=id;
+ if(!E2.validate(clone)){alert('V5 : validation après simulation refusée. Aucune donnée modifiée.');return false;}
+ const backupKey=KEY+'_before_id_repair_v5_'+Date.now();
+ try{
+  writeVerifiedBackup(backupKey,original);
+  if(localStorage.getItem(backupKey)!==original)throw Error('copie de sécurité non vérifiée');
+  const before=data;data=clone;
+  if(!persist()){data=before;throw Error('enregistrement refusé');}
+  if(!E2.validate(data)||!readSnapshot(KEY)){data=before;throw Error('vérification finale échouée');}
+  alert('ASHFALL V5 — Réparation validée : '+changed+' identifiants remplacés, '+entries.length+' objets conservés.\nSauvegarde de sécurité : '+backupKey+'\nTu peux maintenant lancer une expédition.');
+  render();return true;
+ }catch(err){data=JSON.parse(original);alert('V5 — Réparation annulée : '+String(err.message||err)+'\nNe réinitialise pas les données.');return false;}
+}
 function start(){if(data.pendingDebrief){showRunDebrief();return}if(data.run){setPlayer();runProgress();if(data.run.pendingLevels>0)openLevelChoice();render();return}
  // Toute nouvelle expédition commence à l'entrée : aucun départ par checkpoint.
  if(!data.eq2&&!e2MigrateWhenSafe()){const reason='Migration Équipements 2.0 : '+e2MigrationError;msg(reason);alert('ASHFALL DIAGNOSTIC — '+reason);return;}
- if(data.eq2&&!E2.validate(data)){const reason='Validation Équipements 2.0 refusée.\n\n'+ashDiagnoseEquipmentV4(data).slice(0,12).map((x,i)=>(i+1)+'. '+x).join('\n')+'\n\nDiagnostic en lecture seule : aucune donnée modifiée.';msg('Validation Équipements 2.0 refusée.');alert('ASHFALL DIAGNOSTIC V4 — '+reason);return;}
+ if(data.eq2&&!E2.validate(data)){const problems=ashDiagnoseEquipmentV4(data);if(problems.some(x=>x.startsWith('Identifiant dupliqué'))){if(!ashRepairDuplicateEquipmentV5())return;if(!E2.validate(data))return;}else{alert('ASHFALL V5 — Autre anomalie :\n'+problems.join('\n'));return;}}
  data.run=createRun();data.run.difficulty=ASH_DIFFICULTIES[ashSelectedDifficulty-1].level<=ashSurvivorProgress().level?ashSelectedDifficulty:1;data.run.labLevels={...(data.labK17?.levels||{})};if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
  // Cartographie 0.9.8.2 : reconnaissance dynamique, calculee depuis la salle courante; aucune salle artificiellement revelee au depart.
  // Conserver l’arme équipée dans la sauvegarde du refuge pendant l’expédition.
