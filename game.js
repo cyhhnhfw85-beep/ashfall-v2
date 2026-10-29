@@ -3407,7 +3407,7 @@ $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').ad
  diag.textContent='Initialisation de la Zone…';
  try{
   start();
-  if(data.run && !$('game').hidden){diag.textContent='Expédition lancée.';ashCloseDifficulty();return;}
+  if(data.run && !$('game').hidden){diag.remove();ashCloseDifficulty();return;}
   // A safety guard may have declined launch. Keep the dialog and display a useful explanation.
   const reason=String($('log')?.textContent||'').trim();
   diag.textContent='DÉPART REFUSÉ — '+(reason||'Aucun motif visible. Vérifier les contrôles de sauvegarde.');
