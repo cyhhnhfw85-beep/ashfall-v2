@@ -3347,6 +3347,32 @@ function ashRepairEq2Duplicates(){
   say('RÉPARATION ANNULÉE : '+String(err?.message||err)+'. Aucune réparation confirmée.');
  }
 }
+// Audit EQ2 V2: comparisons are read-only; no persist(), render(), or repair.
+function ashEq2SnapshotAudit(){
+ const label='AUDIT PERSISTANCE EQ2 (LECTURE SEULE)';
+ const inspect=(d)=>{
+  if(!d||typeof d!=='object')return {status:'absent'};
+  const entries=[];
+  if(d.equipped)entries.push({item:d.equipped,where:'arme équipée'});
+  if(Array.isArray(d.stash))d.stash.forEach((item,i)=>{if(item)entries.push({item,where:'réserve '+(i+1)});});
+  if(Array.isArray(d.eq2?.gear))d.eq2.gear.forEach((item,i)=>{if(item)entries.push({item,where:'équipement '+(i+1)});});
+  const groups=new Map();for(const e of entries){const id=e.item?.id;if(typeof id!=='string')continue;if(!groups.has(id))groups.set(id,[]);groups.get(id).push(e);}
+  const dup=[...groups].filter(([,list])=>list.length>1);
+  return {status:'lisible',total:entries.length,duplicates:dup.length,valid:!!(d.eq2&&E2.validate(d)),groups:dup.slice(0,20).map(([id,list])=>({id,locations:list.map(e=>e.where+' ['+(e.item.slot||'weapon')+']')}))};
+ };
+ const load=k=>{try{const raw=localStorage.getItem(k);return raw?inspect(JSON.parse(raw)):{status:'absent'};}catch(e){return {status:'illisible : '+String(e?.message||e)};}};
+ const memory=inspect(data),primary=load(KEY),recovery=load(RECOVERY_KEY);
+ let backups=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(KEY+'_before_eq2_id_repair_'))backups.push(k);}backups.sort();}catch(e){}
+ const fmt=(name,r)=>name+' : '+r.status+(r.status==='lisible'?' | '+r.total+' objets | '+r.duplicates+' groupes de doublons | validation '+(r.valid?'OK':'ÉCHEC'):'');
+ const lines=[label,fmt('Mémoire active',memory),fmt('Sauvegarde principale',primary),fmt('Sauvegarde de récupération',recovery),'Copies avant réparation : '+backups.length];
+ for(const [name,r] of [['Mémoire active',memory],['Sauvegarde principale',primary],['Sauvegarde de récupération',recovery]]){
+  if(!r.groups?.length)continue;
+  lines.push(name+' — détails :');for(const g of r.groups)lines.push('ID '+g.id+' : '+g.locations.join(' / '));
+ }
+ if(backups.length)lines.push('Dernière copie avant réparation : '+fmt('État',load(backups[backups.length-1])));
+ lines.push('Aucune donnée enregistrée ou modifiée par cet audit.');
+ return lines.join('\n');
+}
 $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{
  const launch=$('ashDifficultyLaunch');
  if(launch.disabled)return;
@@ -3387,6 +3413,7 @@ $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').ad
    }
    if(!Number.isSafeInteger(s.components)||s.components<0)issues.push('Composants invalides');
    diag.textContent+='\n\nAUDIT ÉQUIPEMENTS 2.0 (lecture seule)\n'+(issues.length?issues.join('\n'):'Aucune anomalie structurelle simple détectée : vérifier le modèle des équipements.')+'\nObjets examinés : '+items.length+' · Composants : '+String(s.components);
+   try{diag.textContent+='\n\n'+ashEq2SnapshotAudit();}catch(auditError){diag.textContent+='\nAUDIT PERSISTANCE indisponible : '+String(auditError?.message||auditError);}
    if(issues.some(x=>x.startsWith('Identifiant dupliqué'))){
     let repair=$('ashEq2RepairButton');
     if(!repair){repair=document.createElement('button');repair.id='ashEq2RepairButton';repair.type='button';repair.textContent='RÉPARER LES IDENTIFIANTS (SAUVEGARDE DE SECOURS)';repair.style.cssText='display:block;width:100%;margin:12px 0;padding:12px;background:#e7bb79;color:#17222c;border-radius:8px;font-weight:bold;white-space:normal';diag.parentNode.insertBefore(repair,diag.nextSibling);repair.addEventListener('click',ashRepairEq2Duplicates);}
