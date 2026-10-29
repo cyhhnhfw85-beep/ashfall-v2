@@ -1,1 +1,0 @@
-Correctif diagnostic lancement ASHFALL. Remplacer game.js seulement si cette version correspond à votre base. La fenêtre de difficulté reste ouverte en cas de refus; le message de blocage est affiché. Aucun effacement de sauvegarde. Test iPhone nécessaire.

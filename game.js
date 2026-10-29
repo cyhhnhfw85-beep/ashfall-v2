@@ -3295,17 +3295,22 @@ $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').ad
  launch.disabled=true;
  // Do not dismiss the difficulty dialog before confirming the game entered the Zone.
  const snapshot=JSON.stringify(data);
+ let diag=$('ashLaunchDiagnostic');
+ if(!diag){diag=document.createElement('div');diag.id='ashLaunchDiagnostic';diag.setAttribute('role','alert');diag.style.cssText='display:block;margin:12px 0;padding:12px;border:1px solid #ff8a65;border-radius:8px;color:#ffe1d7;background:#401e26;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere';launch.parentNode.insertBefore(diag,launch);}
+ diag.textContent='Initialisation de la Zone…';
  try{
   start();
-  if(data.run && !$('game').hidden){ashCloseDifficulty();return;}
+  if(data.run && !$('game').hidden){diag.textContent='Expédition lancée.';ashCloseDifficulty();return;}
   // A safety guard may have declined launch. Keep the dialog and display a useful explanation.
   const reason=String($('log')?.textContent||'').trim();
+  diag.textContent='DÉPART REFUSÉ — '+(reason||'Aucun motif visible. Vérifier les contrôles de sauvegarde.');
   msg('⚠ Départ non effectué. '+(reason||'Vérifie les équipements et la sauvegarde avant de réessayer.'));
  }catch(err){
   console.error('[ASHFALL] launch failed',err);
   // Only restore in-memory state if no expedition was saved; never overwrite localStorage.
   if(!data.run){try{data=JSON.parse(snapshot);}catch(_){}}
   const reason=String(err?.message||err||'Erreur inconnue');
+  diag.textContent='ERREUR DE LANCEMENT — '+reason+'\n'+String(err?.stack||'').slice(0,600);
   msg('⚠ Départ impossible : '+reason+'. Sauvegarde conservée.');
  }
  finally{launch.disabled=false;}
