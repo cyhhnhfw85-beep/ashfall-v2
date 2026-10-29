@@ -2372,7 +2372,7 @@ function ashChestRender(){
  const bal=$('ashChestCredits');if(bal)bal.textContent=data.credits;
  host.innerHTML=ASH_CHEST_TIERS.map(t=>`<article class="ash-chest-offer ash-chest-${t.id}" style="--chest-accent:${t.accent}">
  <div class="ash-chest-illustration">${ashChestIcon(t)}</div><div class="ash-chest-info"><h3>COFFRE ${t.name}</h3><div class="ash-chest-price">${t.price} CRÉDITS</div></div>
- <details class="ash-chest-chances"><summary>Chances exactes · Épique ${(t.odds[3]/10).toLocaleString('fr-FR',{maximumFractionDigits:1})} % · Mythique ${(t.odds[5]/10).toLocaleString('fr-FR',{maximumFractionDigits:1})} %</summary><div class="ash-chest-odds">${ASH_CHEST_RARITIES.map((r,i)=>`<div><span style="color:${tint({rar:r})}">${r}</span><strong>${(t.odds[i]/10).toLocaleString('fr-FR',{maximumFractionDigits:1})} %</strong></div>`).join('')}</div></details>
+ <details class="ash-chest-chances"><summary>Chances exactes · ${t.name} ou mieux : ${(t.odds.slice(ASH_CHEST_TIERS.indexOf(t)).reduce((a,b)=>a+b,0)/10).toLocaleString('fr-FR',{maximumFractionDigits:1})} %</summary><div class="ash-chest-odds">${ASH_CHEST_RARITIES.map((r,i)=>`<div><span style="color:${tint({rar:r})}">${r}</span><strong>${(t.odds[i]/10).toLocaleString('fr-FR',{maximumFractionDigits:1})} %</strong></div>`).join('')}</div></details>
  <button type="button" class="ash-chest-buy" data-chest-buy="${t.id}" ${data.credits<t.price?'disabled':''}>${data.credits<t.price?'CRÉDITS INSUFFISANTS':'OUVRIR · '+t.price+' CRÉDITS'}</button>
  </article>`).join('');
  ashChestRevealPending();
