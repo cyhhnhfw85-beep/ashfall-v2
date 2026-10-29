@@ -2341,7 +2341,7 @@ ASH_CHEST_IMAGE_DATA.uncommon={closed:'chest-uncommon-3d.png',charging:'chest-un
 ASH_CHEST_IMAGE_DATA.epic={closed:'chest-epic-3d.png',charging:'chest-epic-3d.png',open:'chest-epic-3d.png'};
 ASH_CHEST_IMAGE_DATA.legendary={closed:'chest-legendary-3d.png',charging:'chest-legendary-3d.png',open:'chest-legendary-3d.png'};
 ASH_CHEST_IMAGE_DATA.mythic={closed:'chest-mythic-3d.png',charging:'chest-mythic-3d.png',open:'chest-mythic-3d.png'};
-const ASH_CHEST_DURATIONS={common:1000,uncommon:1500,rare:2500,epic:3500,legendary:4500,mythic:6000};
+ASH_CHEST_IMAGE_DATA.common={closed:'chest-common-3d.png',charging:'chest-common-3d.png',open:'chest-common-3d.png'};ASH_CHEST_IMAGE_DATA.uncommon={closed:'chest-uncommon-3d.png',charging:'chest-uncommon-3d.png',open:'chest-uncommon-3d.png'};ASH_CHEST_IMAGE_DATA.rare={closed:'chest-rare-3d.png',charging:'chest-rare-3d.png',open:'chest-rare-3d.png'};ASH_CHEST_IMAGE_DATA.epic={closed:'chest-epic-3d.png',charging:'chest-epic-3d.png',open:'chest-epic-3d.png'};ASH_CHEST_IMAGE_DATA.legendary={closed:'chest-legendary-3d.png',charging:'chest-legendary-3d.png',open:'chest-legendary-3d.png'};ASH_CHEST_IMAGE_DATA.mythic={closed:'chest-mythic-3d.png',charging:'chest-mythic-3d.png',open:'chest-mythic-3d.png'}; const ASH_CHEST_DURATIONS={common:1000,uncommon:1500,rare:2500,epic:3500,legendary:4500,mythic:6000};
 let ashChestAnimationTimer=null;
 function ashChestStopTimer(){if(ashChestAnimationTimer!==null){clearInterval(ashChestAnimationTimer);ashChestAnimationTimer=null;}}
 function ashChestAnimateProgress(){
