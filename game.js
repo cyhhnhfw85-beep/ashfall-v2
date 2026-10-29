@@ -2490,40 +2490,15 @@ function ashOpenDifficulty(){
  el.hidden=false;document.body.classList.add('ash-prep-open');$('ashDifficultyLaunch')?.focus();
 }
 function ashCloseDifficulty(){const el=$('ashDifficultyOverlay');if(el)el.hidden=true;document.body.classList.remove('ash-prep-open');}
-function start(){
- let ashStartStage='préparation';
- const ashPreviousRun=data.run;
- const ashPreviousPlayer=player;
- try{
-  if(data.pendingDebrief){showRunDebrief();return;}
-  if(data.run){setPlayer();runProgress();if(data.run.pendingLevels>0)openLevelChoice();render();return;}
-  ashStartStage='migration des équipements';
-  if(!data.eq2&&!e2MigrateWhenSafe()){msg('Migration nécessaire avant de démarrer une nouvelle expédition : '+e2MigrationError);return;}
-  ashStartStage='validation des équipements du refuge';
-  if(data.eq2&&!E2.validate(data)){msg('Sauvegarde Équipements 2.0 incohérente : départ bloqué pour préserver les données.');return;}
-  ashStartStage='création de la carte';
-  data.run=createRun();
-  data.run.difficulty=ASH_DIFFICULTIES[ashSelectedDifficulty-1].level<=ashSurvivorProgress().level?ashSelectedDifficulty:1;
-  data.run.labLevels={...(data.labK17?.levels||{})};
-  if(data.eq2){
-   ashStartStage='initialisation des équipements de l’expédition';
-   E2.start(data,data.run);
-   ashStartStage='calcul des statistiques';
-   const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;
-  }
-  ashStartStage='entrée dans la première salle';
-  data.insured=null;setPlayer();
-  if(enter(0,null)===false)throw Error('Salle de départ introuvable');
-  msg('Expédition lancée. Explore et trouve une extraction.');
- }catch(err){
-  console.error('[ASHFALL diagnostic départ]',ashStartStage,err);
-  // Ne jamais enregistrer une expédition partiellement initialisée.
-  data.run=ashPreviousRun;player=ashPreviousPlayer;
-  const reason=String(err?.message||err).slice(0,130);
-  msg('⚠ Départ interrompu ('+ashStartStage+') : '+reason);
-  try{render();}catch(renderError){console.error('[ASHFALL diagnostic affichage]',renderError);}
- }
-}
+function start(){if(data.pendingDebrief){showRunDebrief();return}if(data.run){setPlayer();runProgress();if(data.run.pendingLevels>0)openLevelChoice();render();return}
+ // Toute nouvelle expédition commence à l'entrée : aucun départ par checkpoint.
+ if(!data.eq2&&!e2MigrateWhenSafe()){const reason='Migration Équipements 2.0 : '+e2MigrationError;msg(reason);alert('ASHFALL DIAGNOSTIC — '+reason);return;}
+ if(data.eq2&&!E2.validate(data)){const reason='Validation Équipements 2.0 refusée (inventaire/identifiants/emplacements). Aucune donnée modifiée.';msg(reason);alert('ASHFALL DIAGNOSTIC — '+reason);return;}
+ data.run=createRun();data.run.difficulty=ASH_DIFFICULTIES[ashSelectedDifficulty-1].level<=ashSurvivorProgress().level?ashSelectedDifficulty:1;data.run.labLevels={...(data.labK17?.levels||{})};if(data.eq2){E2.start(data,data.run);const gear=E2.profile(data.run);data.run.player.max=maxHp()+Math.round(gear.maxHp);data.run.player.hp=data.run.player.max;}
+ // Cartographie 0.9.8.2 : reconnaissance dynamique, calculee depuis la salle courante; aucune salle artificiellement revelee au depart.
+ // Conserver l’arme équipée dans la sauvegarde du refuge pendant l’expédition.
+ data.insured=null;setPlayer();
+ enter(0,null);msg('Expédition lancée. Explore et trouve une extraction.');}
 function activateOutpost(){let r=data.run,room=r.rooms[r.current];if(room.kind!=='outpost'||Math.hypot(player.x-180,player.y-195)>=72)return false;
  const reg=region();if(!reg.outposts.includes(room.sector)){reg.outposts.push(room.sector);reg.outposts.sort((a,b)=>a-b);msg('📡 BALISE DU SECTEUR '+(room.sector+1)+' ACTIVÉE !')}else msg('Balise déjà activée.');
  room.activated=true;persist();render();return true;}
@@ -3345,7 +3320,7 @@ function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
 function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Équipements disparus après une mise à jour ?</p><button id="recoverCatalogGear" type="button">Récupérer les anciens équipements</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('recoverCatalogGear').onclick=()=>{ashRecoverCatalogEquipment();};$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;const safetyKey=KEY+'_before_import_'+Date.now();const safetyValue=JSON.stringify(data);writeVerifiedBackup(safetyKey,safetyValue);data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
-$('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{ashCloseDifficulty();start();});$('ashPrepOverlay').addEventListener('click',e=>{if(e.target.id==='ashPrepOverlay')ashClosePrep();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ashPrepOverlay').hidden)ashClosePrep();if(e.key==='Escape'&&!$('ashDifficultyOverlay').hidden)ashCloseDifficulty();});
+$('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{ashCloseDifficulty();try{start();if(!data.run)alert('ASHFALL DIAGNOSTIC — Aucune expédition active après start(). Vérifie les messages précédents.');else if($('home')?.hidden!==true)alert('ASHFALL DIAGNOSTIC — Expédition créée mais accueil encore visible.');}catch(err){alert('ASHFALL DIAGNOSTIC — Exception au lancement : '+String(err?.stack||err));}});$('ashPrepOverlay').addEventListener('click',e=>{if(e.target.id==='ashPrepOverlay')ashClosePrep();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ashPrepOverlay').hidden)ashClosePrep();if(e.key==='Escape'&&!$('ashDifficultyOverlay').hidden)ashCloseDifficulty();});
 $('ashContractPicker').addEventListener('click',e=>{const b=e.target.closest('[data-contract-choice]');if(b)ashSelectContract(b.dataset.contractChoice);});
 $('upHp').onclick=()=>upgrade('hp');$('upDmg').onclick=()=>upgrade('dmg');$('insure').onclick=insure;$('merchantLaunch').onclick=()=>merchantOpen();$('start').onclick=ashOpenPrep;
 $('bagBtn').onclick=()=>openOverlay('bag');$('mapBtn').onclick=()=>openOverlay('map');$('pauseBtn').onclick=()=>openOverlay('pause');
