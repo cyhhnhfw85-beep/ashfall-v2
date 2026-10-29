@@ -3289,7 +3289,27 @@ function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
 function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Équipements disparus après une mise à jour ?</p><button id="recoverCatalogGear" type="button">Récupérer les anciens équipements</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('recoverCatalogGear').onclick=()=>{ashRecoverCatalogEquipment();};$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;const safetyKey=KEY+'_before_import_'+Date.now();const safetyValue=JSON.stringify(data);writeVerifiedBackup(safetyKey,safetyValue);data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
-$('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{ashCloseDifficulty();start();});$('ashPrepOverlay').addEventListener('click',e=>{if(e.target.id==='ashPrepOverlay')ashClosePrep();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ashPrepOverlay').hidden)ashClosePrep();if(e.key==='Escape'&&!$('ashDifficultyOverlay').hidden)ashCloseDifficulty();});
+$('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').addEventListener('click',()=>{ashClosePrep();ashOpenDifficulty();});$('ashDifficultyBack').addEventListener('click',()=>{ashCloseDifficulty();ashOpenPrep();});$('ashDifficultyLaunch').addEventListener('click',()=>{
+ const launch=$('ashDifficultyLaunch');
+ if(launch.disabled)return;
+ launch.disabled=true;
+ // Do not dismiss the difficulty dialog before confirming the game entered the Zone.
+ const snapshot=JSON.stringify(data);
+ try{
+  start();
+  if(data.run && !$('game').hidden){ashCloseDifficulty();return;}
+  // A safety guard may have declined launch. Keep the dialog and display a useful explanation.
+  const reason=String($('log')?.textContent||'').trim();
+  msg('⚠ Départ non effectué. '+(reason||'Vérifie les équipements et la sauvegarde avant de réessayer.'));
+ }catch(err){
+  console.error('[ASHFALL] launch failed',err);
+  // Only restore in-memory state if no expedition was saved; never overwrite localStorage.
+  if(!data.run){try{data=JSON.parse(snapshot);}catch(_){}}
+  const reason=String(err?.message||err||'Erreur inconnue');
+  msg('⚠ Départ impossible : '+reason+'. Sauvegarde conservée.');
+ }
+ finally{launch.disabled=false;}
+});$('ashPrepOverlay').addEventListener('click',e=>{if(e.target.id==='ashPrepOverlay')ashClosePrep();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ashPrepOverlay').hidden)ashClosePrep();if(e.key==='Escape'&&!$('ashDifficultyOverlay').hidden)ashCloseDifficulty();});
 $('ashContractPicker').addEventListener('click',e=>{const b=e.target.closest('[data-contract-choice]');if(b)ashSelectContract(b.dataset.contractChoice);});
 $('upHp').onclick=()=>upgrade('hp');$('upDmg').onclick=()=>upgrade('dmg');$('insure').onclick=insure;$('merchantLaunch').onclick=()=>merchantOpen();$('start').onclick=ashOpenPrep;
 $('bagBtn').onclick=()=>openOverlay('bag');$('mapBtn').onclick=()=>openOverlay('map');$('pauseBtn').onclick=()=>openOverlay('pause');
