@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const $=id=>document.getElementById(id), cv=$('canvas'), KEY='ashfall_pwa_v1';
+const $=id=>document.getElementById(id), cv=$('canvas'), KEY='ashfall_v32_lab_only_v1';
 const afIcon=name=>window.afIcon?window.afIcon(name):'';
 let cx=cv.getContext('2d'); // V44: le contexte est temporairement redirige pendant le pre-rendu des decors fixes.
 
@@ -906,6 +906,7 @@ function rectTouches(x,y,r,[rx,ry,w,h]){
 // Only real graph doors receive a gap; unconnected edges remain solid.
 const wallCache=new WeakMap();
 function roomWalls(room){
+ if(data.run?.geometryVersion===32){const m=ashV32MapForRun(data.run);if(m)return window.V32.adapter.walls(m,room.id)}
  if(wallCache.has(room))return wallCache.get(room);
  const geom=roomGeom(room),set=new Set(geom.cells.map(c=>c.join(','))),doorsHere=data.run?doors(room.id):[];
  const walls=[];const thick=20;
@@ -934,7 +935,7 @@ function roomWalls(room){
 // Classic overhead camera. Experimental 2.5D foreshortening removed.
 let roomCamera={x:0,y:0,zoom:1,id:-1};
 function cameraFor(room){
- const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31;
+ const modern=data.run?.geometryVersion===25||data.run?.geometryVersion===31||data.run?.geometryVersion===32;
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*1);
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
@@ -1000,6 +1001,7 @@ function adjacent(i){let [x,y]=pos(i),r=data.run;if(isLarge(r))return r.rooms.fi
 
 function doors(i){
  const r=data.run;
+ if(r?.geometryVersion===32){const map=ashV32MapForRun(r);return map?map.doorsByRoom[i].map(d=>({to:d.to,side:d.side,x:d.x,y:d.y,portalId:d.portalId})):[]} 
  if(r?.geometryVersion===25){
   const room=r.rooms[i];
   return r.edges.filter(e=>e[0]===i||e[1]===i).map(e=>{
@@ -1033,6 +1035,30 @@ function makeMap25(){
  const edges=m.edges.map(e=>[e.from,e.to,e.door]);
  return {rooms,edges,arenaIds,exitIds,bossId:m.bossId,outpostIds,geometryVersion:25};
 }
+
+// GEOMETRY V32 LAB ONLY: generated physical rooms, no change to stable V31 behavior.
+const ashV32RuntimeCache=new WeakMap();
+function ashV32MapForRun(run){
+ if(!run||run.geometryVersion!==32||!run.v32World||!window.V32)return null;
+ if(!ashV32RuntimeCache.has(run))ashV32RuntimeCache.set(run,window.V32.adapter.compile(run.v32World));
+ return ashV32RuntimeCache.get(run);
+}
+function makeMapV32Experimental(){
+ if(!window.V32)throw Error('V32 browser bundle missing');
+ const seed=(Date.now()^Math.floor(Math.random()*0x7fffffff))>>>0;
+ const world=window.V32.geometry.build(seed);
+ const bad=window.V32.geometry.validate(world);
+ if(bad.length)throw Error('V32 invalid: '+bad.slice(0,3).join(', '));
+ const adj=Array.from({length:world.rooms.length},()=>[]);
+ for(const p of world.portals){adj[p.a].push(p.b);adj[p.b].push(p.a)}
+ const depths=Array(50).fill(Infinity);depths[0]=0;const queue=[0];
+ for(let i=0;i<queue.length;i++){const id=queue[i];for(const next of adj[id])if(depths[next]===Infinity){depths[next]=depths[id]+1;queue.push(next)}}
+ const maxDepth=Math.max(...depths);
+ const rooms=world.rooms.map((v)=>({id:v.id,gx:v.x,gy:v.y,shape:v.shape,depth:depths[v.id],sector:Math.min(3,Math.floor(depths[v.id]/(maxDepth+1)*4)),kind:v.kind,seen:v.id===0,spawned:false,enemies:[],chest:(['start','exit','boss','arena'].includes(v.kind)?'none':Math.random()<.63?'closed':'none'),activated:false,cleared:false,arenaWave:0,arenaReward:false,solidDecorV42:true,envArchitectureV4:true}));
+ const ids=kind=>rooms.filter(r=>r.kind===kind).map(r=>r.id);
+ return {rooms,edges:world.portals.map(p=>[p.a,p.b]),arenaIds:ids('arena'),exitIds:ids('exit'),bossId:ids('boss')[0],outpostIds:ids('outpost'),geometryVersion:32,v32World:world};
+}
+
 function makeLargeMap(){
  let nodes=[{id:0,gx:0,gy:0}],occupied=new Set(['0,0']),edges=[];
  // Randomized growing tree with branching, nonrectangular footprint.
@@ -1246,7 +1272,7 @@ function spawnReinforcement(room,count){count=ashDifficultyCount(count);for(let 
 
 function createRun(){
  const newLoadout=ashGearSnapshot(),initialHp=maxHp()+ashGearProfile(newLoadout).maxHp;
- let m=makeLargeMap();region().expeditions++;
+ let m=makeMapV32Experimental();region().expeditions++;
  // Phase 3B/3C - equilibrage 0.8.9.55 : uniquement pour les nouvelles expeditions.
  // Les terminaux sont places en fonction de leur utilite : cartographie tot,
  // regulateurs pres des dangers, soins plutot dans les secteurs difficiles.
@@ -1335,7 +1361,7 @@ function createRun(){
   if(!kind)continue; // On prefere moins d'incidents a une surrepresentation artificielle.
   room.incidentRole=kind;typeCounts[kind]++;
  }
- return {...m,geometryVersion:31,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,rewardsV1:true,rewardsSeed:Math.floor(Math.random()*2147483647),incidentFullV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
+ return {...m,geometryVersion:m.geometryVersion,freeChestLootRule:'sector-v1',interactiveV50:true,interactiveV51:true,interactiveV52:true,interactiveV54:true,interactiveV72:true,fieldSupportV2:true,fieldLootV2:true,fieldPlacementV2:true,fieldReconV2:true,environmentV2:true,rewardsV1:true,rewardsSeed:Math.floor(Math.random()*2147483647),incidentFullV2:true,loadout:newLoadout,intelRooms:[],current:0,visited:[0],bag:[],equipped:data.equipped,insuredId:data.insured,contractIds:ashSelectedContracts().map(c=>c.id),earnedCredits:0,elapsedSeconds:0,kills:0,economy:{enemy:0,chest:0,room:0,arena:0,boss:0},xp:0,xpTotal:0,runLevel:1,runPerks:{},pendingLevels:0,objectives:[],exitTime:0,exitStarted:false,exitWave:0,exitRoom:null,player:{x:180,y:310,hp:initialHp,max:initialHp,inv:0,fire:0,dash:0,dx:0,dy:0}};
 }
 function setPlayer(){player=data.run?.player||null}
 
@@ -2371,7 +2397,7 @@ if(r.interactiveV51&&(r.hazardShields||0)>0&&(sectorOf(room)===1||sectorOf(room)
  room.hazardNeutralizedByTerminal=true;
 }
 if(from!==null){
-  if(r.geometryVersion===25||r.geometryVersion===31){
+  if(r.geometryVersion===25||r.geometryVersion===31||r.geometryVersion===32){
    const incoming=doors(id).find(d=>d.to===from);
    if(incoming){const a=roomDoor(room,incoming);player.x=a.x+(a.side==='left'?47:a.side==='right'?-47:0);
     player.y=a.y+(a.side==='top'?47:a.side==='bottom'?-47:0);}
@@ -2591,6 +2617,32 @@ function canPassDoor(to){
 function ashRewardChestPoint(room){
  const run=data.run;
  if(!run?.rewardsV1||!['standard','secret'].includes(room.kind))return {x:180,y:110};
+ // V32 only: never trust a cached chest coordinate or an unvalidated fallback.
+ // Keep the V31 behavior byte-for-byte below this branch for old expeditions.
+ if(run.geometryVersion===32){
+  const unavailable={x:-1000000,y:-1000000};
+  if(room.chest!=='closed')return unavailable;
+  const geom=roomGeom(room),seed=(run.rewardsSeed||1)>>>0;
+  const valid=p=>{
+   if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))return false;
+   if(!geom.cells.some(([gx,gy])=>p.x>=gx*CELL_W+52&&p.x<=(gx+1)*CELL_W-52&&p.y>=gy*CELL_H+52&&p.y<=(gy+1)*CELL_H-52))return false;
+   if(Math.hypot(p.x-180,p.y-310)<105||Math.hypot(p.x-180,p.y-195)<90)return false;
+   if(roomWalls(room).some(w=>rectTouches(p.x,p.y,42,w))||roomObstacles(room).some(w=>rectTouches(p.x,p.y,47,w)))return false;
+   if(doors(room.id).some(d=>{const a=roomDoor(room,d);return Math.hypot(p.x-a.x,p.y-a.y)<135}))return false;
+   if((room.interactables||[]).some(o=>Math.hypot(p.x-o.x,p.y-o.y)<95))return false;
+   if(room.fieldEvent?.state==='ready'&&Math.hypot(p.x-room.fieldEvent.x,p.y-room.fieldEvent.y)<95)return false;
+   return true;
+  };
+  if(valid(room.chestPoint))return room.chestPoint;
+  const options=[];
+  for(const [gx,gy] of geom.cells)for(let y=92;y<=CELL_H-82;y+=38)for(let x=80;x<=CELL_W-76;x+=38){
+   const p={x:gx*CELL_W+x,y:gy*CELL_H+y};
+   if(valid(p))options.push(p);
+  }
+  // If the room genuinely has no valid spot, omit its chest; never block an exit.
+  if(!options.length){room.chest='none';delete room.chestPoint;return unavailable;}
+  return room.chestPoint=options[Math.floor(envV4Hash(seed,room.id,719)*options.length)];
+ }
  if(room.chestPoint&&Number.isFinite(room.chestPoint.x)&&Number.isFinite(room.chestPoint.y))return room.chestPoint;
  const geom=roomGeom(room),cells=geom.cells,seed=(run.rewardsSeed||1)>>>0;
  const options=[];
@@ -3272,7 +3324,49 @@ function ashLabRecon(run){
  if(lv>=7){const boss=unknown.filter(([id])=>isBoss(id,run)).sort((a,b)=>a[1]-b[1])[0];if(boss)result.add(boss[0]);}
  return result;
 }
+// TACTICAL MAP V3 — Experimental Geometry V32 only; V31 is unchanged.
+function ashV3MapMarkup(run,mini){
+ if(run?.geometryVersion!==32||!run.v32World)return null;
+ const world=run.v32World, rooms=world.rooms||[], portals=world.portals||[];
+ const seen=new Set([...(run.visited||[]),run.current,...(run.intelRooms||[]),...ashLabRecon(run)]);
+ for(const room of run.rooms||[])if(room.seen)seen.add(room.id);
+ const visible=rooms.filter(z=>seen.has(z.id));if(!visible.length)return '';
+ const x1=Math.min(...visible.map(r=>r.x)),y1=Math.min(...visible.map(r=>r.y));
+ const x2=Math.max(...visible.map(r=>r.x+r.w)),y2=Math.max(...visible.map(r=>r.y+r.h));
+ const playerX=run.rooms[run.current].gx+player.x/CELL_W,playerY=run.rooms[run.current].gy+player.y/CELL_H;
+ const bounds=mini?{x:playerX-2.6,y:playerY-2.6,w:5.2,h:5.2}:{x:x1-.8,y:y1-.8,w:Math.max(2,x2-x1+1.6),h:Math.max(2,y2-y1+1.6)};
+ const color={start:'#70dbea',standard:'#6d8a9e',arena:'#edac6a',boss:'#ff8795',exit:'#66e4bf',outpost:'#b7a0ff',secret:'#d9c077'};
+ const fmt=n=>Number(n).toFixed(3);
+ const rects=visible.map(r=>{
+  const active=r.id===run.current,found=!!run.rooms[r.id]?.seen||(run.visited||[]).includes(r.id)||active;
+  const kind=r.kind||'standard';const border=active?'#a6f3fc':found?(color[kind]||color.standard):'#43566b';
+  // Intel-only rooms are unidentified. No secret POI leaks through intel.
+  const showPoi=found&&kind!=='standard'&&kind!=='start';
+  let rect=`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${active?'#254b60':found?'#1a3446':'#162633'}" stroke="${border}" stroke-width="${active?'.060':'.025'}"/>`;
+  if(showPoi)rect+=`<circle cx="${fmt(r.x+r.w/2)}" cy="${fmt(r.y+r.h/2)}" r=".13" fill="${color[kind]||color.standard}"/>`;
+  if(!mini&&showPoi)rect+=`<text x="${fmt(r.x+r.w/2)}" y="${fmt(r.y+r.h/2-.22)}" text-anchor="middle" font-size=".22" font-weight="700" fill="${color[kind]||color.standard}">${kind==='outpost'?'BALISE':kind==='exit'?'EXTRACTION':kind==='arena'?'ARÈNE':kind==='boss'?'BOSS':'SECRÈTE'}</text>`;
+  return rect;
+ }).join('');
+ const passages=portals.filter(p=>seen.has(p.a)&&seen.has(p.b)).map(p=>`<circle cx="${fmt(p.x)}" cy="${fmt(p.y)}" r=".085" fill="#8feacc"/>`).join('');
+ const svgWidth=mini?'100%':String(Math.max(330,Math.round(bounds.w*44))),svgHeight=mini?'100%':String(Math.max(280,Math.round(bounds.h*44)));
+ return `<svg class="${mini?'ash-map-mini-svg':'ash-map-full-svg'} ash-v3-live" data-ash-v3-mini="${mini?'1':'0'}" xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="${fmt(bounds.x)} ${fmt(bounds.y)} ${fmt(bounds.w)} ${fmt(bounds.h)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte tactique V3 basée sur les coordonnées physiques"><rect x="${fmt(bounds.x)}" y="${fmt(bounds.y)}" width="${fmt(bounds.w)}" height="${fmt(bounds.h)}" fill="#091d2c"/>${rects}${passages}<circle class="ash-v3-player" cx="${fmt(playerX)}" cy="${fmt(playerY)}" r=".12" fill="#f2ffff" stroke="#38e0fb" stroke-width=".045"/></svg>`;
+}
+// Read-only visual refresh; does not modify player coordinates or saves.
+(function ashV3MarkerLoop(){
+ let last=0;function draw(now){requestAnimationFrame(draw);if(now-last<45)return;last=now;
+  const m=window.ashV32LabRead?.();if(!m?.player)return;
+  const px=m.player.x/360,py=m.player.y/400;
+  for(const svg of document.querySelectorAll('svg.ash-v3-live')){
+   if(!svg.isConnected)continue;
+   const dot=svg.querySelector('.ash-v3-player');if(dot){dot.setAttribute('cx',px.toFixed(3));dot.setAttribute('cy',py.toFixed(3));}
+   if(svg.dataset.ashV3Mini==='1')svg.setAttribute('viewBox',`${(px-2.6).toFixed(3)} ${(py-2.6).toFixed(3)} 5.2 5.2`);
+  }
+ }
+ requestAnimationFrame(draw);
+})();
+
 function ashMapMarkup(run,mini=false){
+ if(run?.geometryVersion===32)return ashV3MapMarkup(run,mini);
  const current=run.rooms[run.current];
  if(!current)return '';
  const visited=new Set(run.visited||[]),intel=new Set([...(run.intelRooms||[]),...ashLabRecon(run)]);
@@ -3361,6 +3455,108 @@ document.addEventListener('click',function(event){
  const y=((target.t+target.b)/2-Math.min(...boundsRooms.map(e=>e.t)))*104+26;
  viewport.scrollTo({left:Math.max(0,x*rect.width/bounds.width-viewport.clientWidth/2),top:Math.max(0,y*rect.height/bounds.height-viewport.clientHeight/2),behavior:'smooth'});
 });
+// Geometry V32 only: independent map viewport zoom/pan; read-only for game state.
+(function ashV32TacticalInteractions(){
+ let current=null;
+ const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
+ function session(){
+  const viewport=document.querySelector('[data-v32-map-viewport]');
+  const svg=viewport?.querySelector('svg.ash-v3-live[data-ash-v3-mini="0"]');
+  if(!svg)return null;
+  if(current?.svg===svg)return current;
+  const w=Number(svg.getAttribute('width')),h=Number(svg.getAttribute('height'));
+  if(!(w>0&&h>0))return null;
+  // Keep the V32 map framing when the UI recreates its SVG or viewport.
+  // The previous DOM node can be detached; only its last recorded view is reused.
+  const previous=current?.runRef===data.run?current:null;
+  const z=previous?.z??1;
+  // Detached scroll containers may report scrollLeft=0; keep the last live center.
+  const normX=previous?.normX??0.5;
+  const normY=previous?.normY??0.5;
+  current={viewport,svg,w,h,z,runRef:data.run,normX,normY,points:new Map(),startDist:0,startZoom:z};
+  const state=current;
+  const remember=()=>{
+   if(!viewport.isConnected)return;
+   const width=state.w*state.z,height=state.h*state.z;
+   if(width>0&&height>0){state.normX=(viewport.scrollLeft+viewport.clientWidth/2)/width;state.normY=(viewport.scrollTop+viewport.clientHeight/2)/height;}
+  };
+  viewport.addEventListener('scroll',remember,{passive:true});
+  svg.style.width=(w*z)+'px';svg.style.height=(h*z)+'px';
+  viewport.scrollLeft=Math.max(0,normX*w*z-viewport.clientWidth/2);
+  viewport.scrollTop=Math.max(0,normY*h*z-viewport.clientHeight/2);
+  // Preserve newly centered view before any DOM rebuild/close.
+  current.normX=(viewport.scrollLeft+viewport.clientWidth/2)/(w*z);
+  current.normY=(viewport.scrollTop+viewport.clientHeight/2)/(h*z);
+  const label=document.querySelector('[data-v32-map-controls] [data-v32-zoom-label]');
+  if(label)label.textContent=Math.round(z*100)+' %';
+  return current;
+ }
+ function zoomTo(m,z,cx,cy){
+  z=clamp(z,.55,3.5);
+  const {viewport:v,svg,w,h}=m;
+  const beforeW=svg.getBoundingClientRect().width||w*m.z;
+  const beforeH=svg.getBoundingClientRect().height||h*m.z;
+  const centerX=cx??v.clientWidth/2,centerY=cy??v.clientHeight/2;
+  const ux=(v.scrollLeft+centerX)/beforeW,uy=(v.scrollTop+centerY)/beforeH;
+  m.z=z;svg.style.width=(w*z)+'px';svg.style.height=(h*z)+'px';
+  const controls=document.querySelector('[data-v32-map-controls]');
+  if(controls){const label=controls.querySelector('[data-v32-zoom-label]');if(label)label.textContent=Math.round(z*100)+' %';}
+  v.scrollLeft=ux*w*z-centerX;v.scrollTop=uy*h*z-centerY;
+  m.normX=(v.scrollLeft+v.clientWidth/2)/(w*z);
+  m.normY=(v.scrollTop+v.clientHeight/2)/(h*z);
+ }
+ function centerOn(m,player){
+  const vb=m.svg.viewBox.baseVal;
+  let x=vb.x+vb.width/2,y=vb.y+vb.height/2;
+  if(player){
+   const r=data?.run;
+   if(r?.geometryVersion===32&&r.rooms?.[r.current]){
+    x=r.rooms[r.current].gx+player.x/360;
+    y=r.rooms[r.current].gy+player.y/400;
+   }
+  }
+  m.viewport.scrollLeft=((x-vb.x)/vb.width)*m.w*m.z-m.viewport.clientWidth/2;
+  m.viewport.scrollTop=((y-vb.y)/vb.height)*m.h*m.z-m.viewport.clientHeight/2;
+  m.normX=(m.viewport.scrollLeft+m.viewport.clientWidth/2)/(m.w*m.z);
+  m.normY=(m.viewport.scrollTop+m.viewport.clientHeight/2)/(m.h*m.z);
+ }
+ document.addEventListener('click',e=>{
+  const b=e.target.closest?.('[data-v32-zoom]');if(!b)return;
+  const m=session();if(!m)return;
+  const op=b.dataset.v32Zoom;
+  if(op==='in')zoomTo(m,m.z*1.25);
+  if(op==='out')zoomTo(m,m.z/1.25);
+  if(op==='fit'){zoomTo(m,1);centerOn(m,false);}
+  if(op==='player')centerOn(m,player);
+ });
+ document.addEventListener('wheel',e=>{
+  const v=e.target.closest?.('[data-v32-map-viewport]');if(!v)return;
+  const m=session();if(!m||m.viewport!==v)return;
+  if(!e.ctrlKey&&!e.metaKey)return;
+  e.preventDefault();const rect=v.getBoundingClientRect();zoomTo(m,m.z*(e.deltaY>0?.91:1.1),e.clientX-rect.left,e.clientY-rect.top);
+ },{passive:false});
+ document.addEventListener('pointerdown',e=>{
+  const v=e.target.closest?.('[data-v32-map-viewport]');if(!v||e.pointerType!=='touch')return;
+  const m=session();if(!m||m.viewport!==v)return;
+  m.points.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  try{v.setPointerCapture(e.pointerId)}catch(_){}
+  if(m.points.size===2){const [a,b]=[...m.points.values()];m.startDist=Math.hypot(a.x-b.x,a.y-b.y);m.startZoom=m.z;}
+ });
+ document.addEventListener('pointermove',e=>{
+  const m=current;if(!m||!m.points.has(e.pointerId))return;
+  const old=m.points.get(e.pointerId);m.points.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(m.points.size===2&&m.startDist>0){
+   const [a,b]=[...m.points.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
+   const rect=m.viewport.getBoundingClientRect();
+   zoomTo(m,m.startZoom*dist/m.startDist,(a.x+b.x)/2-rect.left,(a.y+b.y)/2-rect.top);
+  }else if(m.points.size===1){m.viewport.scrollLeft-=e.clientX-old.x;m.viewport.scrollTop-=e.clientY-old.y;
+   m.normX=(m.viewport.scrollLeft+m.viewport.clientWidth/2)/(m.w*m.z);
+   m.normY=(m.viewport.scrollTop+m.viewport.clientHeight/2)/(m.h*m.z);}
+ });
+ const release=e=>{if(current){current.points.delete(e.pointerId);current.startDist=0;}};
+ document.addEventListener('pointerup',release);document.addEventListener('pointercancel',release);
+})();
+
 let ashLastMiniSignature='';
 function ashRenderMiniMap(run){
  const target=$('ashMiniMap');if(!target)return;
@@ -3388,9 +3584,9 @@ function render(){ashUpdateRewardIndicators();if(!data.run&&!data.labK17?.migrat
  
  if(data.eq2){$('insurance').textContent='Acquis définitivement';$('insure').hidden=true;$('insure').disabled=true;}
  const status=$('regionStatus');if(status)status.textContent='K-17 · secteurs '+(region().maxSector+1)+'/4 · avant-postes '+region().outposts.length+'/3 · Gardien '+(region().bossDefeated?'vaincu':'à découvrir')+' · Helix '+(data.unlockHelix?'débloquée (non jouable)':'verrouillée');if($('homeSectorCount'))$('homeSectorCount').textContent=(region().maxSector+1)+' / 4 secteurs';if($('homeSectorFill'))$('homeSectorFill').style.width=(25*(region().maxSector+1))+'%';if($('homeSectorProgress'))$('homeSectorProgress').setAttribute('aria-valuenow',String(region().maxSector+1));if($('statusChipSector'))$('statusChipSector').textContent='Secteurs '+(region().maxSector+1)+'/4';if($('statusChipOutpost'))$('statusChipOutpost').textContent='Avant-postes '+region().outposts.length+'/3';if($('statusChipBoss'))$('statusChipBoss').textContent='Gardien '+(region().bossDefeated?'vaincu':'à découvrir');renderRefugeCharacter();renderRefugeProgress();ashRenderSurvivorProgress();ashRenderContractSelection();ashRenderCareer();ashRenderLongProgress();ashRefreshContractHud(null);if(refugeActivePage==='merchant')merchantRender();if(refugeActivePage==='chests')ashChestRender();return}let room=r.rooms[r.current];if($('uiMission'))$('uiMission').textContent=uiMission().replace(/^[⚠⚡✦✓⚔📡◈]\s*/u,'');$('roomTitle').textContent=isBoss(r.current,r)?'BOSS K-17':isArena(r.current,r)?'ARÈNE':isExit(r.current,r)?'EXTRACTION':room.kind==='secret'?'SALLE SECRÈTE':room.kind==='outpost'?'BALISE':`K-17 · ${r.current+1}/${r.rooms.length}`;$('hpText').textContent=String(Math.ceil(player.hp));$('hpText').title=`${Math.ceil(player.hp)} / ${player.max} PV`;$('hpFill').style.height=`${clamp(player.hp/player.max*100,0,100)}%`;$('hpFill').setAttribute('y',String(100-clamp(player.hp/player.max*100,0,100)));$('hpFill').setAttribute('height',String(clamp(player.hp/player.max*100,0,100)));if($('hpFill'))$('hpFill').classList.toggle('ash-critical',player.hp/player.max<.28);runProgress();$('bagCount').textContent=r.eq2?`${r.eq2.loot.length}/${E2.capacity(r)}`:`${r.bag.length}/6`;ashRenderMiniMap(r);const xp=$('xpDisplay');if(xp){xp.title=`${Math.floor(r.xp)} / ${xpThreshold(r.runLevel)} XP`; xp.title=`${Math.floor(r.xp)} / ${xpThreshold(r.runLevel)} XP`; xp.textContent='XP';xp.setAttribute('aria-label',`Niveau ${r.runLevel}`);const afStatus=$('afHudBar')?.querySelector('.af-status');if(afStatus){const xpGoal=Math.max(1,xpThreshold(r.runLevel));afStatus.dataset.level=String(r.runLevel);afStatus.dataset.xp=`${Math.floor(r.xp)}/${xpGoal}`;afStatus.style.setProperty('--af-xp-progress',`${Math.round(100*clamp(r.xp/xpGoal,0,1))}%`);}xp.style.display='block';$('xpFill').style.height=(100*clamp(r.xp/xpThreshold(r.runLevel),0,1))+'%';$('xpFill').setAttribute('y',String(100-100*clamp(r.xp/xpThreshold(r.runLevel),0,1)));$('xpFill').setAttribute('height',String(100*clamp(r.xp/xpThreshold(r.runLevel),0,1)))}ashRefreshContractHud(r);const statusHint=hudStatus();$('hint').textContent=statusHint;$('hint').hidden=!statusHint}
-function closeOverlay(){if(overlay==='level'&&data.run?.pendingLevels>0)return;if(overlayReturn==='pause'&&data.run&&(overlay==='bag'||overlay==='map')){overlayReturn='';openOverlay('pause');return;}overlayReturn='';overlay='';$('overlay').hidden=true;$('overlay').innerHTML='';if(data.run?.pendingLevels>0&&ashSweepChoiceTimer===null)openLevelChoice()}
-function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2OpenBag();return;}overlay=mode;let r=data.run,html='<button class="close" data-op="close">'+afIcon('close')+' Fermer</button>';if(mode==='bag'){html+=`<h3>${afIcon("bag")} SAC D’EXPÉDITION <span class="ui-tag">${r.bag.length}/6 places</span></h3><p class="muted">Arme équipée et objets transportés. La rareté est indiquée par une couleur.</p><div class="ash-run-build"><b>CONFIGURATION</b> · ${ashGearById(r.loadout?.helmet)?.name||'Casque standard'} · ${ashGearById(r.loadout?.module)?.name||'Module vide'}</div><div class="ui-group-label">ARME ÉQUIPÉE</div>${uiWeaponCard(r.equipped,-1,'bag',true)}<div class="ui-group-label">OBJETS TRANSPORTÉS</div>${r.bag.length?r.bag.map((w,i)=>({w,i})).sort((a,b)=>(LOOT_RARITY_RANK[b.w.rar]||0)-(LOOT_RARITY_RANK[a.w.rar]||0)||lootPower(b.w)-lootPower(a.w)||a.i-b.i).map(({w,i})=>uiWeaponCard(w,i,'bag',false)).join(''):'<p class="ui-empty">Ton sac est vide. Ramasse les armes au sol pour les ajouter ici.</p>'}<p class="ui-help">${afIcon("info")} Équiper une autre arme replace l’ancienne dans le sac. L’assurance reste attachée à son objet d’origine.</p>`;
-}else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">'+(r.visited||[]).length+'/'+r.rooms.length+' salles visitées · '+r.rooms.filter(z=>z.seen).length+' découvertes</p><div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div><div class="ash-map-v2-legend"><span><i style="background:#71f5e5"></i>Extraction</span><span><i style="background:#ffc174"></i>Arène</span><span><i style="background:#ff9292"></i>Boss</span><span><i style="background:#8de2ad"></i>Soins</span><span><i style="background:#fff"></i>Vous</span></div><div class="ash-map-poi-title">POINTS D’INTÉRÊT CONNUS</div>'+ashMapPoiJournal(r)+'<p class="ash-map-v2-help">Glisse pour explorer · Les lieux inconnus restent masqués.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Sac d’extraction · '+r.eq2.loot.length+'/'+E2.capacity(r)+' objets non sécurisés':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/${r.rooms.length} SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/'+E2.capacity(r):r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button><button type="button" data-op="map">${afIcon("map")} CARTE</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
+function closeOverlay(){if(overlay==='level'&&data.run?.pendingLevels>0)return;if(overlayReturn==='pause'&&data.run&&(overlay==='bag'||overlay==='map')){overlayReturn='';openOverlay('pause');return;}overlayReturn='';overlay='';$('overlay').removeAttribute('data-ash-map-fullscreen');$('overlay').hidden=true;$('overlay').innerHTML='';if(data.run?.pendingLevels>0&&ashSweepChoiceTimer===null)openLevelChoice()}
+function openOverlay(mode){if(!data.run)return;if(mode==='bag'&&data.run.eq2){e2OpenBag();return;}overlay=mode;const ashMapFullScreen=mode==='map';$('overlay').toggleAttribute('data-ash-map-fullscreen',ashMapFullScreen);let r=data.run,html=ashMapFullScreen?'<button class="close ash-map-close" type="button" data-op="close" aria-label="Fermer la grande carte">✕</button>':'<button class="close" data-op="close">'+afIcon('close')+' Fermer</button>';if(mode==='bag'){html+=`<h3>${afIcon("bag")} SAC D’EXPÉDITION <span class="ui-tag">${r.bag.length}/6 places</span></h3><p class="muted">Arme équipée et objets transportés. La rareté est indiquée par une couleur.</p><div class="ash-run-build"><b>CONFIGURATION</b> · ${ashGearById(r.loadout?.helmet)?.name||'Casque standard'} · ${ashGearById(r.loadout?.module)?.name||'Module vide'}</div><div class="ui-group-label">ARME ÉQUIPÉE</div>${uiWeaponCard(r.equipped,-1,'bag',true)}<div class="ui-group-label">OBJETS TRANSPORTÉS</div>${r.bag.length?r.bag.map((w,i)=>({w,i})).sort((a,b)=>(LOOT_RARITY_RANK[b.w.rar]||0)-(LOOT_RARITY_RANK[a.w.rar]||0)||lootPower(b.w)-lootPower(a.w)||a.i-b.i).map(({w,i})=>uiWeaponCard(w,i,'bag',false)).join(''):'<p class="ui-empty">Ton sac est vide. Ramasse les armes au sol pour les ajouter ici.</p>'}<p class="ui-help">${afIcon("info")} Équiper une autre arme replace l’ancienne dans le sac. L’assurance reste attachée à son objet d’origine.</p>`;
+}else if(mode==='map'){let coords=r.rooms.filter(z=>Number.isFinite(z.gx)&&Number.isFinite(z.gy));if(coords.length){html+='<h3>'+afIcon('map')+' CARTE TACTIQUE — K-17</h3><p class="muted">'+(r.visited||[]).length+'/'+r.rooms.length+' salles visitées · '+r.rooms.filter(z=>z.seen).length+' découvertes</p>'+(r.geometryVersion===32?'<div class="ash-v3-zoom-controls" data-v32-map-controls><button type="button" data-v32-zoom="out" aria-label="Réduire la carte">−</button><span data-v32-zoom-label>100 %</span><button type="button" data-v32-zoom="in" aria-label="Agrandir la carte">+</button><button type="button" data-v32-zoom="player">Centrer</button><button type="button" data-v32-zoom="fit">Tout voir</button></div><div class="ash-map-scroll" data-v32-map-viewport>'+ashMapMarkup(r,false)+'</div>':'<div class="ash-map-scroll">'+ashMapMarkup(r,false)+'</div>')+'<div class="ash-map-v2-legend"><span><i style="background:#71f5e5"></i>Extraction</span><span><i style="background:#ffc174"></i>Arène</span><span><i style="background:#ff9292"></i>Boss</span><span><i style="background:#8de2ad"></i>Soins</span><span><i style="background:#fff"></i>Vous</span></div><div class="ash-map-poi-title">POINTS D’INTÉRÊT CONNUS</div>'+ashMapPoiJournal(r)+'<p class="ash-map-v2-help">Glisse pour explorer · Les lieux inconnus restent masqués.</p>';}else html+='<h3>ANCIENNE EXPÉDITION</h3><div class="cellmap">'+r.rooms.map((z,i)=>`<div class="${i===r.current?'here':z.seen?'known':''}">${z.seen?i+1:'?'}</div>`).join('')+'</div>';}else if(mode==='pause')html=`<section class="ash-pause-card" role="dialog" aria-modal="true" aria-labelledby="ash-pause-title"><div class="ash-pause-emblem" aria-hidden="true">${afIcon("pause")}</div><div class="ash-pause-eyebrow">K-17 · EXPÉDITION EN COURS</div><h2 id="ash-pause-title">PAUSE</h2><p class="ash-pause-subtitle">Le temps est suspendu. Ton expédition est sauvegardée.</p><p class="ash-run-build">${r.eq2?'Sac d’extraction · '+r.eq2.loot.length+'/'+E2.capacity(r)+' objets non sécurisés':(ashGearById(r.loadout?.helmet)?.name||'Casque standard')+' · '+(ashGearById(r.loadout?.module)?.name||'Module vide')}</p><div class="ash-pause-stats"><span>${afIcon("map")} ${r.visited.length}/${r.rooms.length} SALLES</span><span>${afIcon("bag")} ${r.eq2?r.eq2.loot.length+'/'+E2.capacity(r):r.bag.length+'/6'} OBJETS</span><span>${afIcon("xp")} NIV. ${r.runLevel||1}</span><span>${afIcon("map")} ${ashDiscoveryStats(r).complete}/${ashDiscoveryStats(r).total} DÉCOUVERTES</span></div><div class="ash-pause-actions"><button type="button" class="ash-pause-primary" data-op="resume">${afIcon("resume")} REPRENDRE</button><div class="ash-pause-shortcuts"><button type="button" data-op="bag">${afIcon("bag")} SAC</button></div><button type="button" class="ash-pause-danger" data-op="retreat">Abandonner l’expédition</button></div><div class="ash-pause-footer">${afIcon("save")} Sauvegarde locale active</div></section>`;
 else if(mode==='retreatConfirm')html=`<section class="ash-pause-card ash-pause-confirm" role="dialog" aria-modal="true" aria-labelledby="ash-pause-confirm-title"><div class="ash-pause-emblem danger" aria-hidden="true">${afIcon("danger")}</div><h2 id="ash-pause-confirm-title">ABANDONNER ?</h2><p>${data.run?.eq2?'Le nouveau butin non sécurisé et les crédits de l’expédition seront perdus. Tes équipements acquis resteront possédés.':'Ton équipement non assuré et les crédits gagnés pendant cette expédition seront perdus.'}</p><button type="button" class="ash-pause-primary" data-op="backPause">CONTINUER L’EXPÉDITION</button><button type="button" class="ash-pause-danger" data-op="confirmRetreat">CONFIRMER L’ABANDON</button></section>`;$('overlay').innerHTML=html;$('overlay').hidden=false;persist()}
 function tool(title,html){$('toolsTitle').textContent=title;$('toolsBody').innerHTML=html;$('tools').hidden=false}
 function backup(){persist();const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));tool('EXPORT / IMPORT',`<p>Le code inclut le refuge et l’expédition en cours. Conserve-le dans Notes ou Fichiers.</p><textarea id="exportCode" readonly></textarea><button id="copyCode">Copier le code</button><p>Équipements disparus après une mise à jour ?</p><button id="recoverCatalogGear" type="button">Récupérer les anciens équipements</button><p>Restaurer une sauvegarde :</p><textarea id="importCode" placeholder="Colle ici une sauvegarde..."></textarea><button id="restoreCode">Restaurer</button>`);$('exportCode').value=code;$('recoverCatalogGear').onclick=()=>{ashRecoverCatalogEquipment();};$('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText($('exportCode').value);msg('Code copié.')}catch(e){$('exportCode').select();msg('Sélectionne le texte pour le copier.')}};$('restoreCode').onclick=()=>{const previous=data;try{const decoded=JSON.parse(decodeURIComponent(escape(atob($('importCode').value.trim()))));if(!valid(decoded)||(decoded.eq2&&!E2.validate(decoded))||(decoded.run?.eq2&&!E2.validateRun(decoded.run)))throw Error('format');if(!confirm('Remplacer toute la progression actuelle ?'))return;const safetyKey=KEY+'_before_import_'+Date.now();const safetyValue=JSON.stringify(data);writeVerifiedBackup(safetyKey,safetyValue);data=decoded;if(!data.run&&!data.eq2&&!e2MigrateWhenSafe())throw Error('migration');setPlayer();if(data.run&&isArena(data.run.current,data.run))enforceArena();bullets=[];closeOverlay();runProgress();if(!persist())throw Error('sauvegarde impossible');render();if(data.run?.pendingLevels>0)openLevelChoice();$('tools').hidden=true;msg('Sauvegarde restaurée.')}catch(e){data=previous;setPlayer();render();msg('Import interrompu : sauvegarde initiale préservée.')}}}
@@ -3569,28 +3765,34 @@ $('ashPrepCancel').addEventListener('click',ashClosePrep);$('ashPrepConfirm').ad
 });$('ashPrepOverlay').addEventListener('click',e=>{if(e.target.id==='ashPrepOverlay')ashClosePrep();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('ashPrepOverlay').hidden)ashClosePrep();if(e.key==='Escape'&&!$('ashDifficultyOverlay').hidden)ashCloseDifficulty();});
 $('ashContractPicker').addEventListener('click',e=>{const b=e.target.closest('[data-contract-choice]');if(b)ashSelectContract(b.dataset.contractChoice);});
 $('upHp').onclick=()=>upgrade('hp');$('upDmg').onclick=()=>upgrade('dmg');$('insure').onclick=insure;$('merchantLaunch').onclick=()=>merchantOpen();$('start').onclick=ashOpenPrep;
-$('bagBtn').onclick=()=>openOverlay('bag');$('mapBtn').onclick=()=>openOverlay('map');$('pauseBtn').onclick=()=>openOverlay('pause');
-// iOS/PWA: la carte doit répondre au toucher même lorsqu'un autre doigt utilise le joystick.
-// pointerup ouvre directement le panneau; click reste disponible au clavier et à la souris.
-let ashMapPointerHandled=false;
-$('mapBtn').addEventListener('pointerup',e=>{
- if(!data.run||e.pointerType==='mouse'||(e.pointerType==='pen'&&e.button!==0))return;
- ashMapPointerHandled=true;
- e.preventDefault();
- e.stopPropagation();
+$('bagBtn').onclick=()=>openOverlay('bag');$('pauseBtn').onclick=()=>openOverlay('pause');
+// Tactical Map V3: unique mini-map entry; touch pointerup is supported for iPhone
+// even while the other thumb is on the joystick. Suppress the synthetic click
+// generated for the *same* touch, without swallowing later keyboard clicks.
+let ashMapSuppressClickUntil=0;
+const ashMiniMapButton=$('mapBtn');
+function ashOpenMapFromMini(){
+ if(!data.run||overlay)return;
  openOverlay('map');
+}
+ashMiniMapButton.addEventListener('pointerup',e=>{
+ if(e.pointerType!=='touch'&&e.pointerType!=='pen')return;
+ if(e.pointerType==='pen'&&e.button!==0)return;
+ ashMapSuppressClickUntil=performance.now()+700;
+ e.preventDefault();e.stopPropagation();
+ ashOpenMapFromMini();
 });
-$('mapBtn').addEventListener('click',e=>{
- if(ashMapPointerHandled){ashMapPointerHandled=false;e.preventDefault();return;}
- if(data.run)openOverlay('map');
+ashMiniMapButton.addEventListener('click',e=>{
+ if(e.detail!==0&&performance.now()<ashMapSuppressClickUntil){e.preventDefault();return;}
+ ashOpenMapFromMini();
 });
-// Le clic synthetique iOS peut etre annule quand un autre doigt tient le joystick.
+// Keep the modal close control the only dedicated exit from the large map.
 $('overlay').addEventListener('click',e=>{
   const bagNav=e.target.closest('[data-ash-bag-step]');if(bagNav){ashBagStep(Number(bagNav.dataset.ashBagStep));return;}
   const chosen=e.target.closest('[data-e2-select]');if(chosen){e2BagSelectionId=chosen.getAttribute('data-e2-select')||null;e2OpenBag();return;}
   const action=e.target.closest('[data-e2-run-equip],[data-e2-run-drop],[data-e2-secure],[data-e2-transfer],[data-e2-replace],[data-e2-dismiss],[data-e2-inspect]');
   if(action){const ops={'data-e2-run-equip':'equip','data-e2-run-drop':'drop','data-e2-secure':'secure','data-e2-transfer':'transfer','data-e2-replace':'replace','data-e2-dismiss':'dismiss','data-e2-inspect':'inspect'};for(const [attr,op] of Object.entries(ops))if(action.hasAttribute(attr)){e2RunAction(op,action.getAttribute(attr));return;}}
-  let b=e.target.closest('[data-op]');if(!b)return;let op=b.dataset.op,idx=Number(b.dataset.idx);if(op==='choosePerk')choosePerk(b.dataset.perk);else if(op==='close'||op==='resume')closeOverlay();else if(op==='equipBag')equipBag(idx);else if(op==='drop')drop(idx);else if(op==='bag'){overlayReturn='pause';openOverlay('bag')}else if(op==='map'){overlayReturn='pause';openOverlay('map')}else if(op==='backPause')openOverlay('pause');else if(op==='retreat')openOverlay('retreatConfirm');else if(op==='confirmRetreat')finish(false,'abandon')});
+  let b=e.target.closest('[data-op]');if(!b)return;let op=b.dataset.op,idx=Number(b.dataset.idx);if(op==='choosePerk')choosePerk(b.dataset.perk);else if(op==='close'||op==='resume')closeOverlay();else if(op==='equipBag')equipBag(idx);else if(op==='drop')drop(idx);else if(op==='bag'){overlayReturn='pause';openOverlay('bag')}else if(op==='backPause')openOverlay('pause');else if(op==='retreat')openOverlay('retreatConfirm');else if(op==='confirmRetreat')finish(false,'abandon')});
 function merchantClickHandler(e){const b=e.target.closest('[data-merchant-tab],[data-mr-category],[data-mr-view],[data-mr-close],[data-mr-confirm],[data-mr-refresh],[data-mr-step]');if(!b)return;
  if(b.hasAttribute('data-mr-step')){
   const items=merchantCards().filter(w=>merchantCategory==='all'||(w.slot||'weapon')===merchantCategory);
@@ -5033,6 +5235,8 @@ const bw=guardian?70:30,bhy=guardian?-57:-39;cx.fillStyle='#081722';cx.fillRect(
  }
  }combatFxPaintWorld();cx.restore();if(isBoss(r.current,r))ashDrawBossHud(room);combatFxPaintHurt();}
 function hurt(amount,cause='combat'){if(!player||!data.run||player.inv>0)return;if(data.run.eq2){const f=data.run.eq2.fx;if(E2.profile(data.run).shield>0&&f.shieldReady){f.shieldReady=false;f.shieldCooldown=32;player.inv=.35;msg('Égide : impact absorbé.');return;}}window.dispatchEvent(new CustomEvent('ashfall-fx',{detail:{kind:'damage',x:player.x,y:player.y}}));combatFxDamagePlayer();if(perkCount('dodge')&&Math.random()<[0,.05,.08,.11][perkCount('dodge')]){player.inv=.35;msg('Esquive !');return}const low=player.hp/player.max<.3;const mitigation=1-[0,.06,.10,.14][perkCount('armor')];const last=low?1-[0,.20,.30,.40][perkCount('laststand')]:1;player.hp-=Math.max(1,Math.round(amount*ashDifficultyConfig().damage*(1-ashRunGear().resist)*mitigation*last));if(perkCount('emergency'))data.run._emergencyUntil=(data.run.elapsedSeconds||0)+2;player.inv=.65;if(player.hp<=0)finish(false,cause)}
+function ashV32WorldMarker(){const r=data.run;if(r?.geometryVersion!==32)return null;const room=r.rooms[r.current];return {x:room.gx*CELL_W+player.x,y:room.gy*CELL_H+player.y,roomId:room.id};}
+window.ashV32LabRead=()=>{if(data.run?.geometryVersion!==32||!player)return null;const r=data.run,m=ashV32MapForRun(r);return {rooms:m?.rooms||[],doors:m?.portals||[],visited:r.visited||[],current:r.current,player:ashV32WorldMarker(),quotas:r.v32World?.quotas};};
 function transition(){
  if(locked())return false;
  const r=data.run,id=r.current,room=r.rooms[id];
@@ -5088,11 +5292,16 @@ if(room.enemies.length===0){
 }
 // Après sécurisation, ouverture automatique des coffres (y compris la récompense d'arène).
 if(room.chest==='closed'&&!room.chestRewardGranted&&room.cleared&&room.enemies.length===0&&!locked()&&!incidentBlocksClear(room)){
- room.chest='opened';room.chestRewardGranted=true;room.chestFx=1.15;
- const g=makeWeapon(freeChestWeaponLevel(r,room));
- g._ashFromChest=true; // Rarity is rolled centrally, never forced to Epic/Rare.
- const cp=ashRewardChestPoint(room);lootSpawn(room,'weapon',cp.x,cp.y+9,g);lootSpawn(room,'credits',cp.x-4,cp.y+15,null,pick(12,24));
- ground(room)[ground(room).length-1].source='chest';msg('✨ Coffre ouvert automatiquement · '+g.name+' !');persist();
+ // V32: compute/validate the chest location BEFORE opening. The locator may
+ // disable the chest if no safe place exists; never spawn loot off-map.
+ const cp=ashRewardChestPoint(room);
+ if(room.chest==='closed'){
+  room.chest='opened';room.chestRewardGranted=true;room.chestFx=1.15;
+  const g=makeWeapon(freeChestWeaponLevel(r,room));
+  g._ashFromChest=true; // Rarity is rolled centrally, never forced to Epic/Rare.
+  lootSpawn(room,'weapon',cp.x,cp.y+9,g);lootSpawn(room,'credits',cp.x-4,cp.y+15,null,pick(12,24));
+  ground(room)[ground(room).length-1].source='chest';msg('✨ Coffre ouvert automatiquement · '+g.name+' !');persist();
+ }
 }
 room.chestFx=Math.max(0,(room.chestFx||0)-dt);
 if(room.kind==='outpost'&&!room.activated&&Math.hypot(player.x-180,player.y-195)<55)activateOutpost();
@@ -5117,7 +5326,7 @@ function joystickPaint(){const dx=joy.cx-joystickZone.clientWidth/2,dy=joy.cy-jo
 function ashFitPlayfield(){
   if(!document.body.classList.contains('ashfall-expedition'))return;
   const stage=$('stage'),hud=document.querySelector('#game .gamebar');
-  if(data.run?.geometryVersion===25||data.run?.geometryVersion===31){
+  if(data.run?.geometryVersion===25||data.run?.geometryVersion===31||data.run?.geometryVersion===32){
     document.body.classList.add('ash25-fullscreen');
     if(!stage||!hud)return;
     // Le HUD est réservé au-dessus du terrain, sans masquer l'espace bas du joystick.
@@ -5186,7 +5395,7 @@ window.addEventListener('keydown',e=>{if(e.target.tagName==='TEXTAREA')return;ke
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(data.run&&!overlay)openOverlay('pause');persist(false)}});
 window.addEventListener('pagehide',()=>persist());
 window.addEventListener('freeze',()=>persist());
-if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js?v=hud938fix2',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});
+/* V32 LAB: SW registration deliberately disabled */
 if(data.run){runProgress();data.run.exitWave=data.run.exitWave||(data.run.exitStarted?1:0);if(data.run.exitStarted&&!Number.isInteger(data.run.exitRoom))data.run.exitRoom=data.run.current;setPlayer();if(data.run.exitStarted&&(!isExit(data.run.current,data.run)||data.run.exitRoom!==data.run.current))cancelExtraction(data.run,'tu as quitté la salle');sanitizeEnemyPositions(data.run.rooms[data.run.current]);if(isArena(data.run.current,data.run))enforceArena();else{let cr=data.run.rooms[data.run.current];if(cr&&cr.spawned&&!isBoss(data.run.current,data.run))autoSecure(cr)}if(!player||!data.run.rooms[data.run.current]){data.run=null;data.equipped=data.equipped||starter();msg('Ancienne expédition incompatible : refuge récupéré.')}else{openOverlay('pause');msg('Expédition retrouvée : appuie sur Reprendre.')}}
 
 // Initial training: self-contained guide. The flag is intentionally separate from ashfall_pwa_v1.
