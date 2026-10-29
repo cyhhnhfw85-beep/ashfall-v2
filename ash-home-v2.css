@@ -153,3 +153,8 @@
 .refuge-tab .ash-premium-tab-icon{width:26px;height:26px;display:block;margin:0 auto 4px;color:#a5c0d1;filter:drop-shadow(0 1px 3px #0008);transition:color .2s,filter .2s}
 .refuge-tab.active .ash-premium-tab-icon,.refuge-tab[aria-selected="true"] .ash-premium-tab-icon{color:#152b38;filter:drop-shadow(0 1px 1px #fff4)}
 @media(max-width:390px){.refuge-home-minimal .ash-home-profile{padding:9px 8px!important}.refuge-tab .ash-premium-tab-icon{width:23px;height:23px}}
+
+/* Accueil — correctif visuel ciblé : XP rouge et pseudo net */
+#refuge-page-home .ash-sp-home .ash-sp-track{height:13px!important;margin-top:10px!important;background:#1b2935!important;border:1px solid #6e3b43!important;border-radius:999px!important;overflow:hidden!important;box-shadow:inset 0 2px 5px #0008!important}
+#refuge-page-home .ash-sp-home .ash-sp-track>div{height:100%!important;min-height:100%!important;background:linear-gradient(90deg,#a91e2d 0%,#db3040 65%,#f0545b 100%)!important;border-radius:999px!important;box-shadow:inset 0 1px 0 #ffffff35,0 0 9px #d62b3b55!important;transition:width .25s ease!important}
+#refuge-page-home .ash-home-pseudo-button.is-locked{background:none!important;background-image:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;-webkit-text-fill-color:#ffffff!important;color:#ffffff!important;text-shadow:none!important;filter:none!important;opacity:1!important;transform:none!important;position:relative!important;z-index:2!important}
