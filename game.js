@@ -482,16 +482,20 @@ function ashLevelReward(n){
  const amount=2+Math.floor(n/4);return {type:'components',amount,title:amount+' COMPOSANTS',detail:'Améliorations et atelier'};
 }
 function ashClaimLevelReward(n){
- if(data.run||data.pendingDebrief||data.chestPending)return;
+ if(data.run){msg('Récompense indisponible pendant une expédition.');return;}
+ if(data.pendingDebrief){msg('Termine d’abord le bilan de ton expédition.');return;}
+ if(data.chestPending){msg('Termine d’abord l’ouverture du coffre en attente.');return;}
  const p=ashSurvivorProgress();n=Math.floor(Number(n));
- if(!Number.isInteger(n)||n<1||n>p.level||n>50||p.claimedRewards.includes(n))return;
+ if(!Number.isInteger(n)||n<1||n>p.level||n>50||p.claimedRewards.includes(n)){
+  msg('Cette récompense est verrouillée ou déjà récupérée.');return;
+ }
  const reward=ashLevelReward(n),before=JSON.stringify(data);
  if(reward.type==='credits')data.credits+=reward.amount;
  else if(reward.type==='components'){
   if(!data.eq2||!Number.isFinite(data.eq2.components)){msg('Atelier indisponible : récompense conservée.');return;}
   data.eq2.components+=reward.amount;
  }else{
-  const tier=ASH_CHEST_TIERS.find(t=>t.id===reward.tier);if(!tier)return;
+  const tier=ASH_CHEST_TIERS.find(t=>t.id===reward.tier);if(!tier){msg('Coffre de récompense introuvable.');return;}
   const item=ashChestWeapon(ashChestRoll(tier),0,tier.id);
   data.stash.push(item);
   data.chestPending={tier:tier.id,tierName:tier.name,startedAt:Date.now(),item:{...item}};
@@ -499,6 +503,7 @@ function ashClaimLevelReward(n){
  p.claimedRewards.push(n);
  if(!persist()){data=JSON.parse(before);msg('Sauvegarde impossible : récompense non récupérée.');return;}
  render();ashChestRender();
+ msg('✓ Récompense du niveau '+n+' récupérée.');
 }
 // Indicateur de récompenses en attente : calculé depuis la progression sauvegardée.
 function ashUpdateRewardIndicators(){
