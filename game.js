@@ -939,9 +939,19 @@ function cameraFor(room){
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*1);
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
- const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH/2,0,g.h-sightH);
+ // Mobile portrait: keep more of the room visible BELOW the survivor.
+ // Camera follows the player in the upper part of the terrain viewport,
+ // and clamps at the real bottom wall instead of ending at the joystick band.
+ const followRatio=modern?0.34:0.5;
+ const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH*followRatio,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
- else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.38;roomCamera.zoom=zoom}
+ else{
+  roomCamera.x+=(targetX-roomCamera.x)*.22;
+  roomCamera.y+=(targetY-roomCamera.y)*(modern?0.7:0.38);
+  // Never let the player get clipped at the lower edge while moving down.
+  if(modern){const maxPlayerY=(player?.y||200)-sightH*.78;if(roomCamera.y<maxPlayerY)roomCamera.y=Math.min(Math.max(0,g.h-sightH),maxPlayerY);}
+  roomCamera.zoom=zoom;
+ }
  return roomCamera;
 }
 function drawRoomWalls(room,r){
