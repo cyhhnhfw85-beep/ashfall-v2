@@ -939,27 +939,11 @@ function cameraFor(room){
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*1);
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
- // Keep the existing viewport and usual camera tracking.
- // Near the bottom wall, smoothly finish the vertical scroll at the room boundary.
- const maxY=Math.max(0,g.h-sightH);
- const playerY=player?.y??200;
- let targetY=g.h<sightH?(g.h-sightH)/2:clamp(playerY-sightH/2,0,maxY);
- if(maxY>0){
-  const bottomMargin=35;
-  const bottomStart=Math.max(0,g.h-Math.max(130,sightH*.65));
-  const bottomEnd=g.h-bottomMargin;
-  const progress=clamp((playerY-bottomStart)/Math.max(1,bottomEnd-bottomStart),0,1);
-  const eased=progress*progress*(3-2*progress);
-  targetY=Math.max(targetY,maxY*eased);
-  targetY=clamp(targetY,0,maxY);
- }
+ // Centrage vertical légèrement relevé sur la zone de jeu existante.
+ // Le clamp reste strictement identique : [0, mur inférieur - champ visible].
+ const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y??200)-sightH*.44,0,g.h-sightH);
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
- else{
-  roomCamera.x+=(targetX-roomCamera.x)*.22;
-  roomCamera.y+=(targetY-roomCamera.y)*.38;
-  if(maxY>0&&playerY>=g.h-55)roomCamera.y=targetY;
-  roomCamera.zoom=zoom;
- }
+ else{roomCamera.x+=(targetX-roomCamera.x)*.22;roomCamera.y+=(targetY-roomCamera.y)*.38;roomCamera.zoom=zoom}
  return roomCamera;
 }
 function drawRoomWalls(room,r){
