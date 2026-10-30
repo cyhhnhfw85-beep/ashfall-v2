@@ -260,5 +260,5 @@ body.ashfall-expedition #game #afHudBar #pauseBtn{
    No minimap, room geometry, joystick or camera code is changed. */
 body.ashfall-expedition.ash25-fullscreen #stage #canvas{
   top:calc(var(--ash25-play-top,100px) + 10px)!important;
-  height:calc(100% - var(--ash25-play-top,100px) - 10px)!important;
+  height:calc(100% - var(--ash25-play-top,100px) - 10px - var(--af938-control-height,var(--af-controls-h,180px)))!important;
 }
