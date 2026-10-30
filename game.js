@@ -939,17 +939,25 @@ function cameraFor(room){
  const g=roomGeom(room),zoom=modern?0.96:(window.AshP01Graphics?.applies(room,sectorOf(room))?0.90:(g.type==='single'?1:.84));
  const sightW=360/zoom,sightH=(modern?Math.max(1,cv.height):400)/(zoom*1);
  const targetX=g.w<sightW?(g.w-sightW)/2:clamp((player?.x||180)-sightW/2,0,g.w-sightW);
- // Mobile portrait: keep more of the room visible BELOW the survivor.
- // Camera follows the player in the upper part of the terrain viewport,
- // and clamps at the real bottom wall instead of ending at the joystick band.
- const followRatio=modern?0.34:0.5;
- const targetY=g.h<sightH?(g.h-sightH)/2:clamp((player?.y||200)-sightH*followRatio,0,g.h-sightH);
+ // Keep the existing viewport and usual camera tracking.
+ // Near the bottom wall, smoothly finish the vertical scroll at the room boundary.
+ const maxY=Math.max(0,g.h-sightH);
+ const playerY=player?.y??200;
+ let targetY=g.h<sightH?(g.h-sightH)/2:clamp(playerY-sightH/2,0,maxY);
+ if(maxY>0){
+  const bottomMargin=35;
+  const bottomStart=Math.max(0,g.h-Math.max(130,sightH*.65));
+  const bottomEnd=g.h-bottomMargin;
+  const progress=clamp((playerY-bottomStart)/Math.max(1,bottomEnd-bottomStart),0,1);
+  const eased=progress*progress*(3-2*progress);
+  targetY=Math.max(targetY,maxY*eased);
+  targetY=clamp(targetY,0,maxY);
+ }
  if(roomCamera.id!==room.id){roomCamera={x:targetX,y:targetY,zoom,id:room.id}}
  else{
   roomCamera.x+=(targetX-roomCamera.x)*.22;
-  roomCamera.y+=(targetY-roomCamera.y)*(modern?0.7:0.38);
-  // Never let the player get clipped at the lower edge while moving down.
-  if(modern){const maxPlayerY=(player?.y||200)-sightH*.78;if(roomCamera.y<maxPlayerY)roomCamera.y=Math.min(Math.max(0,g.h-sightH),maxPlayerY);}
+  roomCamera.y+=(targetY-roomCamera.y)*.38;
+  if(maxY>0&&playerY>=g.h-55)roomCamera.y=targetY;
   roomCamera.zoom=zoom;
  }
  return roomCamera;
@@ -5343,14 +5351,9 @@ function ashFitPlayfield(){
     const bounds=stage.getBoundingClientRect();
     const hudBottom=hud.getBoundingClientRect().bottom;
     const inset=Math.max(0,Math.min(bounds.height-150,Math.ceil(hudBottom-bounds.top)));
-    const controlRect=joystickZone.getBoundingClientRect();
-    const controlHeight=Math.max(1,Math.ceil(controlRect.height));
-    const controlTop=Math.max(inset+120,Math.ceil(controlRect.top-bounds.top)-8);
-    const freeHeight=Math.max(120,controlTop-inset);
     const top=inset+'px';
-    const playHeight=freeHeight+'px';
     if(stage.style.getPropertyValue('--ash25-play-top')!==top)stage.style.setProperty('--ash25-play-top',top);
-    if(stage.style.getPropertyValue('--ash25-play-height')!==playHeight)stage.style.setProperty('--ash25-play-height',playHeight);
+    const controlHeight=Math.max(1,Math.ceil(joystickZone.getBoundingClientRect().height));
     stage.style.setProperty('--af938-control-height',controlHeight+'px');
     const playBounds=cv.getBoundingClientRect();
     const w=Math.max(1,playBounds.width),h=Math.max(1,playBounds.height);
